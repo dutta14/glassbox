@@ -4,11 +4,25 @@
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 10vh var(--space-6) var(--space-6);
+  padding: var(--space-16) var(--space-6) var(--space-6);
+  background: var(--color-search-backdrop-fallback);
+}
+
+/* The blurred overlay is lighter than the fallback because the blur itself
+   does most of the separating. Without blur support the flat sheet has to be
+   heavier to keep the modal legible against the page. */
+/* Only the unprefixed property is authored here. Hand-writing the -webkit-
+   twin made the minifier collapse the pair and drop the standard property,
+   which left Firefox matching the condition but rendering no blur; the build
+   adds the prefix itself. */
+@supports (backdrop-filter: blur(1px)) {
+  .note-search__backdrop {
+    background: var(--color-search-backdrop);
+    backdrop-filter: var(--backdrop-search-filter);
+  }
 }
 
 .note-search {
@@ -16,24 +30,41 @@
   max-width: 34rem;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
+
+/* ── Input ─────────────────────────────────────────────────────── */
 
 .note-search__input-row {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  min-height: var(--space-12);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+/* The modal opens with focus already in the field, so a focus ring here is
+   noise. The row's bottom border carries the affordance instead. */
+.note-search__input-row:focus-within {
+  border-bottom-color: var(--color-border-strong);
 }
 
 .note-search__icon {
   flex: 0 0 auto;
   color: var(--color-text-muted);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.note-search__input-row:focus-within .note-search__icon {
+  color: var(--color-text-secondary);
 }
 
 .note-search__input {
@@ -42,71 +73,150 @@
   border: none;
   background: transparent;
   color: var(--color-text);
-  font: var(--fw-normal) var(--fs-lg) var(--font-sans);
+  caret-color: var(--accent);
+  font: var(--fw-normal) var(--fs-md) / var(--leading-tight) var(--font-sans);
 }
 
 .note-search__input::placeholder {
   color: var(--color-text-muted);
 }
 
-.note-search__input:focus {
+/* tokens.css applies --shadow-focus to every :focus-visible. Clearing the
+   outline alone left that ring behind, which is what made the field look
+   broken. */
+.note-search__input:focus,
+.note-search__input:focus-visible {
   outline: none;
+  box-shadow: none;
 }
+
+@media (forced-colors: active) {
+  .note-search__input-row:focus-within {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
+/* ── Results ───────────────────────────────────────────────────── */
 
 .note-search__list {
   list-style: none;
   margin: 0;
   padding: var(--space-2);
-  max-height: 22rem;
+  max-height: min(26rem, 56vh);
   overflow-y: auto;
+  background: var(--color-surface);
 }
 
 .note-search__option {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius);
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: var(--space-12);
+  padding: var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
   cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
-/* Highlight follows the keyboard, not DOM focus: focus stays in the input so
-   typing never breaks, and aria-activedescendant carries the position. */
+.note-search__option:hover {
+  background: var(--color-surface-alt);
+  border-color: var(--color-border-light);
+}
+
+/* The highlight follows the keyboard, not DOM focus: focus stays in the input
+   so typing never breaks, and aria-activedescendant carries the position.
+   Tint, border and the inset rail mean it does not read by colour alone. */
 .note-search__option--active {
   background: var(--accent-lighter);
+  border-color: var(--accent-light);
+  box-shadow: inset var(--space-1) 0 0 var(--accent);
+}
+
+.note-search__option-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .note-search__option-title {
+  flex: 0 1 auto;
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
+  line-height: var(--leading-tight);
   color: var(--color-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Weight, not colour: accent text on the tinted active row would cut contrast
+   for no gain when the row is already unmistakable. */
 .note-search__option--active .note-search__option-title {
-  color: var(--accent);
   font-weight: var(--fw-semibold);
 }
 
-/* The note already open in the editor, so the list shows where you are. */
-.note-search__option--current .note-search__option-title::after {
-  content: " · open";
-  font-weight: var(--fw-normal);
-  color: var(--color-text-muted);
+/* ── Open badge ────────────────────────────────────────────────── */
+
+/* State, not metadata, so it sits beside the title rather than in the tags. */
+.note-search__current-badge {
+  flex: 0 0 auto;
+  padding: var(--space-1) var(--space-2);
+  background: var(--accent-lighter);
+  border: 1px solid var(--accent-light);
+  border-radius: var(--radius-pill);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: var(--leading-tight);
 }
 
-.note-search__option-tags {
+.note-search__option--active .note-search__current-badge {
+  background: var(--color-surface);
+}
+
+/* ── Tags ──────────────────────────────────────────────────────── */
+
+.note-search__tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  overflow: hidden;
+}
+
+/* Deliberately not a button or a link: tags are metadata and do nothing when
+   clicked, so they must not invite one. */
+.note-search__tag {
+  display: inline-flex;
+  align-items: center;
+  max-width: 10rem;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-secondary);
   font-size: var(--fs-xs);
-  color: var(--color-text-muted);
+  font-weight: var(--fw-medium);
+  line-height: var(--leading-tight);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
+.note-search__option--active .note-search__tag {
+  background: var(--color-surface);
+  border-color: var(--accent-light);
+}
+
+/* ── Empty state ───────────────────────────────────────────────── */
+
 .note-search__empty {
-  padding: var(--space-6) var(--space-5);
+  padding: var(--space-8) var(--space-5);
   text-align: center;
 }
 
@@ -123,19 +233,101 @@
   color: var(--color-text-muted);
 }
 
+/* ── Keyboard hints ────────────────────────────────────────────── */
+
+.note-search__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface-alt);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--fs-xs);
+}
+
+.note-search__hint kbd {
+  display: inline-block;
+  margin-right: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xs);
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  line-height: var(--leading-tight);
+}
+
+/* ── Motion ────────────────────────────────────────────────────── */
+
 @media (prefers-reduced-motion: no-preference) {
+  .note-search__backdrop {
+    animation: note-search-backdrop-in var(--duration-fast) var(--ease-out);
+  }
+
   .note-search {
     animation: note-search-in var(--duration-base) var(--ease-out);
+  }
+}
+
+@keyframes note-search-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
 @keyframes note-search-in {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateY(calc(var(--space-2) * -1)) scale(0.98);
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .note-search__backdrop {
+    padding: var(--space-8) var(--space-4) var(--space-4);
+  }
+
+  .note-search {
+    max-width: 100%;
+  }
+
+  .note-search__list {
+    max-height: min(28rem, 62vh);
+  }
+}
+
+/* Full-bleed sheet dropping from the top edge. The hint footer goes: the
+   shortcuts it documents need a keyboard. */
+@media (max-width: 480px) {
+  .note-search__backdrop {
+    padding: 0;
+  }
+
+  .note-search {
+    max-width: none;
+    max-height: 85vh;
+    border-top: none;
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  }
+
+  .note-search__list {
+    max-height: calc(85vh - var(--space-16));
+  }
+
+  .note-search__footer {
+    display: none;
   }
 }

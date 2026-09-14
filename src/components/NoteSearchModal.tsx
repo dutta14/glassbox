@@ -227,18 +227,39 @@ export const NoteSearchModal = ({
                 }}
                 onMouseEnter={() => setActiveIndex(index)}
               >
-                <span className="note-search__option-title">
-                  {note.title || "Untitled"}
+                <span className="note-search__option-main">
+                  <span className="note-search__option-title">
+                    {note.title || "Untitled"}
+                  </span>
+                  {note.id === selectedNoteId && (
+                    <span className="note-search__current-badge">Open</span>
+                  )}
                 </span>
                 {note.tags.length > 0 && (
-                  <span className="note-search__option-tags">
-                    {note.tags.join(" · ")}
+                  <span className="note-search__tag-list">
+                    {note.tags.map((tag) => (
+                      <span key={tag} className="note-search__tag">
+                        {tag}
+                      </span>
+                    ))}
                   </span>
                 )}
               </li>
             ))}
           </ul>
         )}
+
+        <div className="note-search__footer" aria-hidden="true">
+          <span className="note-search__hint">
+            <kbd>↑↓</kbd> Navigate
+          </span>
+          <span className="note-search__hint">
+            <kbd>↵</kbd> Open
+          </span>
+          <span className="note-search__hint">
+            <kbd>Esc</kbd> Close
+          </span>
+        </div>
       </div>
     </div>,
     document.body,

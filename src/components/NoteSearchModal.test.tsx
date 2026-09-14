@@ -186,6 +186,25 @@ describe("NoteSearchModal", () => {
       expect(options()[1]).toHaveClass("note-search__option--current");
       expect(options()[0]).not.toHaveClass("note-search__option--current");
     });
+
+    /** The marker is real text, so it survives a stylesheet that fails to load. */
+    it("labels the current note with a badge rather than a CSS pseudo-element", () => {
+      setup({ selectedNoteId: "n2" });
+
+      // Scoped to the row: the footer hint also reads "Open".
+      expect(within(options()[1]).getByText("Open")).toHaveClass(
+        "note-search__current-badge",
+      );
+      expect(within(options()[0]).queryByText("Open")).not.toBeInTheDocument();
+    });
+
+    it("shows no badge when nothing is open in the editor", () => {
+      setup({ selectedNoteId: null });
+
+      expect(
+        dialog().querySelectorAll(".note-search__current-badge"),
+      ).toHaveLength(0);
+    });
   });
 
   describe("keyboard navigation", () => {
@@ -335,6 +354,51 @@ describe("NoteSearchModal", () => {
 
       expect(() => setup({})).not.toThrow();
     });
+  });
+
+  describe("tags", () => {
+    it("renders each tag as its own chip instead of one joined string", () => {
+      setup({});
+
+      const chips = options()[1].querySelectorAll(".note-search__tag");
+      expect(Array.from(chips).map((c) => c.textContent)).toEqual([
+        "baking",
+        "weekend",
+      ]);
+    });
+
+    /** Tags do nothing when clicked, so they must not be exposed as controls. */
+    it("keeps tags non-interactive", () => {
+      setup({});
+
+      const row = options()[1];
+      expect(within(row).queryByRole("button")).not.toBeInTheDocument();
+      expect(within(row).queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("renders no tag list for a note without tags", () => {
+      setup({});
+
+      expect(options()[2].querySelectorAll(".note-search__tag")).toHaveLength(
+        0,
+      );
+    });
+  });
+
+  /**
+   * The hints describe the keyboard model for sighted users. A screen reader
+   * already announces the listbox, so repeating them would be noise.
+   */
+  it("hides the keyboard hints from assistive technology", () => {
+    setup({});
+
+    const footer = dialog().querySelector(".note-search__footer");
+
+    // Present for sighted users, but aria-hidden keeps it out of the
+    // accessibility tree. queryByText walks the DOM, not that tree, so it
+    // would find these regardless and cannot be used to assert the exclusion.
+    expect(footer).toHaveTextContent("Navigate");
+    expect(footer).toHaveAttribute("aria-hidden", "true");
   });
 
   it("falls back to a readable label for an untitled note", () => {
