@@ -84,6 +84,12 @@
   --rail-notes: 260px;
   --stage-min: 480px;
   --measure: 68ch;
+  /* The editor centres each field independently so the body textarea can span
+     the full pane and put its scrollbar against the edge. That math must be
+     font-independent: `ch` resolves differently on the title (--text-2xl) than
+     on the body (--text-lg), which knocks the fields out of alignment.
+     36rem is approximately 68ch at --text-lg. */
+  --editor-measure: 36rem;
   --chat-column: 46rem;
   --chat-gutter: var(--space-8);
 

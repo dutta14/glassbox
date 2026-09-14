@@ -13,6 +13,7 @@ interface ChatPanelProps {
   onJumpToNote: (noteId: string) => void;
   onClear: () => void;
   onExamplePrompt: (text: string) => void;
+  isFirstAssistantMessage: (id: string) => boolean;
 }
 
 const EXAMPLE_PROMPTS = [
@@ -28,6 +29,7 @@ export const ChatPanel = ({
   onJumpToNote,
   onClear,
   onExamplePrompt,
+  isFirstAssistantMessage,
 }: ChatPanelProps) => {
   const logRef = useRef<HTMLOListElement>(null);
   const clearButtonRef = useRef<HTMLButtonElement>(null);
@@ -52,6 +54,20 @@ export const ChatPanel = ({
       }
     }
     return map;
+  }, [messages]);
+
+  const latestAssistantAnnouncement = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role !== 'assistant') continue;
+      const source = m.answer?.sources[0];
+      if (source) {
+        const title = source.noteTitle.trim() || 'untitled note';
+        return `Answer from ${title}. ${source.text}`;
+      }
+      return m.text;
+    }
+    return '';
   }, [messages]);
 
   return (
@@ -103,8 +119,6 @@ export const ChatPanel = ({
           <ol
             ref={logRef}
             className="chat__log"
-            role="log"
-            aria-relevant="additions"
             aria-label="Conversation"
           >
             {messages.map((message) => (
@@ -114,9 +128,16 @@ export const ChatPanel = ({
                 userQuery={priorUserByMessageId.get(message.id) ?? null}
                 notes={notes}
                 onJumpToNote={onJumpToNote}
+                defaultReasoningExpanded={
+                  message.role === 'assistant' &&
+                  isFirstAssistantMessage(message.id)
+                }
               />
             ))}
           </ol>
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
+            {latestAssistantAnnouncement}
+          </div>
         </>
       )}
 
@@ -131,7 +152,9 @@ export const ChatPanel = ({
         onConfirm={() => {
           setConfirmClearOpen(false);
           onClear();
-          requestAnimationFrame(() => clearButtonRef.current?.focus());
+          requestAnimationFrame(() => {
+            document.getElementById('composer-input')?.focus();
+          });
         }}
         onCancel={() => {
           setConfirmClearOpen(false);

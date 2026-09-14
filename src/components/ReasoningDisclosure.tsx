@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { Answer } from '../types';
 import { displayTerms, stem } from '../engine/tokenize';
 import { tierFor, type ConfidenceTier } from '../engine/router';
@@ -9,6 +9,7 @@ interface ReasoningDisclosureProps {
   answer: Answer;
   userQuery: string | null;
   onOpenCandidate: (noteId: string) => void;
+  defaultExpanded?: boolean;
 }
 
 const TIER_LABEL: Record<ConfidenceTier, string> = {
@@ -29,13 +30,14 @@ export const ReasoningDisclosure = ({
   answer,
   userQuery,
   onOpenCandidate,
+  defaultExpanded = false,
 }: ReasoningDisclosureProps) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const summaryRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = panelRef.current;
     if (!el) return;
     if (expanded) el.removeAttribute('inert');
@@ -121,9 +123,10 @@ export const ReasoningDisclosure = ({
         <div
           id={panelId}
           ref={panelRef}
-          role="region"
+          role="group"
           aria-label="Reasoning for this answer"
           aria-live="off"
+          aria-hidden={!expanded}
           className="reason__panel"
           onKeyDown={handlePanelKey}
         >

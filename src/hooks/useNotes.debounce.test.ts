@@ -30,20 +30,16 @@ class InMemoryStore implements NotesStore {
 /**
  * Gap #2 — AC 2 autosave debounce semantics.
  *
- * These tests exercise the debounce boundary via `createNote`, which calls
- * `scheduleWrite` directly with a locally-constructed Note. The debounce
- * boundary itself lives in `scheduleWrite` (500ms coalescing timer), so it
- * can be validated on this path.
+ * The debounce boundary lives in `scheduleWrite` (500ms coalescing timer).
+ * These tests exercise it from both entry points that reach it:
  *
- * IMPORTANT — updateNote is NOT tested for the debounce path here. There is
- * a source bug in useNotes.updateNote (see report to Anindya) where
- *   `let updated: Note | null = null; setNotes(prev => { ...; updated = X; }); if (updated !== null) scheduleWrite(updated);`
- * reads `updated` BEFORE React's reducer executes, so scheduleWrite is never
- * reached from edits. That bug is the reason a "coalescing" test on
- * updateNote cannot be written honestly right now: it would fail for the
- * wrong reason (edits never persisted at all, let alone coalesced) and pass
- * for the wrong reason if the fix is reverted. When the source bug is fixed
- * we should add the two-edit coalescing test at that time.
+ *   - `createNote` calls `scheduleWrite` directly with the created note.
+ *   - `updateNote` (after the fix to compute nextNote from notesRef.current
+ *      outside setNotes) calls `scheduleWrite` on every edit.
+ *
+ * Assertions are on `store.putCalls.length` and the exact body persisted.
+ * A regression to save-on-every-keystroke would produce five puts on a
+ * five-keystroke burst, not one, and would fail these tests loudly.
  */
 describe('useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote path)', () => {
   beforeEach(() => {
@@ -124,13 +120,114 @@ describe('useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
     expect(store.putCalls[1].id).not.toBe(a!.id);
   });
 
-  // ---- Blocked-on-source-bug placeholder ----
-  // See: useNotes.updateNote reads `updated` before the setState reducer runs.
-  // Un-skip once the source bug is fixed. The intended assertion is:
-  //   two updateNote calls to the same id, spaced 200ms apart, produce exactly
-  //   ONE put after the debounce window whose body is the SECOND edit; and
-  //   five rapid edits within one window produce exactly ONE put.
-  it.skip('coalesces two updateNote calls inside the 500ms window into one put with the second body (BLOCKED by updateNote source bug)', async () => {
-    // Intentionally empty until the source bug is fixed.
+  it('coalesces two updateNote calls inside the 500ms window into exactly one put whose body is the second edit', async () => {
+    const store = new InMemoryStore();
+    // Seed a note on disk plus wait for bootstrap so the note is loaded into
+    // React state; then edits go through the debounce path.
+    store.disk.set('n', {
+      id: 'n',
+      title: 'T',
+      body: 'v0',
+      tags: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    // Pre-mark seeded so bootstrap does not stack sample-note puts on top of
+    // the ones we want to count.
+    markSeeded();
+    const { result } = renderHook(() => useNotes(store));
+    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+
+    // Two edits inside one 500ms window: t=0 and t=200.
+    await act(async () => {
+      result.current.updateNote('n', { body: 'v1' });
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(200);
+    });
+    await act(async () => {
+      result.current.updateNote('n', { body: 'v2' });
+    });
+    // Fire the debounce boundary from the SECOND edit.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+    });
+
+    expect(store.putCalls).toHaveLength(1);
+    expect(store.putCalls[0].id).toBe('n');
+    expect(store.putCalls[0].body).toBe('v2');
+    // And the first edit is provably NOT what was persisted.
+    expect(store.putCalls[0].body).not.toBe('v1');
+  });
+
+  it('coalesces a five-keystroke burst inside one debounce window into a single put carrying the final text', async () => {
+    // A save-on-every-keystroke regression would produce five puts, not one.
+    const store = new InMemoryStore();
+    store.disk.set('n', {
+      id: 'n',
+      title: 'T',
+      body: '',
+      tags: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    markSeeded();
+    const { result } = renderHook(() => useNotes(store));
+    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+
+    const keystrokes = ['h', 'he', 'hel', 'hell', 'hello'];
+    for (const stroke of keystrokes) {
+      await act(async () => {
+        result.current.updateNote('n', { body: stroke });
+        await vi.advanceTimersByTimeAsync(50); // 50ms between keys; well inside 500ms.
+      });
+    }
+    // Let the debounce settle from the last keystroke.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+    });
+
+    expect(store.putCalls).toHaveLength(1);
+    expect(store.putCalls[0].body).toBe('hello');
+  });
+
+  it('produces exactly two puts when two updateNote calls are separated by more than the 500ms window', async () => {
+    const store = new InMemoryStore();
+    store.disk.set('n', {
+      id: 'n',
+      title: 'T',
+      body: 'v0',
+      tags: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    });
+    markSeeded();
+    const { result } = renderHook(() => useNotes(store));
+    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+
+    // First edit + let it flush.
+    await act(async () => {
+      result.current.updateNote('n', { body: 'v1' });
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+    });
+    expect(store.putCalls).toHaveLength(1);
+    expect(store.putCalls[0].body).toBe('v1');
+
+    // Then wait 10ms of quiet outside the previous window, second edit + flush.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+      result.current.updateNote('n', { body: 'v2' });
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
+    });
+
+    expect(store.putCalls).toHaveLength(2);
+    expect(store.putCalls[1].body).toBe('v2');
+    // And the first put was NOT overwritten by the second one's contents in
+    // the recorded history: two distinct puts, two distinct bodies.
+    expect(store.putCalls[0].body).not.toBe(store.putCalls[1].body);
   });
 });

@@ -8,6 +8,7 @@ interface ChatMessageProps {
   userQuery: string | null;
   notes: Note[];
   onJumpToNote: (noteId: string) => void;
+  defaultReasoningExpanded?: boolean;
 }
 
 export const ChatMessage = ({
@@ -15,10 +16,11 @@ export const ChatMessage = ({
   userQuery,
   notes,
   onJumpToNote,
+  defaultReasoningExpanded = false,
 }: ChatMessageProps) => {
   if (message.role === 'user') {
     return (
-      <li className="msg msg--user" aria-hidden="true">
+      <li className="msg msg--user">
         <div className="msg__bubble">{message.text}</div>
       </li>
     );
@@ -63,6 +65,7 @@ export const ChatMessage = ({
           answer={answer}
           userQuery={userQuery}
           onOpenCandidate={onJumpToNote}
+          defaultExpanded={defaultReasoningExpanded}
         />
       )}
     </li>

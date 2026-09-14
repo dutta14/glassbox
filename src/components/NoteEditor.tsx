@@ -79,6 +79,7 @@ export const NoteEditor = ({
       aria-labelledby="tab-editor"
       className="editor"
     >
+      <h2 className="sr-only">Editor</h2>
       <div className="editor__inner">
         <input
           ref={titleRef}

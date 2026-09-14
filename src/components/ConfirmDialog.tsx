@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import '../styles/ConfirmDialog.css';
 
 interface ConfirmDialogProps {
@@ -37,6 +38,17 @@ export const ConfirmDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    const root = document.getElementById('root');
+    if (!root) return;
+    const hadInert = root.hasAttribute('inert');
+    root.setAttribute('inert', '');
+    return () => {
+      if (!hadInert) root.removeAttribute('inert');
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
@@ -67,7 +79,7 @@ export const ConfirmDialog = ({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="confirm-backdrop"
       onMouseDown={(e) => {
@@ -108,6 +120,7 @@ export const ConfirmDialog = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

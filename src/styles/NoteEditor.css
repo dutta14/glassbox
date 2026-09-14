@@ -12,15 +12,27 @@
   flex-direction: column;
   gap: var(--space-3);
   width: 100%;
-  max-width: var(--measure);
-  margin: 0 auto;
-  padding: var(--space-6);
+  padding-block: var(--space-6);
   flex: 1;
   min-height: 0;
 }
 
+/* The inset lives on each field rather than on the wrapper so that the body
+   textarea spans the full pane and its scrollbar sits against the right edge.
+   The space-6 term preserves the inner padding the wrapper used to add, so
+   the text stays exactly where it was. */
+.editor__title,
+.editor__tags,
+.editor__body,
+.editor__meta {
+  padding-inline: max(
+    var(--space-6),
+    (100% - var(--editor-measure)) / 2 + var(--space-6)
+  );
+}
+
 .editor__title {
-  padding: var(--space-4) 0;
+  padding-block: var(--space-4);
   background: transparent;
   border: 0;
   color: var(--text-primary);
@@ -42,7 +54,7 @@
 .editor__body {
   flex: 1;
   min-height: 300px;
-  padding: var(--space-4) 0;
+  padding-block: var(--space-4);
   background: transparent;
   border: 0;
   color: var(--text-primary);
@@ -50,6 +62,8 @@
   line-height: var(--leading-relaxed);
   resize: none;
   font-family: inherit;
+  /* Keeps the body text aligned with the title when the textarea overflows. */
+  scrollbar-gutter: stable both-edges;
 }
 
 .editor__body::placeholder {
@@ -86,7 +100,13 @@
   }
 
   .editor__inner {
-    padding: var(--space-4);
-    max-width: 100%;
+    padding-block: var(--space-4);
+  }
+
+  .editor__title,
+  .editor__tags,
+  .editor__body,
+  .editor__meta {
+    padding-inline: var(--space-4);
   }
 }

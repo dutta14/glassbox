@@ -83,7 +83,7 @@ const AppReady = ({
 
   const storageAvailable = storeKind === 'local' ? store.isAvailable() : true;
 
-  const { messages, append, clear } = useChat();
+  const { messages, append, clear, isFirstAssistantMessage } = useChat();
 
   const [activeTab, setActiveTab] = useState<Tab>('chat');
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
@@ -309,7 +309,6 @@ const AppReady = ({
             role="tab"
             id="tab-chat"
             aria-selected={activeTab === 'chat'}
-            aria-controls="chat-panel"
             tabIndex={activeTab === 'chat' ? 0 : -1}
             className={`tab${activeTab === 'chat' ? ' tab--active' : ''}`}
             onClick={() => setActiveTab('chat')}
@@ -321,7 +320,6 @@ const AppReady = ({
             role="tab"
             id="tab-editor"
             aria-selected={activeTab === 'editor'}
-            aria-controls="editor-panel"
             tabIndex={activeTab === 'editor' ? 0 : -1}
             className={`tab${activeTab === 'editor' ? ' tab--active' : ''}`}
             onClick={() => setActiveTab('editor')}
@@ -343,6 +341,7 @@ const AppReady = ({
               onJumpToNote={handleJumpToNote}
               onClear={clear}
               onExamplePrompt={handleExamplePrompt}
+              isFirstAssistantMessage={isFirstAssistantMessage}
             />
           )}
           {activeTab === 'editor' && selectedNote && (

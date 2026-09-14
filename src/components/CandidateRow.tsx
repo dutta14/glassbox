@@ -24,15 +24,20 @@ const truncate = (text: string, max: number): string => {
   return `${clean.slice(0, max - 1)}…`;
 };
 
-const accessibleName = (candidate: ScoredChunk, rank: number, tier: ConfidenceTier): string => {
+const accessibleName = (
+  candidate: ScoredChunk,
+  rank: number,
+  tier: ConfidenceTier,
+  coveragePct: number,
+): string => {
   const raw = candidate.noteTitle.trim();
   const scoreLabel = candidate.score.toFixed(2);
   const tierLabel = TIER_TEXT[tier];
   if (raw.length > 0) {
-    return `Open source note ${raw}, rank ${rank}, ${tierLabel} confidence, score ${scoreLabel}`;
+    return `Open source note ${raw}, rank ${rank}, ${tierLabel} confidence, score ${scoreLabel}, coverage ${coveragePct}%`;
   }
   const snippet = truncate(candidate.text, 60);
-  return `Open untitled note, rank ${rank}, ${tierLabel} confidence, score ${scoreLabel}. ${snippet}`;
+  return `Open untitled note, rank ${rank}, ${tierLabel} confidence, score ${scoreLabel}, coverage ${coveragePct}%. ${snippet}`;
 };
 
 export const CandidateRow = ({
@@ -54,7 +59,7 @@ export const CandidateRow = ({
         type="button"
         className="candidate__button"
         onClick={onOpen}
-        aria-label={accessibleName(candidate, rank, tier)}
+        aria-label={accessibleName(candidate, rank, tier, coveragePct)}
       >
         <div className="candidate__head">
           <span className="candidate__rank">#{rank}</span>

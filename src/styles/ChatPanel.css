@@ -25,12 +25,23 @@
   min-height: 0;
   overflow-y: auto;
   list-style: none;
-  margin: 0 auto;
-  padding: var(--space-6) 0;
+  margin: 0;
+  /* Full-width scroll container so the scrollbar sits against the pane edge.
+     The centring that used to come from a constrained width now comes from
+     padding, which keeps messages on the same column. */
+  width: 100%;
+  padding-block: var(--space-6);
+  padding-inline: max(
+    var(--chat-gutter),
+    (100% - var(--chat-column)) / 2
+  );
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  width: min(var(--chat-column), 100% - 2 * var(--chat-gutter));
+  /* Reserve the scrollbar on both sides so the column stays centred on the
+     pane, aligned with the toolbar and composer, and does not shift sideways
+     when the log grows past one screen. */
+  scrollbar-gutter: stable both-edges;
 }
 
 .chat__empty {
