@@ -1,0 +1,141 @@
+/* Anchored near the top rather than centred: the result list grows downward,
+   and a vertically centred modal would shift the input as you type. */
+.note-search__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh var(--space-6) var(--space-6);
+}
+
+.note-search {
+  width: 100%;
+  max-width: 34rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.note-search__input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.note-search__icon {
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+}
+
+.note-search__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  font: var(--fw-normal) var(--fs-lg) var(--font-sans);
+}
+
+.note-search__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.note-search__input:focus {
+  outline: none;
+}
+
+.note-search__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.note-search__option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+/* Highlight follows the keyboard, not DOM focus: focus stays in the input so
+   typing never breaks, and aria-activedescendant carries the position. */
+.note-search__option--active {
+  background: var(--accent-lighter);
+}
+
+.note-search__option-title {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-search__option--active .note-search__option-title {
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+
+/* The note already open in the editor, so the list shows where you are. */
+.note-search__option--current .note-search__option-title::after {
+  content: " · open";
+  font-weight: var(--fw-normal);
+  color: var(--color-text-muted);
+}
+
+.note-search__option-tags {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-search__empty {
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+
+.note-search__empty-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+
+.note-search__empty-body {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .note-search {
+    animation: note-search-in var(--duration-base) var(--ease-out);
+  }
+}
+
+@keyframes note-search-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Note } from "../types";
 import { NoteListItem } from "./NoteListItem";
+import { NoteSearchModal } from "./NoteSearchModal";
 import { StorageControl } from "./StorageControl";
 import { ThemeToggle } from "./ThemeToggle";
 import type { Theme } from "../hooks/useTheme";
@@ -60,53 +61,23 @@ export const NotesRail = ({
   theme,
   onToggleTheme,
 }: NotesRailProps) => {
-  const [filter, setFilter] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    if (!searchOpen) return;
-    searchInputRef.current?.focus();
-  }, [searchOpen]);
-
-  /**
-   * Closing clears the filter. A collapsed field with a live query would hide
-   * notes with nothing on screen explaining why the list looks short.
-   */
+  /** Focus goes back to the glyph that opened the modal, never to the body. */
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
-    setFilter("");
     searchToggleRef.current?.focus();
   }, []);
 
-  /**
-   * Collapsing unmounts the filter field, so a query left behind would come
-   * back invisibly on expand and silently shorten the list.
-   */
   const toggleCollapsed = useCallback(() => {
     setCollapsed((current) => {
       const next = !current;
       writeCollapsed(next);
-      if (next) {
-        setSearchOpen(false);
-        setFilter("");
-      }
       return next;
     });
   }, []);
-
-  const filtered = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    if (!q) return notes;
-    return notes.filter((n) => {
-      const title = n.title.toLowerCase();
-      const body = n.body.toLowerCase();
-      const tags = n.tags.join(" ").toLowerCase();
-      return title.includes(q) || body.includes(q) || tags.includes(q);
-    });
-  }, [filter, notes]);
 
   return (
     <aside
@@ -161,12 +132,10 @@ export const NotesRail = ({
                   ref={searchToggleRef}
                   type="button"
                   className="notes-rail__action"
-                  onClick={() =>
-                    searchOpen ? closeSearch() : setSearchOpen(true)
-                  }
+                  onClick={() => setSearchOpen(true)}
+                  aria-haspopup="dialog"
                   aria-expanded={searchOpen}
-                  aria-controls="notes-search"
-                  aria-label="Filter notes"
+                  aria-label="Search notes"
                 >
                   <svg
                     width="16"
@@ -215,29 +184,6 @@ export const NotesRail = ({
             </div>
           </div>
 
-          <div
-            className="notes-rail__search"
-            id="notes-search"
-            role="search"
-            hidden={!searchOpen}
-          >
-            <input
-              ref={searchInputRef}
-              type="search"
-              className="notes-rail__search-input"
-              placeholder="Filter notes"
-              aria-label="Filter notes"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  closeSearch();
-                }
-              }}
-            />
-          </div>
-
           {hasSampleNotes && (
             <div className="notes-rail__banner" role="note">
               <p className="notes-rail__banner-text">{COPY.sampleBanner}</p>
@@ -252,29 +198,23 @@ export const NotesRail = ({
           )}
 
           <nav className="notes-rail__list" aria-label="Note list">
-            {filtered.length === 0 ? (
+            {notes.length === 0 ? (
               <div className="notes-rail__empty">
-                <p className="notes-rail__empty-title">
-                  {notes.length === 0 ? "No notes yet" : "No matches"}
-                </p>
+                <p className="notes-rail__empty-title">No notes yet</p>
                 <p className="notes-rail__empty-body">
-                  {notes.length === 0
-                    ? COPY.emptyNotesSidebar
-                    : "Try a different filter."}
+                  {COPY.emptyNotesSidebar}
                 </p>
-                {notes.length === 0 && (
-                  <button
-                    type="button"
-                    className="notes-rail__empty-action"
-                    onClick={onCreate}
-                  >
-                    New note
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="notes-rail__empty-action"
+                  onClick={onCreate}
+                >
+                  New note
+                </button>
               </div>
             ) : (
               <ul>
-                {filtered.map((note) => (
+                {notes.map((note) => (
                   <NoteListItem
                     key={note.id}
                     note={note}
@@ -300,6 +240,14 @@ export const NotesRail = ({
           </footer>
         </>
       )}
+
+      <NoteSearchModal
+        open={searchOpen}
+        notes={notes}
+        selectedNoteId={selectedNoteId}
+        onSelect={onSelect}
+        onClose={closeSearch}
+      />
     </aside>
   );
 };

@@ -115,35 +115,6 @@
   color: var(--color-text);
 }
 
-.notes-rail__action[aria-expanded="true"] {
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-}
-
-.notes-rail__search {
-  width: 100%;
-  padding: 0 var(--space-1) var(--space-2);
-}
-
-.notes-rail__search-input {
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius);
-  color: var(--color-text);
-  font-size: var(--fs-sm);
-}
-
-.notes-rail__search-input::placeholder {
-  color: var(--color-text-muted);
-}
-
-.notes-rail__search-input:focus-visible {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-focus);
-}
-
 .notes-rail__banner {
   width: 100%;
   margin-bottom: var(--space-2);
