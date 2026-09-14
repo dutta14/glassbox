@@ -1,0 +1,99 @@
+.composer {
+  position: sticky;
+  bottom: 0;
+  padding: var(--space-4) 0;
+  background: linear-gradient(to bottom, transparent 0, var(--surface-0) 32px);
+  padding-top: calc(var(--space-4) + 32px);
+  width: min(var(--chat-column), 100% - 2 * var(--chat-gutter));
+  margin-inline: auto;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .composer {
+    background: var(--surface-0);
+    padding-top: var(--space-4);
+  }
+}
+
+.composer__row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+  max-width: var(--measure);
+  margin: 0 auto;
+}
+
+.composer__input {
+  flex: 1;
+  min-height: 44px;
+  max-height: 168px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  resize: none;
+  overflow-y: auto;
+  transition: border-color var(--dur-instant) var(--ease-out);
+}
+
+.composer__input:focus-visible {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.composer__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.composer__input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.composer__send {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  background: var(--accent-500);
+  color: var(--text-inverse);
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background-color var(--dur-instant) var(--ease-out);
+}
+
+.composer__send::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+.composer__send:hover:not(:disabled) {
+  background: var(--accent-600);
+}
+
+.composer__send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.composer__counter {
+  max-width: var(--measure);
+  margin: var(--space-2) auto 0;
+  text-align: right;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 767px) {
+  .composer__send {
+    width: 44px;
+    height: 44px;
+  }
+}

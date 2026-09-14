@@ -1,0 +1,65 @@
+.quote {
+  margin: 0;
+  padding: var(--space-5) var(--space-6);
+  background: var(--surface-quote);
+  border-left: 3px solid var(--accent-500);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.quote__body {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  color: var(--text-quote);
+  font-weight: var(--weight-regular);
+  white-space: pre-wrap;
+}
+
+.quote__source {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.quote__source-label {
+  color: var(--text-tertiary);
+}
+
+.quote__source-link {
+  color: var(--accent-500);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-xs);
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.quote__source-link:hover {
+  color: var(--accent-600);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.quote__source-link--disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.quote__source-link--disabled:hover {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+.quote__source-date {
+  color: var(--text-tertiary);
+}
