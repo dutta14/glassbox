@@ -1,12 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Note } from '../types';
-import { NoteListItem } from './NoteListItem';
-import { StorageControl } from './StorageControl';
-import { ThemeToggle } from './ThemeToggle';
-import type { Theme } from '../hooks/useTheme';
-import type { FolderState } from '../hooks/useStorageBackend';
-import { COPY } from '../engine/copy';
-import '../styles/NotesRail.css';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Note } from "../types";
+import { NoteListItem } from "./NoteListItem";
+import { StorageControl } from "./StorageControl";
+import { ThemeToggle } from "./ThemeToggle";
+import type { Theme } from "../hooks/useTheme";
+import type { FolderState } from "../hooks/useStorageBackend";
+import { COPY } from "../engine/copy";
+import "../styles/NotesRail.css";
+
+const COLLAPSE_KEY = "glassbox.rail.v1";
+
+/** Wrapped because localStorage throws in some privacy modes. */
+const readCollapsed = (): boolean => {
+  try {
+    return localStorage.getItem(COLLAPSE_KEY) === "collapsed";
+  } catch {
+    return false;
+  }
+};
+
+const writeCollapsed = (collapsed: boolean): void => {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? "collapsed" : "expanded");
+  } catch {
+    // Non-fatal. The rail still collapses for this session.
+  }
+};
 
 interface NotesRailProps {
   notes: Note[];
@@ -41,8 +60,9 @@ export const NotesRail = ({
   theme,
   onToggleTheme,
 }: NotesRailProps) => {
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
 
@@ -57,8 +77,24 @@ export const NotesRail = ({
    */
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
-    setFilter('');
+    setFilter("");
     searchToggleRef.current?.focus();
+  }, []);
+
+  /**
+   * Collapsing unmounts the filter field, so a query left behind would come
+   * back invisibly on expand and silently shorten the list.
+   */
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((current) => {
+      const next = !current;
+      writeCollapsed(next);
+      if (next) {
+        setSearchOpen(false);
+        setFilter("");
+      }
+      return next;
+    });
   }, []);
 
   const filtered = useMemo(() => {
@@ -67,160 +103,203 @@ export const NotesRail = ({
     return notes.filter((n) => {
       const title = n.title.toLowerCase();
       const body = n.body.toLowerCase();
-      const tags = n.tags.join(' ').toLowerCase();
+      const tags = n.tags.join(" ").toLowerCase();
       return title.includes(q) || body.includes(q) || tags.includes(q);
     });
   }, [filter, notes]);
 
   return (
-    <aside className="notes-rail" aria-label="Notes">
-      <header className="notes-rail__header">
-        <div className="notes-rail__brand">Glassbox</div>
-      </header>
+    <aside
+      className={`notes-rail${collapsed ? " notes-rail--collapsed" : ""}`}
+      aria-label="Notes"
+    >
+      <div className="notes-rail__top-row">
+        <button
+          type="button"
+          className="notes-rail__toggle"
+          onClick={toggleCollapsed}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <rect
+              x="4"
+              y="5"
+              width="14"
+              height="2.2"
+              rx="1.1"
+              fill="currentColor"
+            />
+            <rect
+              x="4"
+              y="9.4"
+              width="10"
+              height="2.2"
+              rx="1.1"
+              fill="currentColor"
+            />
+            <rect
+              x="4"
+              y="13.8"
+              width="14"
+              height="2.2"
+              rx="1.1"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+        {!collapsed && <div className="notes-rail__brand">Glassbox</div>}
+      </div>
 
-      <div className="notes-rail__section">
-        <div className="notes-rail__header-row">
-          <h2 className="notes-rail__title">Notes</h2>
-          <div className="notes-rail__actions">
-            <button
-              ref={searchToggleRef}
-              type="button"
-              className="notes-rail__action"
-              onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
-              aria-expanded={searchOpen}
-              aria-controls="notes-search"
-              aria-label="Filter notes"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="7.2"
-                  cy="7.2"
-                  r="4.2"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-                <path
-                  d="M10.4 10.4 13.5 13.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="notes-rail__action notes-rail__action--new"
-              onClick={onCreate}
-              aria-label="New note"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M8 3v10M3 8h10"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
+      {!collapsed && (
+        <>
+          <div className="notes-rail__section">
+            <div className="notes-rail__header-row">
+              <h2 className="notes-rail__title">Notes</h2>
+              <div className="notes-rail__actions">
+                <button
+                  ref={searchToggleRef}
+                  type="button"
+                  className="notes-rail__action"
+                  onClick={() =>
+                    searchOpen ? closeSearch() : setSearchOpen(true)
+                  }
+                  aria-expanded={searchOpen}
+                  aria-controls="notes-search"
+                  aria-label="Filter notes"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      cx="7.2"
+                      cy="7.2"
+                      r="4.2"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                    <path
+                      d="M10.4 10.4 13.5 13.5"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="notes-rail__action notes-rail__action--new"
+                  onClick={onCreate}
+                  aria-label="New note"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M8 3v10M3 8h10"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div
-        className="notes-rail__search"
-        id="notes-search"
-        role="search"
-        hidden={!searchOpen}
-      >
-        <input
-          ref={searchInputRef}
-          type="search"
-          className="notes-rail__search-input"
-          placeholder="Filter notes"
-          aria-label="Filter notes"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              closeSearch();
-            }
-          }}
-        />
-      </div>
-
-      {hasSampleNotes && (
-        <div className="notes-rail__banner" role="note">
-          <p className="notes-rail__banner-text">{COPY.sampleBanner}</p>
-          <button
-            type="button"
-            className="notes-rail__banner-action"
-            onClick={onDeleteSamples}
+          <div
+            className="notes-rail__search"
+            id="notes-search"
+            role="search"
+            hidden={!searchOpen}
           >
-            Delete all samples
-          </button>
-        </div>
-      )}
+            <input
+              ref={searchInputRef}
+              type="search"
+              className="notes-rail__search-input"
+              placeholder="Filter notes"
+              aria-label="Filter notes"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  closeSearch();
+                }
+              }}
+            />
+          </div>
 
-      <nav className="notes-rail__list" aria-label="Note list">
-        {filtered.length === 0 ? (
-          <div className="notes-rail__empty">
-            <p className="notes-rail__empty-title">
-              {notes.length === 0 ? 'No notes yet' : 'No matches'}
-            </p>
-            <p className="notes-rail__empty-body">
-              {notes.length === 0
-                ? COPY.emptyNotesSidebar
-                : 'Try a different filter.'}
-            </p>
-            {notes.length === 0 && (
+          {hasSampleNotes && (
+            <div className="notes-rail__banner" role="note">
+              <p className="notes-rail__banner-text">{COPY.sampleBanner}</p>
               <button
                 type="button"
-                className="notes-rail__empty-action"
-                onClick={onCreate}
+                className="notes-rail__banner-action"
+                onClick={onDeleteSamples}
               >
-                New note
+                Delete all samples
               </button>
-            )}
-          </div>
-        ) : (
-          <ul>
-            {filtered.map((note) => (
-              <NoteListItem
-                key={note.id}
-                note={note}
-                isSelected={note.id === selectedNoteId}
-                onSelect={() => onSelect(note.id)}
-              />
-            ))}
-          </ul>
-        )}
-      </nav>
+            </div>
+          )}
 
-      <footer className="notes-rail__footer">
-        <StorageControl
-          folderState={folderState}
-          folderName={folderName}
-          connectError={connectError}
-          onConnect={onConnectFolder}
-          onReconnect={onReconnectFolder}
-          onDisconnect={onDisconnectFolder}
-          variant="settings"
-        />
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
-      </footer>
+          <nav className="notes-rail__list" aria-label="Note list">
+            {filtered.length === 0 ? (
+              <div className="notes-rail__empty">
+                <p className="notes-rail__empty-title">
+                  {notes.length === 0 ? "No notes yet" : "No matches"}
+                </p>
+                <p className="notes-rail__empty-body">
+                  {notes.length === 0
+                    ? COPY.emptyNotesSidebar
+                    : "Try a different filter."}
+                </p>
+                {notes.length === 0 && (
+                  <button
+                    type="button"
+                    className="notes-rail__empty-action"
+                    onClick={onCreate}
+                  >
+                    New note
+                  </button>
+                )}
+              </div>
+            ) : (
+              <ul>
+                {filtered.map((note) => (
+                  <NoteListItem
+                    key={note.id}
+                    note={note}
+                    isSelected={note.id === selectedNoteId}
+                    onSelect={() => onSelect(note.id)}
+                  />
+                ))}
+              </ul>
+            )}
+          </nav>
+
+          <footer className="notes-rail__footer">
+            <StorageControl
+              folderState={folderState}
+              folderName={folderName}
+              connectError={connectError}
+              onConnect={onConnectFolder}
+              onReconnect={onReconnectFolder}
+              onDisconnect={onDisconnectFolder}
+              variant="settings"
+            />
+            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          </footer>
+        </>
+      )}
     </aside>
   );
 };

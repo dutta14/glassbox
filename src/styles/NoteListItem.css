@@ -3,34 +3,57 @@
   flex-direction: column;
   gap: var(--space-1);
   width: 100%;
-  min-height: 68px;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--ease-out);
+  position: relative;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .note-item:hover {
-  background: var(--color-surface-hover);
+  background: var(--color-surface-raised);
 }
 
+.note-item:hover .note-item__title {
+  color: var(--color-text);
+}
+
+/* Finance's modern sidebar marks the active link with a tinted accent wash and
+   accent-coloured semibold text, not a grey fill. */
 .note-item--selected {
-  background: var(--accent-light);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-lighter);
 }
 
-.note-item--selected:hover {
-  background: var(--accent-light);
+.note-item--selected .note-item__title {
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+
+/* Finance marks the active nav item with a 3px bar flush to the sidebar edge.
+   It is decorative: aria-current on the button carries the real signal. */
+.note-item--selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent);
 }
 
 .note-item__title {
   font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--color-text);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-muted);
   line-height: var(--leading-tight);
+  transition: color var(--duration-fast) var(--ease-out);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -65,6 +88,6 @@
   padding: 1px var(--space-2);
   font-size: var(--fs-xs);
   color: var(--color-text-secondary);
-  background: var(--color-surface-hover);
+  background: var(--color-surface-alt);
   border-radius: var(--radius-sm);
 }

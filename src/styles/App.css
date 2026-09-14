@@ -74,7 +74,7 @@
   gap: var(--space-1);
   padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: transparent;
 }
 
 .tab {
@@ -84,7 +84,8 @@
   color: var(--color-text-secondary);
   border-radius: var(--radius);
   background: transparent;
-  transition: background-color var(--duration-fast) var(--ease-out),
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
 }
 
@@ -93,9 +94,11 @@
   color: var(--color-text);
 }
 
+/* A white pill lifted off the oatmeal stage, mirroring Finance's pill tabs. */
 .tab--active {
   color: var(--color-text);
-  background: var(--color-surface-hover);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
 }
 
 .tab:disabled {

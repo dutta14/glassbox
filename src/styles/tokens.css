@@ -9,21 +9,23 @@
    Adopting those names with those values would have regressed an audited app,
    so the names are shared and the values below are the measured ones.
 
-   Light mode, worst case across all four surfaces:
-     text 14.50  text-secondary 6.37  text-muted 4.96  accent 4.59
-     positive 4.56  warning 4.56  negative 5.28  text-on-accent 5.79
-   Measured against --color-surface-hover, the darkest surface that carries
-   coloured text. An earlier revision of this comment quoted higher numbers
-   because it only measured the two lightest surfaces.
+   Surfaces are Finance's warm scheme: an oatmeal page with white panels.
+   Foregrounds are not Finance's. On these exact surfaces Finance's own
+   --color-text-muted #6b7280 and --color-negative #dc2626 both measure 4.39:1,
+   below the 4.5 body-text threshold, so the values below are used instead.
+
+   Light mode, worst case across bg, surface, alt and hover:
+     text 16.32  text-secondary 7.17  text-muted 5.59  accent 5.17
+     positive 5.14  warning 5.13  negative 5.94  text-on-accent 5.79
    Borders sit at 1.89:1, matching dark's 1.41-1.98. They divide content
    rather than identify controls, so 1.4.11 does not apply. */
 :root {
-  --color-bg: #ffffff;
-  --color-surface: #f7f8fa;
-  --color-surface-alt: #eef0f4;
-  --color-surface-hover: #e4e7ed;
-  --color-surface-raised: #d9dde5;
-  --color-surface-quote: #f2f5fa;
+  --color-bg: #f6f5f3;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f7f7f8;
+  --color-surface-hover: #f3f4f6;
+  --color-surface-raised: #e9eaec;
+  --color-surface-quote: #faf9f7;
 
   --color-text: #14171c;
   --color-text-secondary: #4a525e;
@@ -38,6 +40,7 @@
   --accent: #185aea;
   --accent-hover: #1d4ed8;
   --accent-light: #185aea1f;
+  --accent-lighter: #f0f5ff;
 
   --color-positive: #0e755b;
   --color-warning: #886000;
@@ -64,10 +67,12 @@
   --space-12: 3rem;
   --space-16: 4rem;
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-    "Liberation Mono", monospace;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
 
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
@@ -104,7 +109,8 @@
   --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   --ease-in-out: cubic-bezier(0.65, 0.05, 0.36, 1);
 
-  --rail-notes: 260px;
+  --rail-notes: 220px;
+  --rail-collapsed: 56px;
   --stage-min: 480px;
   --measure: 68ch;
   /* The editor centres each field independently so the body textarea can span
@@ -132,7 +138,7 @@ body.dark {
 
   --color-text: #ecedef;
   --color-text-secondary: #a9b0ba;
-  --color-text-muted: #8a919c;
+  --color-text-muted: #8e95a0;
   --color-text-on-accent: #0b0d10;
   --color-text-quote: #d8dde4;
 
@@ -143,6 +149,7 @@ body.dark {
   --accent: #7aa2ff;
   --accent-hover: #5f8cf5;
   --accent-light: #7aa2ff1f;
+  --accent-lighter: #16233d;
 
   --color-positive: #4ec9a4;
   --color-warning: #e0b155;
