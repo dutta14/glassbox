@@ -1,4 +1,4 @@
-import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import type { Answer } from '../types';
 import { displayTerms, stem } from '../engine/tokenize';
 import { tierFor, type ConfidenceTier } from '../engine/router';
@@ -34,15 +34,7 @@ export const ReasoningDisclosure = ({
 }: ReasoningDisclosureProps) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const summaryRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
-
-  useLayoutEffect(() => {
-    const el = panelRef.current;
-    if (!el) return;
-    if (expanded) el.removeAttribute('inert');
-    else el.setAttribute('inert', '');
-  }, [expanded]);
 
   const toggle = useCallback(() => setExpanded((v) => !v), []);
 
@@ -122,11 +114,11 @@ export const ReasoningDisclosure = ({
       >
         <div
           id={panelId}
-          ref={panelRef}
           role="group"
           aria-label="Reasoning for this answer"
           aria-live="off"
           aria-hidden={!expanded}
+          inert={!expanded}
           className="reason__panel"
           onKeyDown={handlePanelKey}
         >
