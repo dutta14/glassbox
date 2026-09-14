@@ -5,7 +5,10 @@ import { NotesRail } from "./NotesRail";
 import type { Note } from "../types";
 
 /**
- * The search glyph opens a modal note picker rather than an inline field.
+ * Wiring between the rail's search glyph and NoteSearchModal only. The modal's
+ * own behaviour (matching, keyboard navigation, empty states) is covered
+ * directly in NoteSearchModal.test.tsx.
+ *
  * Nothing covered NotesRail before this file, which is how a stale
  * `.notes-rail__new` selector in App.tsx survived a rename with a green build
  * and a green suite.
@@ -27,12 +30,12 @@ const notes = [
   mkNote("n2", "Sourdough", "the starter was underfed"),
 ];
 
-const renderRail = (override: { notes?: Note[] } = {}) => {
+const renderRail = () => {
   const onCreate = vi.fn();
   const onSelect = vi.fn();
   render(
     <NotesRail
-      notes={override.notes ?? notes}
+      notes={notes}
       selectedNoteId={null}
       hasSampleNotes={false}
       folderState="unsupported"
@@ -53,10 +56,8 @@ const renderRail = (override: { notes?: Note[] } = {}) => {
 
 const glyph = () => screen.getByRole("button", { name: "Search notes" });
 const dialog = () => screen.getByRole("dialog");
-const field = () => screen.getByRole("combobox", { name: "Search notes" });
-const options = () => within(dialog()).getAllByRole("option");
 
-describe("NotesRail search modal", () => {
+describe("NotesRail search wiring", () => {
   it("keeps the modal closed until the glyph is used", () => {
     renderRail();
 
@@ -64,119 +65,33 @@ describe("NotesRail search modal", () => {
     expect(glyph()).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("opens the modal and moves focus into the search field", async () => {
+  it("opens the modal from the glyph and reflects that on the button", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(glyph());
 
     expect(dialog()).toBeInTheDocument();
-    expect(field()).toHaveFocus();
     expect(glyph()).toHaveAttribute("aria-expanded", "true");
   });
 
-  /** The modal is a note picker first and a search box second. */
-  it("lists every note when it opens, before anything is typed", async () => {
+  it("announces the glyph as opening a dialog", () => {
+    renderRail();
+
+    expect(glyph()).toHaveAttribute("aria-haspopup", "dialog");
+  });
+
+  it("hands the rail's notes to the modal", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(glyph());
 
-    expect(options()).toHaveLength(2);
-    expect(within(dialog()).getByText("Postgres tuning")).toBeInTheDocument();
-    expect(within(dialog()).getByText("Sourdough")).toBeInTheDocument();
+    expect(within(dialog()).getAllByRole("option")).toHaveLength(notes.length);
   });
 
-  it("narrows the list to matches as the user types", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    await user.click(glyph());
-    await user.type(field(), "sourdough");
-
-    expect(options()).toHaveLength(1);
-    expect(within(dialog()).getByText("Sourdough")).toBeInTheDocument();
-  });
-
-  it("matches on body text, not only on the title", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    await user.click(glyph());
-    await user.type(field(), "shared_buffers");
-
-    expect(options()).toHaveLength(1);
-    expect(within(dialog()).getByText("Postgres tuning")).toBeInTheDocument();
-  });
-
-  it("explains an empty result instead of showing a blank list", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    await user.click(glyph());
-    await user.type(field(), "kubernetes");
-
-    expect(within(dialog()).queryAllByRole("option")).toHaveLength(0);
-    expect(within(dialog()).getByText("No matches")).toBeInTheDocument();
-  });
-
-  it("opens the clicked note and closes the modal", async () => {
-    const user = userEvent.setup();
-    const { onSelect } = renderRail();
-
-    await user.click(glyph());
-    await user.click(within(dialog()).getByText("Sourdough"));
-
-    expect(onSelect).toHaveBeenCalledWith("n2");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-
-  /** Focus stays in the input so typing keeps working while arrows move down. */
-  it("moves the highlight with arrow keys and opens the highlighted note on Enter", async () => {
-    const user = userEvent.setup();
-    const { onSelect } = renderRail();
-
-    await user.click(glyph());
-    await user.keyboard("{ArrowDown}");
-
-    expect(options()[1]).toHaveAttribute("aria-selected", "true");
-    expect(field()).toHaveFocus();
-
-    await user.keyboard("{Enter}");
-
-    expect(onSelect).toHaveBeenCalledWith("n2");
-  });
-
-  it("wraps the highlight from the last note back to the first", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    await user.click(glyph());
-    await user.keyboard("{ArrowDown}{ArrowDown}");
-
-    expect(options()[0]).toHaveAttribute("aria-selected", "true");
-  });
-
-  /**
-   * A query that shrinks the list must not leave the highlight pointing past
-   * the end, which would make Enter a no-op.
-   */
-  it("pulls the highlight back into range when the result set shrinks", async () => {
-    const user = userEvent.setup();
-    const { onSelect } = renderRail();
-
-    await user.click(glyph());
-    await user.keyboard("{ArrowDown}");
-    await user.type(field(), "postgres");
-
-    expect(options()).toHaveLength(1);
-    expect(options()[0]).toHaveAttribute("aria-selected", "true");
-
-    await user.keyboard("{Enter}");
-    expect(onSelect).toHaveBeenCalledWith("n1");
-  });
-
-  it("closes on Escape and returns focus to the glyph", async () => {
+  /** Dismissing must not drop focus onto the body; it goes back to the glyph. */
+  it("returns focus to the glyph when the modal closes", async () => {
     const user = userEvent.setup();
     renderRail();
 
@@ -187,34 +102,30 @@ describe("NotesRail search modal", () => {
     expect(glyph()).toHaveFocus();
   });
 
-  it("closes when the backdrop behind the modal is clicked", async () => {
+  it("passes a chosen note through to the rail's own onSelect", async () => {
     const user = userEvent.setup();
-    renderRail();
+    const { onSelect } = renderRail();
 
     await user.click(glyph());
-    const backdrop = document.querySelector(".note-search__backdrop");
-    expect(backdrop).not.toBeNull();
-    await user.click(backdrop as Element);
+    await user.click(within(dialog()).getByText("Sourdough"));
 
+    expect(onSelect).toHaveBeenCalledWith("n2");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("marks itself as a dialog opener so the glyph announces what it does", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    expect(glyph()).toHaveAttribute("aria-haspopup", "dialog");
-
-    await user.click(glyph());
-    expect(dialog()).toHaveAttribute("aria-modal", "true");
-  });
-
+  /**
+   * Search lives entirely in the modal. The rail list behind it must keep
+   * showing every note, since filtering something the modal covers is invisible.
+   */
   it("leaves the rail list unfiltered while the modal narrows its own results", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(glyph());
-    await user.type(field(), "sourdough");
+    await user.type(
+      screen.getByRole("combobox", { name: "Search notes" }),
+      "sourdough",
+    );
 
     const rail = screen.getByRole("navigation", { name: "Note list" });
     expect(within(rail).getByText("Postgres tuning")).toBeInTheDocument();
