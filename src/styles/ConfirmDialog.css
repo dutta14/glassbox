@@ -10,8 +10,8 @@
 }
 
 .confirm-dialog {
-  background: var(--surface-2);
-  border: 1px solid var(--border-default);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg);
   max-width: 26rem;
   width: 100%;
@@ -24,16 +24,16 @@
 
 .confirm-dialog__title {
   margin: 0;
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
   line-height: var(--leading-tight);
 }
 
 .confirm-dialog__desc {
   margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
   line-height: var(--leading-normal);
 }
 
@@ -46,18 +46,18 @@
 
 .confirm-dialog__button {
   padding: var(--space-2) var(--space-4);
-  font: var(--weight-medium) var(--text-sm) var(--font-sans);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-default);
+  font: var(--fw-medium) var(--fs-sm) var(--font-sans);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border-light);
   background: transparent;
-  color: var(--text-primary);
+  color: var(--color-text);
   cursor: pointer;
-  transition: background-color var(--dur-instant) var(--ease-out),
-    color var(--dur-instant) var(--ease-out);
+  transition: background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .confirm-dialog__button:hover {
-  background: var(--surface-3);
+  background: var(--color-surface-hover);
 }
 
 .confirm-dialog__button:focus-visible {
@@ -66,24 +66,24 @@
 }
 
 .confirm-dialog__button--confirm {
-  background: var(--accent-500);
-  border-color: var(--accent-500);
-  color: var(--text-inverse);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--color-text-on-accent);
 }
 
 .confirm-dialog__button--confirm:hover {
-  background: var(--accent-600);
-  border-color: var(--accent-600);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .confirm-dialog__button--destructive {
-  background: var(--conf-low);
-  border-color: var(--conf-low);
-  color: var(--text-inverse);
+  background: var(--color-negative);
+  border-color: var(--color-negative);
+  color: var(--color-text-on-accent);
 }
 
 .confirm-dialog__button--destructive:hover {
-  background: var(--conf-low);
-  border-color: var(--conf-low);
+  background: var(--color-negative);
+  border-color: var(--color-negative);
   filter: brightness(1.05);
 }

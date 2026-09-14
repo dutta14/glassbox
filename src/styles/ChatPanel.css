@@ -3,7 +3,7 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  background: var(--surface-0);
+  background: var(--color-bg);
 }
 
 .chat__toolbar {
@@ -17,7 +17,7 @@
 }
 
 .chat__clear {
-  font-size: var(--text-xs);
+  font-size: var(--fs-xs);
 }
 
 .chat__log {
@@ -57,16 +57,16 @@
 
 .chat__empty-title {
   margin: 0;
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
   line-height: var(--leading-tight);
 }
 
 .chat__empty-body {
   margin: 0;
-  font-size: var(--text-md);
-  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  color: var(--color-text-secondary);
   max-width: 44ch;
 }
 
@@ -79,16 +79,16 @@
 
 .chat__example {
   padding: var(--space-3) var(--space-4);
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  background: var(--surface-2);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  transition: background-color var(--dur-instant) var(--ease-out),
-    color var(--dur-instant) var(--ease-out);
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  transition: background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .chat__example:hover {
-  background: var(--surface-3);
-  color: var(--text-primary);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
 }

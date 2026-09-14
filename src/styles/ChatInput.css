@@ -2,7 +2,7 @@
   position: sticky;
   bottom: 0;
   padding: var(--space-4) 0;
-  background: linear-gradient(to bottom, transparent 0, var(--surface-0) 32px);
+  background: linear-gradient(to bottom, transparent 0, var(--color-bg) 32px);
   padding-top: calc(var(--space-4) + 32px);
   width: min(var(--chat-column), 100% - 2 * var(--chat-gutter));
   margin-inline: auto;
@@ -10,7 +10,7 @@
 
 @media (prefers-reduced-transparency: reduce) {
   .composer {
-    background: var(--surface-0);
+    background: var(--color-bg);
     padding-top: var(--space-4);
   }
 }
@@ -25,24 +25,24 @@
   min-height: 44px;
   max-height: 168px;
   padding: var(--space-3) var(--space-4);
-  background: var(--surface-2);
-  border: 1px solid var(--border-default);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg);
-  color: var(--text-primary);
-  font-size: var(--text-md);
+  color: var(--color-text);
+  font-size: var(--fs-md);
   line-height: var(--leading-normal);
   resize: none;
   overflow-y: auto;
-  transition: border-color var(--dur-instant) var(--ease-out);
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .composer__input:focus-visible {
-  border-color: var(--border-focus);
+  border-color: var(--accent);
   box-shadow: var(--shadow-focus);
 }
 
 .composer__input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--color-text-muted);
 }
 
 .composer__input:disabled {
@@ -53,7 +53,7 @@
 .composer__counter {
   margin-top: var(--space-2);
   text-align: right;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }

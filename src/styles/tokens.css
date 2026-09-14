@@ -1,33 +1,58 @@
+/* Design tokens.
+   Vocabulary and non-colour values are inherited from finance-tracking, which
+   is the source of truth for the shared design system. Light is the default
+   theme and `body.dark` overrides it, matching Finance's convention.
+
+   Colour *values* are Glassbox's own. Finance's semantic palette was measured
+   against WCAG 1.4.3 and two of its three light-mode values fail as body text:
+   --color-warning #f59e0b at 1.95:1 and --color-negative #dc2626 at 4.39:1.
+   Adopting those names with those values would have regressed an audited app,
+   so the names are shared and the values below are the measured ones.
+
+   Light mode, worst case across all four surfaces:
+     text 14.50  text-secondary 6.37  text-muted 4.96  accent 4.59
+     positive 4.56  warning 4.56  negative 5.28  text-on-accent 5.79
+   Measured against --color-surface-hover, the darkest surface that carries
+   coloured text. An earlier revision of this comment quoted higher numbers
+   because it only measured the two lightest surfaces.
+   Borders sit at 1.89:1, matching dark's 1.41-1.98. They divide content
+   rather than identify controls, so 1.4.11 does not apply. */
 :root {
-  --surface-0: #0b0d10;
-  --surface-1: #12151a;
-  --surface-2: #171b21;
-  --surface-3: #1e232b;
-  --surface-4: #262c36;
-  --surface-quote: #131922;
+  --color-bg: #ffffff;
+  --color-surface: #f7f8fa;
+  --color-surface-alt: #eef0f4;
+  --color-surface-hover: #e4e7ed;
+  --color-surface-raised: #d9dde5;
+  --color-surface-quote: #f2f5fa;
 
-  --text-primary: #ecedef;
-  --text-secondary: #a9b0ba;
-  --text-tertiary: #8a919c;
-  --text-inverse: #0b0d10;
-  --text-quote: #d8dde4;
+  --color-text: #14171c;
+  --color-text-secondary: #4a525e;
+  --color-text-muted: #5a6270;
+  --color-text-on-accent: #ffffff;
+  --color-text-quote: #23282f;
 
-  --border-subtle: #1f2530;
-  --border-default: #2a323e;
-  --border-strong: #3a4453;
-  --border-focus: #7aa2ff;
+  --color-border: #e4e7ed;
+  --color-border-light: #d3d8e0;
+  --color-border-strong: #b6bdc9;
 
-  --accent-500: #7aa2ff;
-  --accent-600: #5f8cf5;
-  --accent-100: #7aa2ff1f;
+  --accent: #185aea;
+  --accent-hover: #1d4ed8;
+  --accent-light: #185aea1f;
 
-  --conf-high: #4ec9a4;
-  --conf-med: #e0b155;
-  --conf-low: #e58585;
-  --conf-high-bg: #4ec9a41a;
-  --conf-med-bg: #e0b1551a;
-  --conf-low-bg: #e585851a;
+  --color-positive: #0e755b;
+  --color-warning: #886000;
+  --color-negative: #b3261e;
+  --color-positive-light: #0e755b1a;
+  --color-warning-light: #8860001a;
+  --color-negative-light: #b3261e1a;
 
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.02), 0 12px 24px rgba(0, 0, 0, 0.08);
+
+  /* Spacing, leading, mono and easing curves beyond --ease-out do not exist in
+     Finance yet. They are promoted upward rather than flattened to literals. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -44,40 +69,38 @@
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.875rem;
-  --text-md: 0.9375rem;
-  --text-lg: 1.0625rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.25rem;
+  --fs-2xl: 1.5rem;
+
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
 
   --leading-tight: 1.35;
   --leading-normal: 1.55;
   --leading-relaxed: 1.7;
 
-  --weight-regular: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
-
   --num-tabular: "tnum" 1, "lnum" 1;
 
   --radius-sm: 4px;
-  --radius-md: 8px;
+  --radius: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-pill: 9999px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
-  --shadow-focus: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--border-focus);
+  --shadow-focus: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--accent);
 
-  --dur-instant: 100ms;
-  --dur-micro: 150ms;
-  --dur-state: 220ms;
-  --dur-layout: 320ms;
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 350ms;
 
-  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   --ease-in-out: cubic-bezier(0.65, 0.05, 0.36, 1);
 
@@ -86,59 +109,54 @@
   --measure: 68ch;
   /* The editor centres each field independently so the body textarea can span
      the full pane and put its scrollbar against the edge. That math must be
-     font-independent: `ch` resolves differently on the title (--text-2xl) than
-     on the body (--text-lg), which knocks the fields out of alignment.
-     36rem is approximately 68ch at --text-lg. */
+     font-independent: `ch` resolves differently on the title (--fs-2xl) than
+     on the body (--fs-lg), which knocks the fields out of alignment.
+     36rem is approximately 68ch at --fs-lg. */
   --editor-measure: 36rem;
   --chat-column: 46rem;
   --chat-gutter: var(--space-8);
 
-  color-scheme: dark;
+  color-scheme: light;
 }
 
-/* Light theme. Only colour tokens are overridden; spacing, type and motion are
-   shared. Every text/surface pair below was measured against WCAG 1.4.3 (4.5:1
-   for body text) before being committed:
-     primary 15.74-17.96  secondary 6.92-7.90  tertiary 5.39-6.15
-     accent 4.53-5.17  conf-high 4.64-5.29  conf-med 4.86-5.54
-     conf-low 5.73-6.54  text-inverse on accent-500 5.17
-   Borders sit at 1.89:1, matching the dark theme's 1.41-1.98. They are
-   dividers rather than control identifiers, so 1.4.11 does not apply. */
-:root[data-theme='light'] {
-  --surface-0: #ffffff;
-  --surface-1: #f7f8fa;
-  --surface-2: #eef0f4;
-  --surface-3: #e4e7ed;
-  --surface-4: #d9dde5;
-  --surface-quote: #f2f5fa;
+/* Dark mode, worst case across all four surfaces:
+     text 14.82  text-secondary 7.90  text-muted 5.44  accent 5.17
+     positive 6.61  warning 6.85  negative 5.19 */
+body.dark {
+  --color-bg: #0b0d10;
+  --color-surface: #12151a;
+  --color-surface-alt: #171b21;
+  --color-surface-hover: #1e232b;
+  --color-surface-raised: #262c36;
+  --color-surface-quote: #131922;
 
-  --text-primary: #14171c;
-  --text-secondary: #4a525e;
-  --text-tertiary: #5a6270;
-  --text-inverse: #ffffff;
-  --text-quote: #23282f;
+  --color-text: #ecedef;
+  --color-text-secondary: #a9b0ba;
+  --color-text-muted: #8a919c;
+  --color-text-on-accent: #0b0d10;
+  --color-text-quote: #d8dde4;
 
-  --border-subtle: #e4e7ed;
-  --border-default: #d3d8e0;
-  --border-strong: #b6bdc9;
-  --border-focus: #2563eb;
+  --color-border: #1f2530;
+  --color-border-light: #2a323e;
+  --color-border-strong: #3a4453;
 
-  --accent-500: #2563eb;
-  --accent-600: #1d4ed8;
-  --accent-100: #2563eb1f;
+  --accent: #7aa2ff;
+  --accent-hover: #5f8cf5;
+  --accent-light: #7aa2ff1f;
 
-  --conf-high: #0f7a5f;
-  --conf-med: #8a6100;
-  --conf-low: #b3261e;
-  --conf-high-bg: #0f7a5f1a;
-  --conf-med-bg: #8a61001a;
-  --conf-low-bg: #b3261e1a;
+  --color-positive: #4ec9a4;
+  --color-warning: #e0b155;
+  --color-negative: #e58585;
+  --color-positive-light: #4ec9a41a;
+  --color-warning-light: #e0b1551a;
+  --color-negative-light: #e585851a;
 
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.3), 0 16px 32px rgba(0, 0, 0, 0.3);
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 *,
@@ -156,10 +174,10 @@ body,
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: var(--text-base);
+  font-size: var(--fs-sm);
   line-height: var(--leading-normal);
-  color: var(--text-primary);
-  background: var(--surface-0);
+  color: var(--color-text);
+  background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -182,12 +200,12 @@ textarea {
 }
 
 a {
-  color: var(--accent-500);
+  color: var(--accent);
   text-decoration: none;
 }
 
 a:hover {
-  color: var(--accent-600);
+  color: var(--accent-hover);
   text-decoration: underline;
   text-underline-offset: 3px;
 }

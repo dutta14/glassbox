@@ -5,26 +5,26 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Glassbox</title>
+  </head>
+  <body>
     <script>
       // Runs before first paint so the app does not flash the wrong theme.
-      // Mirrors resolveInitialTheme() in src/hooks/useTheme.ts.
+      // Mirrors resolveInitialTheme() in src/hooks/useTheme.ts; change both.
+      // Lives inside <body> rather than <head> because it sets a class on
+      // document.body, which does not exist yet while <head> is parsing.
       (function () {
         try {
           var stored = localStorage.getItem('glassbox.theme.v1');
-          var theme =
-            stored === 'light' || stored === 'dark'
-              ? stored
-              : window.matchMedia('(prefers-color-scheme: light)').matches
-                ? 'light'
-                : 'dark';
-          document.documentElement.setAttribute('data-theme', theme);
+          var dark =
+            stored === 'dark' ||
+            (stored !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.body.classList.add('dark');
         } catch (e) {
-          document.documentElement.setAttribute('data-theme', 'dark');
+          // Light is the default, so doing nothing is the correct fallback.
         }
       })();
     </script>
-  </head>
-  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -7,29 +7,29 @@
   padding: var(--space-3) var(--space-4);
   background: transparent;
   border: 0;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--color-border);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--dur-instant) var(--ease-out);
+  transition: background-color var(--duration-fast) var(--ease-out);
 }
 
 .note-item:hover {
-  background: var(--surface-3);
+  background: var(--color-surface-hover);
 }
 
 .note-item--selected {
-  background: var(--accent-100);
-  box-shadow: inset 2px 0 0 var(--accent-500);
+  background: var(--accent-light);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .note-item--selected:hover {
-  background: var(--accent-100);
+  background: var(--accent-light);
 }
 
 .note-item__title {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
   line-height: var(--leading-tight);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -37,9 +37,9 @@
 }
 
 .note-item__preview {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-regular);
-  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-normal);
+  color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -50,8 +50,8 @@
   align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
 }
 
 .note-item__tags {
@@ -63,8 +63,8 @@
 .tag {
   display: inline-block;
   padding: 1px var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  background: var(--surface-3);
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-hover);
   border-radius: var(--radius-sm);
 }

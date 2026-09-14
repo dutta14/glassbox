@@ -31,9 +31,9 @@ const writeStored = (theme: Theme): void => {
 
 const systemTheme = (): Theme =>
   typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-color-scheme: light)').matches
-    ? 'light'
-    : 'dark';
+  window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
 
 export const resolveInitialTheme = (): Theme => readStored() ?? systemTheme();
 
@@ -46,7 +46,7 @@ export const useTheme = (): UseThemeResult => {
   const [theme, setTheme] = useState<Theme>(resolveInitialTheme);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    document.body.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
   /**
@@ -57,10 +57,10 @@ export const useTheme = (): UseThemeResult => {
     if (readStored() !== null) return;
     if (typeof window.matchMedia !== 'function') return;
 
-    const query = window.matchMedia('(prefers-color-scheme: light)');
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = (e: MediaQueryListEvent) => {
       if (readStored() !== null) return;
-      setTheme(e.matches ? 'light' : 'dark');
+      setTheme(e.matches ? 'dark' : 'light');
     };
 
     query.addEventListener('change', onChange);
