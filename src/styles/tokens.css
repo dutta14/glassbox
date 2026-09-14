@@ -125,26 +125,31 @@
   color-scheme: light;
 }
 
-/* Dark mode, worst case across all four surfaces:
-     text 14.82  text-secondary 7.90  text-muted 5.44  accent 5.17
-     positive 6.61  warning 6.85  negative 5.19 */
+/* Neutral greys matching finance-tracking's dark ramp (#161616 page, #1e1e1e
+   panel) rather than the blue-tinted scale Glassbox shipped with. Finance
+   collapses --color-text-secondary and --color-text-muted onto one value; the
+   three distinct steps below are kept and neutralised instead.
+
+   Dark mode, worst case across all six surfaces:
+     text 10.75  text-secondary 5.91  text-muted 4.56  text-quote 9.35
+     accent 5.15  positive 6.24  warning 6.47  negative 4.90 */
 body.dark {
-  --color-bg: #0b0d10;
-  --color-surface: #12151a;
-  --color-surface-alt: #171b21;
-  --color-surface-hover: #1e232b;
-  --color-surface-raised: #262c36;
-  --color-surface-quote: #131922;
+  --color-bg: #161616;
+  --color-surface: #1e1e1e;
+  --color-surface-alt: #262626;
+  --color-surface-hover: #2e2e2e;
+  --color-surface-raised: #323232;
+  --color-surface-quote: #222222;
 
-  --color-text: #ecedef;
-  --color-text-secondary: #a9b0ba;
-  --color-text-muted: #8e95a0;
-  --color-text-on-accent: #0b0d10;
-  --color-text-quote: #d8dde4;
+  --color-text: #ebebeb;
+  --color-text-secondary: #b0b0b0;
+  --color-text-muted: #9a9a9a;
+  --color-text-on-accent: #161616;
+  --color-text-quote: #dcdcdc;
 
-  --color-border: #1f2530;
-  --color-border-light: #2a323e;
-  --color-border-strong: #3a4453;
+  --color-border: #303030;
+  --color-border-light: #3a3a3a;
+  --color-border-strong: #4a4a4a;
 
   --accent: #7aa2ff;
   --accent-hover: #5f8cf5;

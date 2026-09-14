@@ -52,8 +52,11 @@
   color: var(--color-text);
 }
 
+/* --fs-sm (0.875rem) rather than --fs-md, because finance-tracking's brand
+   resolves --fs-md through body.modern-design, which redefines it to 0.875rem.
+   Matching the declaration would have rendered 2px larger than the reference. */
 .notes-rail__brand {
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
   color: var(--color-text);
   white-space: nowrap;
