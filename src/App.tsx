@@ -3,6 +3,7 @@ import type { Answer } from './types';
 import { useNotes } from './hooks/useNotes';
 import { useChat } from './hooks/useChat';
 import { useStorageBackend } from './hooks/useStorageBackend';
+import { useTheme } from './hooks/useTheme';
 import { createIndex, route } from './engine/router';
 import { COPY } from './engine/copy';
 import { NotesRail } from './components/NotesRail';
@@ -67,6 +68,7 @@ const AppReady = ({
   onReconnect,
   onDisconnect,
 }: AppReadyProps) => {
+  const { theme, toggleTheme } = useTheme();
   const {
     notes,
     status,
@@ -172,7 +174,7 @@ const AppReady = ({
             : null;
         const target =
           selected ??
-          document.querySelector<HTMLElement>('.notes-rail__new') ??
+          document.querySelector<HTMLElement>('.notes-rail__action--new') ??
           document.querySelector<HTMLElement>('.notes-rail__empty-action');
         target?.focus();
       }
@@ -262,6 +264,8 @@ const AppReady = ({
         onConnectFolder={onConnect}
         onReconnectFolder={onReconnect}
         onDisconnectFolder={onDisconnect}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       <main id="stage" className="stage" aria-label="Main workspace" tabIndex={-1}>

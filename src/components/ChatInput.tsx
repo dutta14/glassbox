@@ -41,6 +41,9 @@ export const ChatInput = ({ disabled, onSubmit }: ChatInputProps) => {
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter is the only way to send, so an IME confirming a candidate must not
+    // be mistaken for a submit. Composing Enter keeps the text in the box.
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       send();
@@ -75,28 +78,6 @@ export const ChatInput = ({ disabled, onSubmit }: ChatInputProps) => {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
         />
-        <button
-          type="submit"
-          className="composer__send"
-          disabled={disabled || value.trim().length === 0}
-          aria-label="Send"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M2 8l12-6-6 12-2-5-4-1z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
       </div>
       {showCounter && (
         <div className="composer__counter" aria-hidden="true">

@@ -36,6 +36,15 @@ export const ChatMessage = ({
 
   return (
     <li className="msg msg--assistant" data-msg-id={message.id}>
+      {answer && (
+        <ReasoningDisclosure
+          answer={answer}
+          userQuery={userQuery}
+          onOpenCandidate={onJumpToNote}
+          defaultExpanded={defaultReasoningExpanded}
+        />
+      )}
+
       {source ? (
         <QuotedSource
           source={source}
@@ -58,15 +67,6 @@ export const ChatMessage = ({
             Open note
           </button>
         </div>
-      )}
-
-      {answer && (
-        <ReasoningDisclosure
-          answer={answer}
-          userQuery={userQuery}
-          onOpenCandidate={onJumpToNote}
-          defaultExpanded={defaultReasoningExpanded}
-        />
       )}
     </li>
   );

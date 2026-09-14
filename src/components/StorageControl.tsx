@@ -9,6 +9,12 @@ interface StorageControlProps {
   onConnect: () => void;
   onReconnect: () => void;
   onDisconnect: () => void;
+  /**
+   * 'chip' is the compact inline pill. 'settings' is the full-width row that
+   * sits at the foot of the notes rail; its menu opens upward, because at the
+   * bottom of the rail a downward menu is clipped by the viewport.
+   */
+  variant?: 'chip' | 'settings';
 }
 
 const FolderIcon = () => (
@@ -65,6 +71,7 @@ export const StorageControl = ({
   onConnect,
   onReconnect,
   onDisconnect,
+  variant = 'chip',
 }: StorageControlProps) => {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -126,7 +133,7 @@ export const StorageControl = ({
   })();
 
   return (
-    <div className="storage-control" ref={rootRef}>
+    <div className="storage-control" data-variant={variant} ref={rootRef}>
       <button
         ref={triggerRef}
         type="button"

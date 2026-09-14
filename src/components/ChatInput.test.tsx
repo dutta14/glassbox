@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatInput } from './ChatInput';
 
@@ -101,5 +101,37 @@ describe('ChatInput — AC 7 composer behaviour', () => {
     textarea.focus();
     await userEvent.keyboard('{Enter}');
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Enter is now the only way to send, since the send button was removed.
+   * An IME (Japanese, Chinese, Korean) uses Enter to confirm the highlighted
+   * candidate, and that keydown reaches us with isComposing true. Treating it
+   * as a submit would fire a half-typed question and, with no button left to
+   * fall back on, there is no other way to send.
+   */
+  it('does not submit when Enter confirms an IME composition', () => {
+    const onSubmit = vi.fn();
+    render(<ChatInput disabled={false} onSubmit={onSubmit} />);
+
+    const textarea = screen.getByLabelText('Ask a question') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: 'にほん' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', isComposing: true });
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(textarea.value).toBe('にほん');
+  });
+
+  it('submits on the Enter that follows a completed IME composition', () => {
+    const onSubmit = vi.fn();
+    render(<ChatInput disabled={false} onSubmit={onSubmit} />);
+
+    const textarea = screen.getByLabelText('Ask a question') as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: '日本' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', isComposing: true });
+    fireEvent.keyDown(textarea, { key: 'Enter', isComposing: false });
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith('日本');
   });
 });

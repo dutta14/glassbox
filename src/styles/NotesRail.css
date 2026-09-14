@@ -17,6 +17,17 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
+.notes-rail__brand {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.notes-rail__section {
+  padding: var(--space-4) var(--space-4) 0;
+}
+
 .notes-rail__header-row {
   display: flex;
   align-items: center;
@@ -32,7 +43,13 @@
   letter-spacing: 0.04em;
 }
 
-.notes-rail__new {
+.notes-rail__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.notes-rail__action {
   width: 36px;
   height: 36px;
   display: inline-flex;
@@ -45,13 +62,18 @@
     color var(--dur-instant) var(--ease-out);
 }
 
-.notes-rail__new::before {
+.notes-rail__action::before {
   content: '';
   position: absolute;
   inset: -4px;
 }
 
-.notes-rail__new:hover {
+.notes-rail__action:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.notes-rail__action[aria-expanded='true'] {
   background: var(--surface-3);
   color: var(--text-primary);
 }
@@ -158,4 +180,10 @@
 
 .notes-rail__empty-action:hover {
   background: var(--accent-600);
+}
+
+.notes-rail__footer {
+  flex: 0 0 auto;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border-subtle);
 }

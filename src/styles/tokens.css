@@ -96,6 +96,51 @@
   color-scheme: dark;
 }
 
+/* Light theme. Only colour tokens are overridden; spacing, type and motion are
+   shared. Every text/surface pair below was measured against WCAG 1.4.3 (4.5:1
+   for body text) before being committed:
+     primary 15.74-17.96  secondary 6.92-7.90  tertiary 5.39-6.15
+     accent 4.53-5.17  conf-high 4.64-5.29  conf-med 4.86-5.54
+     conf-low 5.73-6.54  text-inverse on accent-500 5.17
+   Borders sit at 1.89:1, matching the dark theme's 1.41-1.98. They are
+   dividers rather than control identifiers, so 1.4.11 does not apply. */
+:root[data-theme='light'] {
+  --surface-0: #ffffff;
+  --surface-1: #f7f8fa;
+  --surface-2: #eef0f4;
+  --surface-3: #e4e7ed;
+  --surface-4: #d9dde5;
+  --surface-quote: #f2f5fa;
+
+  --text-primary: #14171c;
+  --text-secondary: #4a525e;
+  --text-tertiary: #5a6270;
+  --text-inverse: #ffffff;
+  --text-quote: #23282f;
+
+  --border-subtle: #e4e7ed;
+  --border-default: #d3d8e0;
+  --border-strong: #b6bdc9;
+  --border-focus: #2563eb;
+
+  --accent-500: #2563eb;
+  --accent-600: #1d4ed8;
+  --accent-100: #2563eb1f;
+
+  --conf-high: #0f7a5f;
+  --conf-med: #8a6100;
+  --conf-low: #b3261e;
+  --conf-high-bg: #0f7a5f1a;
+  --conf-med-bg: #8a61001a;
+  --conf-low-bg: #b3261e1a;
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+
+  color-scheme: light;
+}
+
 *,
 *::before,
 *::after {

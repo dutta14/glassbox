@@ -1,5 +1,7 @@
+/* Leads the assistant message, so the flex gap on .msg is the only
+   separation it needs. A margin here would indent it from the message top. */
 .reason {
-  margin-top: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .reason__summary {
