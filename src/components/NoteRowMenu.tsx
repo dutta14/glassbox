@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import "../styles/NoteRowMenu.css";
 
 interface NoteRowMenuProps {
@@ -9,6 +10,18 @@ interface NoteRowMenuProps {
   onRequestDelete: () => void;
 }
 
+interface MenuPosition {
+  top: number;
+  left: number;
+}
+
+/** Kept off screen until measured, so the first paint is never in the wrong
+    place. */
+const OFFSCREEN: MenuPosition = { top: -9999, left: -9999 };
+
+const GAP = 4;
+const VIEWPORT_MARGIN = 8;
+
 export const NoteRowMenu = ({
   noteId,
   noteTitle,
@@ -18,10 +31,37 @@ export const NoteRowMenu = ({
 }: NoteRowMenuProps) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const firstItemRef = useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = useState<MenuPosition>(OFFSCREEN);
 
-  /** Focus enters the menu on open so a keyboard user is not stranded on the
-      trigger with an open menu they cannot reach. */
+  /**
+   * The menu is portalled to the body rather than nested in the row, because
+   * the rail's note list scrolls and would otherwise clip it at the right and
+   * bottom edges. Escaping the rail means positioning it by hand.
+   */
+  useLayoutEffect(() => {
+    if (!open) {
+      setPosition(OFFSCREEN);
+      return;
+    }
+    const trigger = triggerRef.current?.getBoundingClientRect();
+    const list = listRef.current?.getBoundingClientRect();
+    if (!trigger || !list) return;
+
+    // Left edges line up, so the menu hangs off the trigger instead of
+    // floating back across the row.
+    let left = trigger.left;
+    let top = trigger.bottom + GAP;
+    if (left + list.width > window.innerWidth - VIEWPORT_MARGIN) {
+      left = Math.max(VIEWPORT_MARGIN, trigger.right - list.width);
+    }
+    if (top + list.height > window.innerHeight - VIEWPORT_MARGIN) {
+      top = Math.max(VIEWPORT_MARGIN, trigger.top - GAP - list.height);
+    }
+    setPosition({ top, left });
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     firstItemRef.current?.focus();
@@ -29,6 +69,12 @@ export const NoteRowMenu = ({
 
   useEffect(() => {
     if (!open) return;
+
+    /** The menu is no longer a DOM descendant of the row, so containment has
+        to be asked of both halves. */
+    const inside = (target: Node | null): boolean =>
+      rootRef.current?.contains(target) === true ||
+      listRef.current?.contains(target) === true;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
@@ -42,7 +88,7 @@ export const NoteRowMenu = ({
     /** Pointer rather than click, so the menu is gone before the press lands
         on whatever is underneath it. */
     const onPointerDown = (e: PointerEvent) => {
-      if (rootRef.current?.contains(e.target as Node)) return;
+      if (inside(e.target as Node)) return;
       onOpenChange(false);
     };
 
@@ -50,19 +96,27 @@ export const NoteRowMenu = ({
     // time focus has not moved yet.
     const onFocusOut = () => {
       requestAnimationFrame(() => {
-        if (!rootRef.current) return;
-        if (rootRef.current.contains(document.activeElement)) return;
+        if (inside(document.activeElement)) return;
         onOpenChange(false);
       });
     };
 
+    /** Fixed positioning does not follow a scrolling ancestor, so the menu
+        would drift away from its row. Capture, because it is the rail's list
+        that scrolls rather than the window. */
+    const onReflow = () => onOpenChange(false);
+
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDown);
-    rootRef.current?.addEventListener("focusout", onFocusOut);
+    document.addEventListener("focusout", onFocusOut);
+    document.addEventListener("scroll", onReflow, true);
+    window.addEventListener("resize", onReflow);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown);
-      rootRef.current?.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("scroll", onReflow, true);
+      window.removeEventListener("resize", onReflow);
     };
   }, [open, onOpenChange]);
 
@@ -87,22 +141,44 @@ export const NoteRowMenu = ({
         </svg>
       </button>
 
-      {open && (
-        <div className="note-row__menu-list" role="menu">
-          <button
-            ref={firstItemRef}
-            type="button"
-            role="menuitem"
-            className="note-row__menu-item note-row__menu-item--danger"
-            onClick={() => {
-              onOpenChange(false);
-              onRequestDelete();
-            }}
+      {open &&
+        createPortal(
+          <div
+            ref={listRef}
+            className="note-row__menu-list"
+            role="menu"
+            style={{ top: position.top, left: position.left }}
           >
-            Delete
-          </button>
-        </div>
-      )}
+            <button
+              ref={firstItemRef}
+              type="button"
+              role="menuitem"
+              className="note-row__menu-item note-row__menu-item--danger"
+              onClick={() => {
+                onOpenChange(false);
+                onRequestDelete();
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 8.2a1 1 0 0 0 1 .8h4.6a1 1 0 0 0 1-.8l.7-8.2"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Delete
+            </button>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

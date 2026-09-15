@@ -108,6 +108,31 @@ describe("NoteRowMenu", () => {
     expect(trigger()).toHaveAttribute("data-menu-for", "n1");
   });
 
+  /**
+   * The rail's note list scrolls, so a menu nested inside a row is clipped at
+   * the right and bottom edges. It escapes to the body instead.
+   */
+  it("renders the menu outside the row, so the scrolling rail cannot clip it", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Harness />);
+
+    await user.click(trigger());
+    const menu = screen.getByRole("menu");
+
+    expect(container.contains(menu)).toBe(false);
+    expect(document.body.contains(menu)).toBe(true);
+  });
+
+  it("closes on scroll, which fixed positioning would otherwise not follow", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(trigger());
+
+    document.dispatchEvent(new Event("scroll", { bubbles: false }));
+
+    await waitFor(() => expect(deleteItem()).not.toBeInTheDocument());
+  });
+
   it("declares itself a menu trigger for assistive tech", () => {
     render(<Harness />);
 
