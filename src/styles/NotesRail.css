@@ -78,7 +78,7 @@
    Padding matches .note-item exactly and no min-height is set, so this row is
    the same height as the note rows it sits above. An explicit 40px floor made
    it taller than everything around it. */
-.notes-rail__new {
+.notes-rail__entry {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -97,16 +97,31 @@
 
 /* Same hover as .note-item: a wash, no border. A border here would make the
    row grow by 2px on hover and sit a hair wider than the notes below it. */
-.notes-rail__new:hover {
+.notes-rail__entry:hover {
   background: var(--color-surface-raised);
 }
 
-.notes-rail__new svg {
+.notes-rail__entry svg {
   flex: 0 0 auto;
-  /* The plus is drawn from x=3 in a 16px box. Correct here rather than in the
-     button's padding, which deliberately matches .note-item. */
-  margin-left: -3px;
   color: var(--color-text-secondary);
+}
+
+/* The plus is drawn from x=3 in a 16px box, unlike the chat bubble, which is
+   centred. Correct here rather than in the button's padding, which
+   deliberately matches .note-item. */
+.notes-rail__new svg {
+  margin-left: -3px;
+}
+
+/* Reads as the current view, the same way a selected note row does. */
+.notes-rail__entry--active,
+.notes-rail__entry--active:hover {
+  background: var(--color-surface-raised);
+  font-weight: var(--fw-semibold);
+}
+
+.notes-rail__entry--active svg {
+  color: var(--color-text);
 }
 
 .notes-rail__section {

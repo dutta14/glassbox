@@ -78,8 +78,7 @@ export const ChatPanel = ({
   return (
     <section
       id="chat-panel"
-      role="tabpanel"
-      aria-labelledby="tab-chat"
+      aria-label="Chat"
       className="chat"
     >
       <div className="chat__toolbar">

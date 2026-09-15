@@ -39,6 +39,8 @@ interface NotesRailProps {
   connectError: string | null;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  onOpenChat: () => void;
+  chatActive: boolean;
   onDeleteNote: (id: string) => void;
   onDeleteSamples: () => void;
   onConnectFolder: () => void;
@@ -57,6 +59,8 @@ export const NotesRail = ({
   connectError,
   onSelect,
   onCreate,
+  onOpenChat,
+  chatActive,
   onDeleteNote,
   onDeleteSamples,
   onConnectFolder,
@@ -186,9 +190,39 @@ export const NotesRail = ({
 
       {!collapsed && (
         <>
+          {/* The rail is the only way into the chat now that the Chat/Editor
+              tablist is gone, so this reads as the current view rather than as
+              an action. aria-current matches how the note rows mark theirs. */}
+          <button
+            type="button"
+            className={`notes-rail__entry${chatActive ? " notes-rail__entry--active" : ""}`}
+            onClick={onOpenChat}
+            aria-current={chatActive ? "true" : undefined}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M4 2.75h8A1.25 1.25 0 0 1 13.25 4v5A1.25 1.25 0 0 1 12 10.25H6.6L3.75 12.6V10.2A1.25 1.25 0 0 1 2.75 9V4A1.25 1.25 0 0 1 4 2.75Z"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Chat
+          </button>
+
           {/* Visible text, so the control names itself instead of leaning on
               an aria-label that only assistive tech ever sees. */}
-          <button type="button" className="notes-rail__new" onClick={onCreate}>
+          <button
+            type="button"
+            className="notes-rail__entry notes-rail__new"
+            onClick={onCreate}
+          >
             <svg
               width="16"
               height="16"

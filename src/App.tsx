@@ -88,6 +88,8 @@ const AppReady = ({
   const { messages, append, clear, isFirstAssistantMessage } = useChat();
 
   const [activeTab, setActiveTab] = useState<Tab>("chat");
+
+  const handleOpenChat = useCallback(() => setActiveTab("chat"), []);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
     notes[0]?.id ?? null,
   );
@@ -95,8 +97,6 @@ const AppReady = ({
     null,
   );
   const [pendingFocus, setPendingFocus] = useState<PendingFocus>(null);
-  const tabChatRef = useRef<HTMLButtonElement>(null);
-  const tabEditorRef = useRef<HTMLButtonElement>(null);
   const seenConflictIdsRef = useRef<Set<string>>(new Set());
 
   const index = useMemo(() => createIndex(notes), [notes]);
@@ -203,32 +203,6 @@ const AppReady = ({
     [notes, selectedNoteId],
   );
 
-  const handleTablistKey = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      const editorEnabled = selectedNote !== null;
-      const order: Tab[] = editorEnabled ? ["chat", "editor"] : ["chat"];
-      const currentIdx = order.indexOf(activeTab);
-      let nextIdx = currentIdx;
-      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-        nextIdx = (currentIdx + 1) % order.length;
-      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
-        nextIdx = (currentIdx - 1 + order.length) % order.length;
-      } else if (e.key === "Home") {
-        nextIdx = 0;
-      } else if (e.key === "End") {
-        nextIdx = order.length - 1;
-      } else {
-        return;
-      }
-      e.preventDefault();
-      const nextTab = order[nextIdx];
-      if (nextTab === activeTab) return;
-      setActiveTab(nextTab);
-      const ref = nextTab === "chat" ? tabChatRef : tabEditorRef;
-      requestAnimationFrame(() => ref.current?.focus());
-    },
-    [activeTab, selectedNote],
-  );
 
   return (
     <div className="app">
@@ -260,6 +234,8 @@ const AppReady = ({
             connectError={connectError}
             onSelect={handleSelectNote}
             onCreate={handleCreateNote}
+            onOpenChat={handleOpenChat}
+            chatActive={activeTab === "chat"}
             onDeleteNote={handleDeleteNote}
             onDeleteSamples={deleteSampleNotes}
             onConnectFolder={onConnect}
@@ -307,37 +283,6 @@ const AppReady = ({
                 </div>
               );
             })}
-
-            <div
-              className="stage__tabs"
-              role="tablist"
-              aria-label="Workspace tabs"
-              onKeyDown={handleTablistKey}
-            >
-              <button
-                ref={tabChatRef}
-                role="tab"
-                id="tab-chat"
-                aria-selected={activeTab === "chat"}
-                tabIndex={activeTab === "chat" ? 0 : -1}
-                className={`tab${activeTab === "chat" ? " tab--active" : ""}`}
-                onClick={() => setActiveTab("chat")}
-              >
-                Chat
-              </button>
-              <button
-                ref={tabEditorRef}
-                role="tab"
-                id="tab-editor"
-                aria-selected={activeTab === "editor"}
-                tabIndex={activeTab === "editor" ? 0 : -1}
-                className={`tab${activeTab === "editor" ? " tab--active" : ""}`}
-                onClick={() => setActiveTab("editor")}
-                disabled={!selectedNote}
-              >
-                Editor
-              </button>
-            </div>
 
             <div className="stage__panels" data-active-tab={activeTab}>
               {activeTab === "chat" && (

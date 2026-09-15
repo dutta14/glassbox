@@ -71,8 +71,7 @@ export const NoteEditor = ({
   return (
     <section
       id="editor-panel"
-      role="tabpanel"
-      aria-labelledby="tab-editor"
+      aria-label="Note editor"
       className="editor scroll-fades"
       ref={scrollRef}
     >

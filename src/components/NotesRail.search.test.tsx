@@ -43,6 +43,8 @@ const renderRail = (overrides: { notes?: Note[] } = {}) => {
       connectError={null}
       onSelect={onSelect}
       onCreate={onCreate}
+      onOpenChat={vi.fn()}
+      chatActive={false}
       onDeleteNote={vi.fn()}
       onDeleteSamples={vi.fn()}
       onConnectFolder={vi.fn()}

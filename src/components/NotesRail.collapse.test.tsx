@@ -38,6 +38,8 @@ const renderRail = () =>
       connectError={null}
       onSelect={vi.fn()}
       onCreate={vi.fn()}
+      onOpenChat={vi.fn()}
+      chatActive={false}
       onDeleteNote={vi.fn()}
       onDeleteSamples={vi.fn()}
       onConnectFolder={vi.fn()}
