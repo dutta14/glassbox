@@ -208,33 +208,6 @@
   margin-inline: calc(var(--space-3) * -1);
   padding-inline: var(--space-3);
 }
-
-/* Chromium ignores ::-webkit-scrollbar the moment scrollbar-width or
-   scrollbar-color is set, and the standard properties only offer "thin",
-   which is around 11px. An exact 4px therefore has to come from the
-   pseudo-elements, with the standard properties kept off this path. */
-.notes-rail__list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.notes-rail__list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.notes-rail__list::-webkit-scrollbar-thumb {
-  background: var(--color-border-light);
-  border-radius: var(--radius-sm);
-}
-
-/* Firefox has no ::-webkit-scrollbar, so it gets the standard properties.
-   Scoped behind @supports so Chromium never sees them. */
-@supports not selector(::-webkit-scrollbar) {
-  .notes-rail__list {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-border-light) transparent;
-  }
-}
-
 .notes-rail__list ul {
   list-style: none;
   margin: 0;

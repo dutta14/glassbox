@@ -193,6 +193,36 @@ body.dark {
   box-sizing: border-box;
 }
 
+/* Thin, quiet scrollbars on every scroll container: the note rail, the chat
+   log, the editor and the search results.
+
+   Chromium ignores these pseudo-elements the moment scrollbar-width or
+   scrollbar-color is set, and the standard properties only offer "thin",
+   which lands around 11px with no way to ask for a number. An exact 4px has
+   to come from here, so the standard properties are kept off this path and
+   scoped to Firefox below. */
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-light);
+  border-radius: var(--radius-sm);
+}
+
+/* Firefox has no ::-webkit-scrollbar. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-light) transparent;
+  }
+}
+
 html,
 body,
 #root {
