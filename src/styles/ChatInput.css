@@ -24,15 +24,21 @@
   flex: 1;
   min-height: 44px;
   max-height: 168px;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-alt);
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface);
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-lg);
+  /* Deliberately not --radius-pill. The browser scales a radius down when the
+     pair on one side exceeds that side's length, so 28px clamps to a true pill
+     on the 44px resting box and stays a rounded rect once the text grows,
+     rather than stretching into a stadium at max-height. The scale stops at
+     --radius-xl (16px), which is visibly squarer than this needs. */
+  border-radius: 28px;
   color: var(--color-text);
   font-size: var(--fs-md);
   line-height: var(--leading-normal);
   resize: none;
-  overflow-y: auto;
+  /* Toggled to auto by ChatInput only once the text passes max-height. */
+  overflow-y: hidden;
   transition: border-color var(--duration-fast) var(--ease-out);
 }
 

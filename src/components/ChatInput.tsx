@@ -19,7 +19,12 @@ export const ChatInput = ({ disabled, onSubmit }: ChatInputProps) => {
     if (!el) return;
     el.style.height = 'auto';
     const maxHeight = 6 * 24 + 24;
-    el.style.height = `${Math.min(el.scrollHeight, maxHeight)}px`;
+    const needed = el.scrollHeight;
+    el.style.height = `${Math.min(needed, maxHeight)}px`;
+    // The box grows to fit, so a scrollbar is only ever needed past the cap.
+    // Leaving overflow on auto let a scrollbar sit against the pill's rounded
+    // edge and read as a grey sliver outside the border.
+    el.style.overflowY = needed > maxHeight ? 'auto' : 'hidden';
   }, [value]);
 
   useEffect(() => {
