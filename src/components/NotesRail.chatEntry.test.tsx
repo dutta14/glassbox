@@ -25,13 +25,15 @@ const mkNote = (id: string, title: string, body = ""): Note => ({
   updatedAt: iso,
 });
 
-const renderRail = (overrides: { chatActive?: boolean } = {}) => {
+const renderRail = (
+  overrides: { chatActive?: boolean; selectedNoteId?: string | null } = {},
+) => {
   const onOpenChat = vi.fn();
   const onCreate = vi.fn();
   render(
     <NotesRail
       notes={[mkNote("n1", "Postgres tuning")]}
-      selectedNoteId={null}
+      selectedNoteId={overrides.selectedNoteId ?? null}
       hasSampleNotes={false}
       folderState="unsupported"
       folderName={null}
@@ -88,6 +90,28 @@ describe("rail chat entry", () => {
 
     expect(chatEntry()).not.toHaveAttribute("aria-current");
     expect(chatEntry()).not.toHaveClass("notes-rail__entry--active");
+  });
+
+  /**
+   * Opening the chat does not clear the selected note in App, so without this
+   * the rail marked two rows current at once: the chat entry and whichever
+   * note was open behind it.
+   */
+  it("stops marking the last opened note as current once the chat is showing", () => {
+    renderRail({ chatActive: true, selectedNoteId: "n1" });
+
+    const row = screen.getByRole("button", { name: "Postgres tuning" });
+
+    expect(row).not.toHaveAttribute("aria-current");
+    expect(chatEntry()).toHaveAttribute("aria-current", "true");
+  });
+
+  it("marks the open note as current again once the chat is not showing", () => {
+    renderRail({ chatActive: false, selectedNoteId: "n1" });
+
+    expect(
+      screen.getByRole("button", { name: "Postgres tuning" }),
+    ).toHaveAttribute("aria-current", "true");
   });
 
   it("no longer renders a tablist anywhere in the rail", () => {

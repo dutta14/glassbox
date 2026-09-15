@@ -74,6 +74,11 @@ export const NotesRail = ({
   /** Held here rather than per row, so opening one menu closes any other. */
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
+  /* Nothing reads as open while the chat is showing. Otherwise the rail marks
+     two rows current at once, the chat entry and whichever note was last
+     opened, and aria-current stops meaning anything. */
+  const currentNoteId = chatActive ? null : selectedNoteId;
+
   const searchToggleRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLElement>(null);
   useScrollFades(listRef, [notes.length, collapsed]);
@@ -282,7 +287,7 @@ export const NotesRail = ({
                   <NoteListItem
                     key={note.id}
                     note={note}
-                    isSelected={note.id === selectedNoteId}
+                    isSelected={note.id === currentNoteId}
                     menuOpen={openMenuId === note.id}
                     onSelect={() => onSelect(note.id)}
                     onMenuOpenChange={(open) =>
@@ -324,7 +329,7 @@ export const NotesRail = ({
       <NoteSearchModal
         open={searchOpen}
         notes={notes}
-        selectedNoteId={selectedNoteId}
+        selectedNoteId={currentNoteId}
         onSelect={onSelect}
         onClose={closeSearch}
       />
