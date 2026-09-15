@@ -124,6 +124,26 @@ export const NotesRail = ({
 
       {!collapsed && (
         <>
+          {/* Visible text, so the control names itself instead of leaning on
+              an aria-label that only assistive tech ever sees. */}
+          <button type="button" className="notes-rail__new" onClick={onCreate}>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M8 3v10M3 8h10"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            New note
+          </button>
+
           <div className="notes-rail__section">
             <div className="notes-rail__header-row">
               <h2 className="notes-rail__title">Notes</h2>
@@ -159,27 +179,6 @@ export const NotesRail = ({
                     />
                   </svg>
                 </button>
-                <button
-                  type="button"
-                  className="notes-rail__action notes-rail__action--new"
-                  onClick={onCreate}
-                  aria-label="New note"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M8 3v10M3 8h10"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
               </div>
             </div>
           </div>
@@ -209,7 +208,7 @@ export const NotesRail = ({
                   className="notes-rail__empty-action"
                   onClick={onCreate}
                 >
-                  New note
+                  Create your first note
                 </button>
               </div>
             ) : (

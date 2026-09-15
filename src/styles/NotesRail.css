@@ -64,6 +64,40 @@
   text-transform: uppercase;
 }
 
+/* Understated on purpose, the way ChatGPT and Copilot treat "New chat": this
+   is the most-used control in the rail, so it earns its place by sitting at
+   the top rather than by shouting in accent blue. Transparent at rest, with a
+   neutral wash on hover that matches the icon buttons beside it. */
+.notes-rail__new {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--space-10);
+  margin-bottom: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.notes-rail__new:hover {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-light);
+}
+
+.notes-rail__new svg {
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}
+
 .notes-rail__section {
   width: 100%;
   padding: 0 var(--space-1);

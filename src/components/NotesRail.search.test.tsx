@@ -30,12 +30,12 @@ const notes = [
   mkNote("n2", "Sourdough", "the starter was underfed"),
 ];
 
-const renderRail = () => {
+const renderRail = (overrides: { notes?: Note[] } = {}) => {
   const onCreate = vi.fn();
   const onSelect = vi.fn();
   render(
     <NotesRail
-      notes={notes}
+      notes={overrides.notes ?? notes}
       selectedNoteId={null}
       hasSampleNotes={false}
       folderState="unsupported"
@@ -150,9 +150,23 @@ describe("NotesRail search wiring", () => {
     renderRail();
 
     const button = screen.getByRole("button", { name: "New note" });
-    expect(button).toHaveClass("notes-rail__action--new");
-    expect(document.querySelectorAll(".notes-rail__action--new")).toHaveLength(
-      1,
+    expect(button).toHaveClass("notes-rail__new");
+    expect(document.querySelectorAll(".notes-rail__new")).toHaveLength(1);
+  });
+
+  /**
+   * The empty state sits directly beneath the new-note item. When both said
+   * "New note" a screen reader's button list showed two identical entries
+   * with no way to tell them apart.
+   */
+  it("gives the empty-state button a name distinct from the new-note item", () => {
+    renderRail({ notes: [] });
+
+    expect(screen.getByRole("button", { name: "New note" })).toHaveClass(
+      "notes-rail__new",
     );
+    expect(
+      screen.getByRole("button", { name: "Create your first note" }),
+    ).toHaveClass("notes-rail__empty-action");
   });
 });

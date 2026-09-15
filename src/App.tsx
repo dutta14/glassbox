@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Answer } from './types';
-import { useNotes } from './hooks/useNotes';
-import { useChat } from './hooks/useChat';
-import { useStorageBackend } from './hooks/useStorageBackend';
-import { useTheme } from './hooks/useTheme';
-import { createIndex, route } from './engine/router';
-import { COPY } from './engine/copy';
-import { NotesRail } from './components/NotesRail';
-import { NoteEditor } from './components/NoteEditor';
-import { ChatPanel } from './components/ChatPanel';
-import './styles/App.css';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Answer } from "./types";
+import { useNotes } from "./hooks/useNotes";
+import { useChat } from "./hooks/useChat";
+import { useStorageBackend } from "./hooks/useStorageBackend";
+import { useTheme } from "./hooks/useTheme";
+import { createIndex, route } from "./engine/router";
+import { COPY } from "./engine/copy";
+import { NotesRail } from "./components/NotesRail";
+import { NoteEditor } from "./components/NoteEditor";
+import { ChatPanel } from "./components/ChatPanel";
+import "./styles/App.css";
 
-type Tab = 'chat' | 'editor';
-type PendingFocus = 'note-list' | null;
+type Tab = "chat" | "editor";
+type PendingFocus = "note-list" | null;
 
 const App = () => {
   const {
@@ -50,8 +50,8 @@ const App = () => {
 };
 
 interface AppReadyProps {
-  store: NonNullable<ReturnType<typeof useStorageBackend>['store']>;
-  folderState: ReturnType<typeof useStorageBackend>['folderState'];
+  store: NonNullable<ReturnType<typeof useStorageBackend>["store"]>;
+  folderState: ReturnType<typeof useStorageBackend>["folderState"];
   folderName: string | null;
   connectError: string | null;
   onConnect: () => void;
@@ -83,16 +83,16 @@ const AppReady = ({
     dismissConflict,
   } = useNotes(store);
 
-  const storageAvailable = storeKind === 'local' ? store.isAvailable() : true;
+  const storageAvailable = storeKind === "local" ? store.isAvailable() : true;
 
   const { messages, append, clear, isFirstAssistantMessage } = useChat();
 
-  const [activeTab, setActiveTab] = useState<Tab>('chat');
+  const [activeTab, setActiveTab] = useState<Tab>("chat");
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
-    notes[0]?.id ?? null
+    notes[0]?.id ?? null,
   );
   const [pendingScrollOffset, setPendingScrollOffset] = useState<number | null>(
-    null
+    null,
   );
   const [pendingFocus, setPendingFocus] = useState<PendingFocus>(null);
   const tabChatRef = useRef<HTMLButtonElement>(null);
@@ -112,36 +112,36 @@ const AppReady = ({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === 'n') {
+      if (mod && e.key.toLowerCase() === "n") {
         e.preventDefault();
         handleCreateNote();
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreateNote = useCallback(() => {
     const note = createNote();
     setSelectedNoteId(note.id);
-    setActiveTab('editor');
+    setActiveTab("editor");
   }, [createNote]);
 
   const handleSelectNote = useCallback((id: string) => {
     setSelectedNoteId(id);
     setPendingScrollOffset(null);
-    setActiveTab('editor');
+    setActiveTab("editor");
   }, []);
 
   const handleJumpToNote = useCallback(
     (noteId: string) => {
       if (!notes.some((n) => n.id === noteId)) return;
       setSelectedNoteId(noteId);
-      setActiveTab('editor');
+      setActiveTab("editor");
       setPendingScrollOffset(0);
     },
-    [notes]
+    [notes],
   );
 
   const handleDeleteNote = useCallback(
@@ -152,20 +152,20 @@ const AppReady = ({
       deleteNote(id);
       if (nextNote) {
         setSelectedNoteId(nextNote.id);
-        setPendingFocus('note-list');
+        setPendingFocus("note-list");
       } else {
         setSelectedNoteId(null);
-        setActiveTab('chat');
-        setPendingFocus('note-list');
+        setActiveTab("chat");
+        setPendingFocus("note-list");
       }
     },
-    [deleteNote, notes]
+    [deleteNote, notes],
   );
 
   useEffect(() => {
     if (pendingFocus === null) return;
     const raf = requestAnimationFrame(() => {
-      if (pendingFocus === 'note-list') {
+      if (pendingFocus === "note-list") {
         const selected =
           selectedNoteId !== null
             ? document.querySelector<HTMLElement>(
@@ -174,8 +174,8 @@ const AppReady = ({
             : null;
         const target =
           selected ??
-          document.querySelector<HTMLElement>('.notes-rail__action--new') ??
-          document.querySelector<HTMLElement>('.notes-rail__empty-action');
+          document.querySelector<HTMLElement>(".notes-rail__new") ??
+          document.querySelector<HTMLElement>(".notes-rail__empty-action");
         target?.focus();
       }
       setPendingFocus(null);
@@ -188,34 +188,34 @@ const AppReady = ({
       const answer: Answer = route(text, notes, index);
       append(text, answer);
     },
-    [append, index, notes]
+    [append, index, notes],
   );
 
   const handleExamplePrompt = useCallback(
     (text: string) => {
       handleSubmit(text);
     },
-    [handleSubmit]
+    [handleSubmit],
   );
 
   const selectedNote = useMemo(
     () => notes.find((n) => n.id === selectedNoteId) ?? null,
-    [notes, selectedNoteId]
+    [notes, selectedNoteId],
   );
 
   const handleTablistKey = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       const editorEnabled = selectedNote !== null;
-      const order: Tab[] = editorEnabled ? ['chat', 'editor'] : ['chat'];
+      const order: Tab[] = editorEnabled ? ["chat", "editor"] : ["chat"];
       const currentIdx = order.indexOf(activeTab);
       let nextIdx = currentIdx;
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      if (e.key === "ArrowRight" || e.key === "ArrowDown") {
         nextIdx = (currentIdx + 1) % order.length;
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
         nextIdx = (currentIdx - 1 + order.length) % order.length;
-      } else if (e.key === 'Home') {
+      } else if (e.key === "Home") {
         nextIdx = 0;
-      } else if (e.key === 'End') {
+      } else if (e.key === "End") {
         nextIdx = order.length - 1;
       } else {
         return;
@@ -224,10 +224,10 @@ const AppReady = ({
       const nextTab = order[nextIdx];
       if (nextTab === activeTab) return;
       setActiveTab(nextTab);
-      const ref = nextTab === 'chat' ? tabChatRef : tabEditorRef;
+      const ref = nextTab === "chat" ? tabChatRef : tabEditorRef;
       requestAnimationFrame(() => ref.current?.focus());
     },
-    [activeTab, selectedNote]
+    [activeTab, selectedNote],
   );
 
   return (
@@ -236,135 +236,139 @@ const AppReady = ({
         Skip to main workspace
       </a>
 
-      {status === 'loading' && (
+      {status === "loading" && (
         <div className="app__loading" role="status" aria-live="polite">
           Loading your notes…
         </div>
       )}
 
-      {status === 'error' && (
+      {status === "error" && (
         <div className="app__error" role="alert">
           <p>Could not load your notes.</p>
           {error && <p className="app__error-detail">{error}</p>}
         </div>
       )}
 
-      {status === 'ready' && (
+      {status === "ready" && (
         <>
-      <NotesRail
-        notes={notes}
-        selectedNoteId={selectedNoteId}
-        hasSampleNotes={hasSampleNotes}
-        folderState={folderState}
-        folderName={folderName}
-        connectError={connectError}
-        onSelect={handleSelectNote}
-        onCreate={handleCreateNote}
-        onDeleteSamples={deleteSampleNotes}
-        onConnectFolder={onConnect}
-        onReconnectFolder={onReconnect}
-        onDisconnectFolder={onDisconnect}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
+          <NotesRail
+            notes={notes}
+            selectedNoteId={selectedNoteId}
+            hasSampleNotes={hasSampleNotes}
+            folderState={folderState}
+            folderName={folderName}
+            connectError={connectError}
+            onSelect={handleSelectNote}
+            onCreate={handleCreateNote}
+            onDeleteSamples={deleteSampleNotes}
+            onConnectFolder={onConnect}
+            onReconnectFolder={onReconnect}
+            onDisconnectFolder={onDisconnect}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
 
-      <main id="stage" className="stage" aria-label="Main workspace" tabIndex={-1}>
-        <h1 className="sr-only">Glassbox: ask your notes</h1>
+          <main
+            id="stage"
+            className="stage"
+            aria-label="Main workspace"
+            tabIndex={-1}
+          >
+            <h1 className="sr-only">Glassbox: ask your notes</h1>
 
-        {!storageAvailable && (
-          <div className="stage__banner" role="status">
-            {COPY.storageUnavailable}
-          </div>
-        )}
+            {!storageAvailable && (
+              <div className="stage__banner" role="status">
+                {COPY.storageUnavailable}
+              </div>
+            )}
 
-        {externalConflicts.map((c) => {
-          const isNew = !seenConflictIdsRef.current.has(c.id);
-          if (isNew) seenConflictIdsRef.current.add(c.id);
-          return (
+            {externalConflicts.map((c) => {
+              const isNew = !seenConflictIdsRef.current.has(c.id);
+              if (isNew) seenConflictIdsRef.current.add(c.id);
+              return (
+                <div
+                  key={c.id}
+                  className="stage__banner stage__banner--warn"
+                  role={isNew ? "alert" : "status"}
+                >
+                  <span>
+                    &ldquo;{c.title}&rdquo; changed on disk while you were
+                    editing it. Your unsaved edits are kept.
+                  </span>
+                  <button
+                    type="button"
+                    className="stage__banner-dismiss"
+                    onClick={() => dismissConflict(c.id)}
+                    aria-label={`Dismiss warning for ${c.title}`}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              );
+            })}
+
             <div
-              key={c.id}
-              className="stage__banner stage__banner--warn"
-              role={isNew ? 'alert' : 'status'}
+              className="stage__tabs"
+              role="tablist"
+              aria-label="Workspace tabs"
+              onKeyDown={handleTablistKey}
             >
-              <span>
-                &ldquo;{c.title}&rdquo; changed on disk while you were editing it.
-                Your unsaved edits are kept.
-              </span>
               <button
-                type="button"
-                className="stage__banner-dismiss"
-                onClick={() => dismissConflict(c.id)}
-                aria-label={`Dismiss warning for ${c.title}`}
+                ref={tabChatRef}
+                role="tab"
+                id="tab-chat"
+                aria-selected={activeTab === "chat"}
+                tabIndex={activeTab === "chat" ? 0 : -1}
+                className={`tab${activeTab === "chat" ? " tab--active" : ""}`}
+                onClick={() => setActiveTab("chat")}
               >
-                Dismiss
+                Chat
+              </button>
+              <button
+                ref={tabEditorRef}
+                role="tab"
+                id="tab-editor"
+                aria-selected={activeTab === "editor"}
+                tabIndex={activeTab === "editor" ? 0 : -1}
+                className={`tab${activeTab === "editor" ? " tab--active" : ""}`}
+                onClick={() => setActiveTab("editor")}
+                disabled={!selectedNote}
+              >
+                Editor
               </button>
             </div>
-          );
-        })}
 
-        <div
-          className="stage__tabs"
-          role="tablist"
-          aria-label="Workspace tabs"
-          onKeyDown={handleTablistKey}
-        >
-          <button
-            ref={tabChatRef}
-            role="tab"
-            id="tab-chat"
-            aria-selected={activeTab === 'chat'}
-            tabIndex={activeTab === 'chat' ? 0 : -1}
-            className={`tab${activeTab === 'chat' ? ' tab--active' : ''}`}
-            onClick={() => setActiveTab('chat')}
-          >
-            Chat
-          </button>
-          <button
-            ref={tabEditorRef}
-            role="tab"
-            id="tab-editor"
-            aria-selected={activeTab === 'editor'}
-            tabIndex={activeTab === 'editor' ? 0 : -1}
-            className={`tab${activeTab === 'editor' ? ' tab--active' : ''}`}
-            onClick={() => setActiveTab('editor')}
-            disabled={!selectedNote}
-          >
-            Editor
-          </button>
-        </div>
-
-        <div
-          className="stage__panels"
-          data-active-tab={activeTab}
-        >
-          {activeTab === 'chat' && (
-            <ChatPanel
-              messages={messages}
-              notes={notes}
-              onSubmit={handleSubmit}
-              onJumpToNote={handleJumpToNote}
-              onClear={clear}
-              onExamplePrompt={handleExamplePrompt}
-              isFirstAssistantMessage={isFirstAssistantMessage}
-            />
-          )}
-          {activeTab === 'editor' && selectedNote && (
-            <NoteEditor
-              note={selectedNote}
-              scrollToOffset={pendingScrollOffset}
-              onChangeTitle={(title) => updateNote(selectedNote.id, { title })}
-              onChangeBody={(body) => updateNote(selectedNote.id, { body })}
-              onDelete={() => handleDeleteNote(selectedNote.id)}
-              onScrollHandled={() => setPendingScrollOffset(null)}
-            />
-          )}
-          {activeTab === 'editor' && !selectedNote && (
-            <div className="stage__no-note">
-              <p>Select a note or create a new one.</p>
+            <div className="stage__panels" data-active-tab={activeTab}>
+              {activeTab === "chat" && (
+                <ChatPanel
+                  messages={messages}
+                  notes={notes}
+                  onSubmit={handleSubmit}
+                  onJumpToNote={handleJumpToNote}
+                  onClear={clear}
+                  onExamplePrompt={handleExamplePrompt}
+                  isFirstAssistantMessage={isFirstAssistantMessage}
+                />
+              )}
+              {activeTab === "editor" && selectedNote && (
+                <NoteEditor
+                  note={selectedNote}
+                  scrollToOffset={pendingScrollOffset}
+                  onChangeTitle={(title) =>
+                    updateNote(selectedNote.id, { title })
+                  }
+                  onChangeBody={(body) => updateNote(selectedNote.id, { body })}
+                  onDelete={() => handleDeleteNote(selectedNote.id)}
+                  onScrollHandled={() => setPendingScrollOffset(null)}
+                />
+              )}
+              {activeTab === "editor" && !selectedNote && (
+                <div className="stage__no-note">
+                  <p>Select a note or create a new one.</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </main>
+          </main>
         </>
       )}
     </div>
