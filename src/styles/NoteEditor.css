@@ -22,6 +22,7 @@
    The space-6 term preserves the inner padding the wrapper used to add, so
    the text stays exactly where it was. */
 .editor__title,
+.editor__edited,
 .editor__tags,
 .editor__body,
 .editor__meta {
@@ -29,6 +30,14 @@
     var(--space-6),
     (100% - var(--editor-measure)) / 2 + var(--space-6)
   );
+}
+
+.editor__edited {
+  /* Cancels .editor__inner's row gap so the date sits directly beneath the
+     title and the two read as one block rather than two stacked fields. */
+  margin-top: calc(var(--space-3) * -1);
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
 }
 
 .editor__title {
@@ -95,7 +104,7 @@
 
 .editor__meta {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
