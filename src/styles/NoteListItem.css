@@ -8,43 +8,43 @@
   border-radius: var(--radius);
   text-align: left;
   cursor: pointer;
-  position: relative;
   transition:
     background-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
 }
 
 .note-item:hover {
-  background: var(--color-surface-raised);
+  background: var(--color-surface-alt);
 }
 
 .note-item:hover .note-item__title {
   color: var(--color-text);
 }
 
-/* Finance's modern sidebar marks the active link with a tinted accent wash and
-   accent-coloured semibold text, not a grey fill. */
-.note-item--selected {
-  background: var(--accent-lighter);
+/* Neutral rather than an accent wash, matching how chat apps mark the open
+   conversation. Selection takes the heavier surface step and hover the lighter
+   one, so a selected row does not appear to lighten when the pointer lands on
+   it. Listed after :hover so it wins on a selected row. */
+.note-item--selected,
+.note-item--selected:hover {
+  background: var(--color-surface-raised);
 }
 
+/* Full-strength text and weight carry the selection alongside the wash, so it
+   does not rest on one quiet background difference. */
 .note-item--selected .note-item__title {
-  color: var(--accent);
+  color: var(--color-text);
   font-weight: var(--fw-semibold);
 }
 
-/* Finance marks the active nav item with a 3px bar flush to the sidebar edge.
-   It is decorative: aria-current on the button carries the real signal. */
-.note-item--selected::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 16px;
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  background: var(--accent);
+/* The wash is deliberately quiet, and a background difference may not survive
+   a forced-colors palette swap. aria-current carries the signal for assistive
+   tech; this covers sighted high-contrast users. */
+@media (forced-colors: active) {
+  .note-item--selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 .note-item__title {
