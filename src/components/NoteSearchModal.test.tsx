@@ -385,6 +385,100 @@ describe("NoteSearchModal", () => {
     });
   });
 
+  describe("excerpt", () => {
+    const preview = (i: number) =>
+      options()[i].querySelector(".note-search__option-preview");
+
+    it("shows the first line of the body as an excerpt", () => {
+      setup({});
+
+      expect(preview(0)).toHaveTextContent(
+        "shared_buffers should be 25% of RAM",
+      );
+    });
+
+    /** A note that opens with spacing should still preview real text. */
+    it("skips leading blank lines when choosing the excerpt", () => {
+      setup({ notes: [mkNote("b1", "Spaced", "\n\n  the real first line")] });
+
+      expect(preview(0)).toHaveTextContent("the real first line");
+    });
+
+    it("renders no excerpt element for a note with an empty body", () => {
+      setup({ notes: [mkNote("b2", "Bare", "")] });
+
+      expect(preview(0)).toBeNull();
+    });
+
+    it("renders no excerpt element for a body of only whitespace", () => {
+      setup({ notes: [mkNote("b3", "Blank", "   \n\t\n")] });
+
+      expect(preview(0)).toBeNull();
+    });
+  });
+
+  /** The rail falls back to "Untitled" for these; the modal used to render
+      an empty title, so the same note looked different in each place. */
+  it("falls back to Untitled when the title is only whitespace", () => {
+    setup({ notes: [mkNote("w1", "   ")] });
+
+    expect(
+      options()[0].querySelector(".note-search__option-title"),
+    ).toHaveTextContent("Untitled");
+  });
+
+  describe("dates", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    /**
+     * Timestamps are derived from the pinned clock rather than written as
+     * literals, so the expected label does not change with the machine's
+     * timezone.
+     */
+    const atOffsetDays = (days: number): Note => {
+      const stamp = new Date(Date.now() - days * 86_400_000).toISOString();
+      return {
+        id: "d1",
+        title: "Dated",
+        body: "",
+        tags: [],
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+    };
+
+    it("labels a note updated today as Today", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-10T12:00:00.000Z"));
+      const note = atOffsetDays(0);
+
+      setup({ notes: [note] });
+
+      const time = options()[0].querySelector("time");
+      expect(time).toHaveTextContent("Today");
+      expect(time).toHaveAttribute("datetime", note.updatedAt);
+    });
+
+    it("labels a note updated the previous day as Yesterday", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-10T12:00:00.000Z"));
+
+      setup({ notes: [atOffsetDays(1)] });
+
+      expect(options()[0].querySelector("time")).toHaveTextContent("Yesterday");
+    });
+
+    it("dates every result, not just the highlighted one", () => {
+      setup({});
+
+      expect(options().every((o) => o.querySelector("time") !== null)).toBe(
+        true,
+      );
+    });
+  });
+
   /**
    * The hints describe the keyboard model for sighted users. A screen reader
    * already announces the listbox, so repeating them would be noise.

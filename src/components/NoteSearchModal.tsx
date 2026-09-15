@@ -9,6 +9,8 @@ import {
 import { createPortal } from "react-dom";
 import type { Note } from "../types";
 import { COPY } from "../engine/copy";
+import { formatRelative } from "../utils/formatRelative";
+import { previewFromBody } from "../utils/previewFromBody";
 import "../styles/NoteSearchModal.css";
 
 interface NoteSearchModalProps {
@@ -229,12 +231,23 @@ export const NoteSearchModal = ({
               >
                 <span className="note-search__option-main">
                   <span className="note-search__option-title">
-                    {note.title || "Untitled"}
+                    {note.title.trim() || COPY.untitled}
                   </span>
                   {note.id === selectedNoteId && (
                     <span className="note-search__current-badge">Open</span>
                   )}
+                  <time
+                    className="note-search__option-date"
+                    dateTime={note.updatedAt}
+                  >
+                    {formatRelative(note.updatedAt)}
+                  </time>
                 </span>
+                {previewFromBody(note.body) && (
+                  <span className="note-search__option-preview">
+                    {previewFromBody(note.body)}
+                  </span>
+                )}
                 {note.tags.length > 0 && (
                   <span className="note-search__tag-list">
                     {note.tags.map((tag) => (

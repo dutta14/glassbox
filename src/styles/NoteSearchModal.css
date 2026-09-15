@@ -125,16 +125,24 @@
 
 .note-search__option:hover {
   background: var(--color-surface-alt);
-  border-color: var(--color-border-light);
 }
 
 /* The highlight follows the keyboard, not DOM focus: focus stays in the input
    so typing never breaks, and aria-activedescendant carries the position.
-   Tint, border and the inset rail mean it does not read by colour alone. */
+
+   A neutral wash rather than the accent tint, border and inset rail this
+   started as: three stacked cues read as an alert rather than a cursor. The
+   wash is deliberately quiet, so forced-colors mode gets a real outline
+   below, where a background difference may not survive the palette swap. */
 .note-search__option--active {
-  background: var(--accent-lighter);
-  border-color: var(--accent-light);
-  box-shadow: inset var(--space-1) 0 0 var(--accent);
+  background: var(--color-surface-raised);
+}
+
+@media (forced-colors: active) {
+  .note-search__option--active {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }
 
 .note-search__option-main {
@@ -155,10 +163,32 @@
   white-space: nowrap;
 }
 
-/* Weight, not colour: accent text on the tinted active row would cut contrast
-   for no gain when the row is already unmistakable. */
+/* Weight carries the highlight alongside the wash, so the row does not depend
+   on a single quiet background difference. */
 .note-search__option--active .note-search__option-title {
   font-weight: var(--fw-semibold);
+}
+
+/* Pushed to the far edge of the row, away from the title and badge. */
+.note-search__option-date {
+  margin-left: auto;
+  padding-left: var(--space-3);
+  flex: 0 0 auto;
+  color: var(--color-text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* One line only. These rows are scanned, not read, and a wrapping excerpt
+   would push the tags and the next result out of view. */
+.note-search__option-preview {
+  color: var(--color-text-secondary);
+  font-size: var(--fs-xs);
+  line-height: var(--leading-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Open badge ────────────────────────────────────────────────── */
@@ -178,6 +208,10 @@
 
 .note-search__option--active .note-search__current-badge {
   background: var(--color-surface);
+}
+
+.note-search__option--active .note-search__option-date {
+  color: var(--color-text-secondary);
 }
 
 /* ── Tags ──────────────────────────────────────────────────────── */
@@ -210,7 +244,6 @@
 
 .note-search__option--active .note-search__tag {
   background: var(--color-surface);
-  border-color: var(--accent-light);
 }
 
 /* ── Empty state ───────────────────────────────────────────────── */

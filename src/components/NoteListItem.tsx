@@ -1,6 +1,8 @@
-import type { Note } from '../types';
-import { COPY } from '../engine/copy';
-import '../styles/NoteListItem.css';
+import type { Note } from "../types";
+import { COPY } from "../engine/copy";
+import { formatRelative } from "../utils/formatRelative";
+import { previewFromBody } from "../utils/previewFromBody";
+import "../styles/NoteListItem.css";
 
 interface NoteListItemProps {
   note: Note;
@@ -8,25 +10,11 @@ interface NoteListItemProps {
   onSelect: () => void;
 }
 
-const formatRelative = (iso: string): string => {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const startNoteDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const days = Math.round((startToday - startNoteDay) / 86_400_000);
-  if (days <= 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-};
-
-const previewFromBody = (body: string): string => {
-  const firstLine = body.split(/\n/).find((line) => line.trim().length > 0) ?? '';
-  return firstLine.trim();
-};
-
-export const NoteListItem = ({ note, isSelected, onSelect }: NoteListItemProps) => {
+export const NoteListItem = ({
+  note,
+  isSelected,
+  onSelect,
+}: NoteListItemProps) => {
   const title = note.title.trim() || COPY.untitled;
   const preview = previewFromBody(note.body);
   const dateLabel = formatRelative(note.updatedAt);
@@ -35,9 +23,9 @@ export const NoteListItem = ({ note, isSelected, onSelect }: NoteListItemProps) 
     <li>
       <button
         type="button"
-        className={`note-item${isSelected ? ' note-item--selected' : ''}`}
+        className={`note-item${isSelected ? " note-item--selected" : ""}`}
         onClick={onSelect}
-        aria-current={isSelected ? 'true' : undefined}
+        aria-current={isSelected ? "true" : undefined}
         data-note-id={note.id}
       >
         <span className="note-item__title">{title}</span>
