@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
+import { useScrollFades } from "../hooks/useScrollFades";
 import type { Note } from "../types";
 import { COPY } from "../engine/copy";
 import "../styles/NoteEditor.css";
@@ -31,9 +32,17 @@ export const NoteEditor = ({
   onChangeBody,
   onScrollHandled,
 }: NoteEditorProps) => {
+  const scrollRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const wasEmptyOnMountRef = useRef<string | null>(null);
+
+  // Two scrollers, not one. The section scrolls when the pane is too short for
+  // the title, meta and the body's 300px floor. The textarea is a flex child
+  // that stops growing at that floor, so for any long note it is the textarea
+  // that scrolls, not the section.
+  useScrollFades(scrollRef, [note.id, note.body]);
+  useScrollFades(bodyRef, [note.id, note.body]);
 
   useLayoutEffect(() => {
     if (
@@ -64,7 +73,8 @@ export const NoteEditor = ({
       id="editor-panel"
       role="tabpanel"
       aria-labelledby="tab-editor"
-      className="editor"
+      className="editor scroll-fades"
+      ref={scrollRef}
     >
       <h2 className="sr-only">Editor</h2>
       <div className="editor__inner">
@@ -91,7 +101,7 @@ export const NoteEditor = ({
         )}
         <textarea
           ref={bodyRef}
-          className="editor__body"
+          className="editor__body scroll-fades"
           aria-label="Note body"
           placeholder={COPY.placeholderBody}
           value={note.body}

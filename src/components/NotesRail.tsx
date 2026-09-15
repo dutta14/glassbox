@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { Note } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { NoteSearchModal } from "./NoteSearchModal";
+import { useScrollFades } from "../hooks/useScrollFades";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { StorageControl } from "./StorageControl";
 import { ThemeToggle } from "./ThemeToggle";
@@ -70,6 +71,8 @@ export const NotesRail = ({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLElement>(null);
+  useScrollFades(listRef, [notes.length, collapsed]);
 
   /** Focus goes back to the glyph that opened the modal, never to the body. */
   const closeSearch = useCallback(() => {
@@ -220,7 +223,11 @@ export const NotesRail = ({
             </div>
           )}
 
-          <nav className="notes-rail__list" aria-label="Note list">
+          <nav
+            ref={listRef}
+            className="notes-rail__list scroll-fades"
+            aria-label="Note list"
+          >
             {notes.length === 0 ? (
               <div className="notes-rail__empty">
                 <p className="notes-rail__empty-title">No notes yet</p>

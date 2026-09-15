@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useScrollFades } from '../hooks/useScrollFades';
 import type { ChatMessage as ChatMessageType, Note } from '../types';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
@@ -42,6 +43,10 @@ export const ChatPanel = ({
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages.length]);
+
+  // Declared after the auto-scroll so its effect runs once the log has already
+  // jumped to the bottom, otherwise it would measure the old position.
+  useScrollFades(logRef, [messages.length]);
 
   const priorUserByMessageId = useMemo(() => {
     const map = new Map<string, string>();
@@ -118,7 +123,7 @@ export const ChatPanel = ({
           <h2 className="sr-only">Conversation</h2>
           <ol
             ref={logRef}
-            className="chat__log"
+            className="chat__log scroll-fades"
             aria-label="Conversation"
           >
             {messages.map((message) => (

@@ -223,6 +223,57 @@ body.dark {
   }
 }
 
+/* Edge fades for scroll containers, driven by useScrollFades. The gradient
+   masks the element's own rendering, so it needs no knowledge of whatever is
+   behind it and works on the white rail and the oatmeal panes alike. Each edge
+   only softens when there is really something cut off in that direction.
+
+   Registered so the width is a real length the browser can interpolate. An
+   unregistered custom property is a string and would snap between states. */
+@property --fade-top {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --fade-bottom {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+.scroll-fades {
+  --fade-size: 28px;
+  --fade-top: 0px;
+  --fade-bottom: 0px;
+  /* At 0 the transparent and opaque stops coincide, which leaves the edge
+     fully opaque rather than fading. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bottom)),
+    transparent 100%
+  );
+  transition:
+    --fade-top var(--duration-base) var(--ease-out),
+    --fade-bottom var(--duration-base) var(--ease-out);
+}
+
+.scroll-fades[data-fade-top="true"] {
+  --fade-top: var(--fade-size);
+}
+
+.scroll-fades[data-fade-bottom="true"] {
+  --fade-bottom: var(--fade-size);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-fades {
+    transition: none;
+  }
+}
+
 html,
 body,
 #root {
