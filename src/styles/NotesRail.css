@@ -33,7 +33,7 @@
   gap: var(--space-2);
   width: 100%;
   margin-bottom: var(--space-5);
-  padding: 0 var(--space-1);
+  padding: 0 var(--space-3);
 }
 
 .notes-rail__toggle {
@@ -41,6 +41,11 @@
   display: flex;
   align-items: center;
   padding: var(--space-1);
+  /* Rows all share --space-3, so content boxes line up at 24px. Icon buttons
+     need padding for a hit area and their glyphs carry transparent margin
+     inside the viewBox, so they pull back out by exactly that much: 4px of
+     button padding plus the 4px the hamburger bars sit in from x=0. */
+  margin-left: calc(var(--space-2) * -1);
   color: var(--color-text-muted);
   border-radius: var(--radius);
   transition:
@@ -98,12 +103,15 @@
 
 .notes-rail__new svg {
   flex: 0 0 auto;
+  /* The plus is drawn from x=3 in a 16px box. Correct here rather than in the
+     button's padding, which deliberately matches .note-item. */
+  margin-left: -3px;
   color: var(--color-text-secondary);
 }
 
 .notes-rail__section {
   width: 100%;
-  padding: 0 var(--space-1);
+  padding: 0 var(--space-3);
   margin-bottom: var(--space-2);
 }
 .notes-rail__header-row {
@@ -124,6 +132,9 @@
 .notes-rail__actions {
   display: flex;
   align-items: center;
+  /* Mirror of the toggle: shed the 28px button's inner 6px so the glyph sits
+     the same 24px off the rail edge as the titles do on the left. */
+  margin-right: -6px;
   gap: var(--space-1);
 }
 
