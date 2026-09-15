@@ -110,3 +110,15 @@
     padding-inline: var(--space-4);
   }
 }
+
+/* Lived in NoteListItem.css until the rail became single-line. The editor is
+   the only consumer now, so it owns the rule rather than relying on another
+   component's stylesheet happening to be loaded. */
+.tag {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+}

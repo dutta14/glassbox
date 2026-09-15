@@ -1,8 +1,11 @@
 /**
  * Relative day label for a note's timestamp.
  *
- * Shared by the note rail and the search modal so the same note never shows
- * two different dates. Day boundaries are compared at local midnight rather
+ * Used by the search modal. The rail dropped its dates when its rows became
+ * single-line, so this lives here rather than inside that component: the
+ * codebase already carries several divergent copies of date formatting and
+ * this is the canonical one. Day boundaries are compared at local midnight
+ * rather
  * than by subtracting milliseconds, so "Yesterday" stays correct across
  * daylight-saving shifts.
  */
