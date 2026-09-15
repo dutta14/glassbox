@@ -59,6 +59,28 @@ const glyph = () => screen.getByRole("button", { name: "Search notes" });
 const dialog = () => screen.getByRole("dialog");
 
 describe("NotesRail search wiring", () => {
+  /**
+   * The glyph used to sit beside the "Notes" label. Role-based queries find it
+   * wherever it lives, so its position needs asserting separately.
+   */
+  it("puts the search glyph in the top row beside the brand", () => {
+    renderRail();
+    const topRow = document.querySelector(".notes-rail__top-row");
+
+    expect(topRow).not.toBeNull();
+    expect(topRow!.contains(glyph())).toBe(true);
+    expect(topRow!.textContent).toContain("Glassbox");
+  });
+
+  it("no longer keeps an actions group beside the Notes heading", () => {
+    renderRail();
+    const section = document.querySelector(".notes-rail__section");
+
+    expect(section).not.toBeNull();
+    expect(section!.textContent).toContain("Notes");
+    expect(section!.querySelector("button")).toBeNull();
+  });
+
   it("keeps the modal closed until the glyph is used", () => {
     renderRail();
 

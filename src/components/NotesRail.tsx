@@ -84,9 +84,7 @@ export const NotesRail = ({
     // The dialog took focus on open, so it has to be handed back. Deferred
     // past the dialog's own teardown, which clears inert from the app root.
     requestAnimationFrame(() => {
-      document
-        .querySelector<HTMLElement>(`[data-menu-for="${id}"]`)
-        ?.focus();
+      document.querySelector<HTMLElement>(`[data-menu-for="${id}"]`)?.focus();
     });
   }, [pendingDelete]);
 
@@ -146,6 +144,41 @@ export const NotesRail = ({
           </svg>
         </button>
         {!collapsed && <div className="notes-rail__brand">Glassbox</div>}
+        {!collapsed && (
+          <div className="notes-rail__actions">
+            <button
+              ref={searchToggleRef}
+              type="button"
+              className="notes-rail__action"
+              onClick={() => setSearchOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={searchOpen}
+              aria-label="Search notes"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="7.2"
+                  cy="7.2"
+                  r="4.2"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M10.4 10.4 13.5 13.5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
 
       {!collapsed && (
@@ -171,42 +204,7 @@ export const NotesRail = ({
           </button>
 
           <div className="notes-rail__section">
-            <div className="notes-rail__header-row">
-              <h2 className="notes-rail__title">Notes</h2>
-              <div className="notes-rail__actions">
-                <button
-                  ref={searchToggleRef}
-                  type="button"
-                  className="notes-rail__action"
-                  onClick={() => setSearchOpen(true)}
-                  aria-haspopup="dialog"
-                  aria-expanded={searchOpen}
-                  aria-label="Search notes"
-                >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <circle
-                      cx="7.2"
-                      cy="7.2"
-                      r="4.2"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M10.4 10.4 13.5 13.5"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <h2 className="notes-rail__title">Notes</h2>
           </div>
 
           {hasSampleNotes && (
