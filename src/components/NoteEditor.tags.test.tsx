@@ -25,10 +25,13 @@ const renderEditor = (note: Note = mkNote()) =>
   );
 
 /**
- * The hash is how a tag is written into the body, not what a tag is called.
- * Repeating it on the pill showed the user the syntax they had already typed.
- * Nothing covered the pill's text before this, so the prefix could have come
- * back without a single test noticing.
+ * The hash stays on the pill. It was dropped once on the grounds that it is
+ * body syntax rather than part of the name, which is true but beside the
+ * point: stripped of it the pills read as loose words sitting under the date,
+ * with nothing but a faint background to say what they are. The group's
+ * accessible name covers a screen reader; the hash is what covers everyone
+ * else. Nothing tested this text before, which is how it came off in the
+ * first place.
  */
 describe("NoteEditor tag pills", () => {
   const pills = () =>
@@ -36,25 +39,23 @@ describe("NoteEditor tag pills", () => {
       el.textContent?.trim(),
     );
 
-  it("labels each pill with the bare tag name", () => {
+  it("prefixes each pill with the hash that marks it as a tag", () => {
     renderEditor();
 
-    expect(pills()).toEqual(["evaluation", "ambiguity"]);
+    expect(pills()).toEqual(["#evaluation", "#ambiguity"]);
   });
 
-  it("carries no hash anywhere in the tag group", () => {
-    renderEditor();
+  it("shows one hash per pill rather than doubling the one in the body", () => {
+    renderEditor(mkNote({ tags: ["evaluation"], body: "about #evaluation" }));
 
-    const group = screen.getByRole("group", { name: "Tags" });
-
-    expect(group.textContent).not.toContain("#");
+    expect(pills()).toEqual(["#evaluation"]);
   });
 
   /**
-   * The hash was the only thing marking these as tags rather than loose words
-   * sitting under the date, so the group's name is doing that job alone now.
+   * Belt and braces: the hash is the visual marker, the group name is the
+   * spoken one. Both should survive.
    */
-  it("keeps the group named so the pills are still identifiable as tags", () => {
+  it("keeps the group named for readers who cannot see the hash", () => {
     renderEditor();
 
     expect(screen.getByRole("group", { name: "Tags" })).toBeInTheDocument();
