@@ -93,7 +93,7 @@ export const NoteEditor = ({
           <div className="editor__tags" role="group" aria-label="Tags">
             {note.tags.map((tag) => (
               <span key={tag} className="tag">
-                #{tag}
+                {tag}
               </span>
             ))}
           </div>
