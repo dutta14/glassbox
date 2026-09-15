@@ -19,7 +19,6 @@ interface MenuPosition {
     place. */
 const OFFSCREEN: MenuPosition = { top: -9999, left: -9999 };
 
-const GAP = 4;
 const VIEWPORT_MARGIN = 8;
 
 export const NoteRowMenu = ({
@@ -49,15 +48,25 @@ export const NoteRowMenu = ({
     const list = listRef.current?.getBoundingClientRect();
     if (!trigger || !list) return;
 
+    // Dropping the menu below the trigger left it level with the row beneath,
+    // so it read as belonging to that row instead. It opens level with the top
+    // of its own row, which is the list item the trigger sits in.
+    const row = triggerRef.current?.closest("li")?.getBoundingClientRect();
+
     // Left edges line up, so the menu hangs off the trigger instead of
     // floating back across the row.
     let left = trigger.left;
-    let top = trigger.bottom + GAP;
+    let top = (row ?? trigger).top;
     if (left + list.width > window.innerWidth - VIEWPORT_MARGIN) {
       left = Math.max(VIEWPORT_MARGIN, trigger.right - list.width);
     }
+    // Pulled back onto screen rather than flipped, so it stays anchored near
+    // the row it came from.
     if (top + list.height > window.innerHeight - VIEWPORT_MARGIN) {
-      top = Math.max(VIEWPORT_MARGIN, trigger.top - GAP - list.height);
+      top = Math.max(
+        VIEWPORT_MARGIN,
+        window.innerHeight - VIEWPORT_MARGIN - list.height,
+      );
     }
     setPosition({ top, left });
   }, [open]);
