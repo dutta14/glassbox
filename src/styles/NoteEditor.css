@@ -151,6 +151,9 @@
   padding: 1px var(--space-2);
   font-size: var(--fs-xs);
   color: var(--color-text-secondary);
-  background: var(--color-surface-alt);
+  /* The same surface the chat's prompt bubbles use. --color-surface-alt is a
+     cool grey sitting 1.02:1 from the warm page, so the pills had almost no
+     edge and what little showed read cold against everything around them. */
+  background: var(--color-surface-prompt);
   border-radius: var(--radius-sm);
 }
