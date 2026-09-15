@@ -44,8 +44,15 @@
   scrollbar-gutter: stable both-edges;
 }
 
+/* The greeting and the composer read as one block sitting together in the
+   middle of the pane rather than a heading adrift above an input pinned to the
+   floor. Auto margins on the first and last item split the free space evenly
+   above and below the pair, which centres the group without the composer
+   having to move in the DOM. It stays a direct child of .chat in both branches
+   so React keeps the same textarea when the first message lands. */
 .chat__empty {
-  flex: 1;
+  flex: 0 0 auto;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -68,6 +75,17 @@
   font-size: var(--fs-md);
   color: var(--color-text-secondary);
   max-width: 44ch;
+}
+
+/* Beats the prefers-reduced-transparency rule on specificity alone, so the
+   order of the two blocks does not matter. The scrim exists to fade scrolling
+   messages out behind the pill; with no log there is nothing to fade, and it
+   would paint a gradient across the middle of an empty pane. */
+.chat--empty .composer {
+  position: static;
+  margin-bottom: auto;
+  background: none;
+  padding-top: var(--space-4);
 }
 
 .chat__examples {

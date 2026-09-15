@@ -252,3 +252,67 @@ describe('ChatPanel — Clear chat gate', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 });
+
+/**
+ * The greeting and the composer now sit together in the middle of an empty
+ * pane instead of the heading floating above an input pinned to the floor.
+ *
+ * The obvious way to build that is to nest the composer inside the empty
+ * block, which would put it at a different position in the tree in each
+ * branch. React reconciles by position, so the textarea would unmount and
+ * remount the moment the first message landed, dropping the caret to <body>
+ * mid-conversation. The layout is done with auto margins for that reason, and
+ * these tests hold the DOM order still.
+ */
+describe('ChatPanel — welcome layout', () => {
+  const panel = () => document.querySelector('.chat');
+
+  it('marks the panel empty so the greeting and composer centre as one group', () => {
+    renderChatPanel({ messages: [], notes: [mkNote('n1', 'Postgres tuning')] });
+
+    expect(panel()).toHaveClass('chat--empty');
+  });
+
+  it('drops the empty marker once the conversation has a message', () => {
+    renderChatPanel({
+      messages: [mkUser('m1', 'how much shared_buffers?')],
+      notes: [mkNote('n1', 'Postgres tuning')],
+    });
+
+    expect(panel()).not.toHaveClass('chat--empty');
+  });
+
+  it('keeps the composer a direct child of the panel in both states', () => {
+    const notes = [mkNote('n1', 'Postgres tuning')];
+
+    const { unmount } = renderChatPanel({ messages: [], notes });
+    expect(document.querySelector('.chat > .composer')).not.toBeNull();
+    unmount();
+
+    renderChatPanel({ messages: [mkUser('m1', 'why?')], notes });
+    expect(document.querySelector('.chat > .composer')).not.toBeNull();
+  });
+
+  it('leaves the caret in the composer when the first message arrives', async () => {
+    const notes = [mkNote('n1', 'Postgres tuning')];
+    const props = {
+      notes,
+      onClear: vi.fn(),
+      onSubmit: vi.fn(),
+      onJumpToNote: vi.fn(),
+      onExamplePrompt: vi.fn(),
+      isFirstAssistantMessage: () => false,
+    };
+
+    const { rerender } = render(<ChatPanel messages={[]} {...props} />);
+
+    const input = screen.getByRole('textbox', { name: /ask/i });
+    input.focus();
+    expect(document.activeElement).toBe(input);
+
+    rerender(<ChatPanel messages={[mkUser('m1', 'why?')]} {...props} />);
+
+    expect(document.activeElement).toBe(input);
+    expect(input).toBeInTheDocument();
+  });
+});

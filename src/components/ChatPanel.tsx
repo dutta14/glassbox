@@ -79,7 +79,7 @@ export const ChatPanel = ({
     <section
       id="chat-panel"
       aria-label="Chat"
-      className="chat"
+      className={isEmpty ? 'chat chat--empty' : 'chat'}
     >
       <div className="chat__toolbar">
         {messages.length > 0 && (
