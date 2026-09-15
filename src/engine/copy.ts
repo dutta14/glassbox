@@ -20,7 +20,7 @@ export const COPY = {
 
   untitled: 'Untitled',
 
-  emptyNotesSidebar: 'No notes yet. Start with your first one.',
+  emptyNotesSidebar: 'Use New note to start one.',
   emptyNotesChat: 'Add a note to ask questions about it.',
   emptyChat: 'Ask a question about your notes.',
 

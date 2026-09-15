@@ -173,9 +173,7 @@ const AppReady = ({
               )
             : null;
         const target =
-          selected ??
-          document.querySelector<HTMLElement>(".notes-rail__new") ??
-          document.querySelector<HTMLElement>(".notes-rail__empty-action");
+          selected ?? document.querySelector<HTMLElement>(".notes-rail__new");
         target?.focus();
       }
       setPendingFocus(null);

@@ -273,13 +273,6 @@ export const NotesRail = ({
                 <p className="notes-rail__empty-body">
                   {COPY.emptyNotesSidebar}
                 </p>
-                <button
-                  type="button"
-                  className="notes-rail__empty-action"
-                  onClick={onCreate}
-                >
-                  Create your first note
-                </button>
               </div>
             ) : (
               <ul>

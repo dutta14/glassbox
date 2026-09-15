@@ -252,21 +252,6 @@
   max-width: 32ch;
 }
 
-.notes-rail__empty-action {
-  margin-top: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  background: var(--accent);
-  color: var(--color-text-on-accent);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  border-radius: var(--radius);
-  transition: background-color var(--duration-fast) var(--ease-out);
-}
-
-.notes-rail__empty-action:hover {
-  background: var(--accent-hover);
-}
-
 .notes-rail__footer {
   flex: 0 0 auto;
   width: 100%;

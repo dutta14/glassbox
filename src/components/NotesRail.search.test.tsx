@@ -180,18 +180,35 @@ describe("NotesRail search wiring", () => {
   });
 
   /**
-   * The empty state sits directly beneath the new-note item. When both said
-   * "New note" a screen reader's button list showed two identical entries
-   * with no way to tell them apart.
+   * The empty state used to carry its own blue call to action directly beneath
+   * the new-note item, which meant two controls doing the same job a few
+   * pixels apart. The rail's own item is the only one now.
    */
-  it("gives the empty-state button a name distinct from the new-note item", () => {
+  it("leaves the empty state without a second create control", () => {
     renderRail({ notes: [] });
 
-    expect(screen.getByRole("button", { name: "New note" })).toHaveClass(
-      "notes-rail__new",
+    const buttons = screen
+      .getAllByRole("button")
+      .map((b) => b.textContent?.trim());
+
+    expect(buttons).toContain("New note");
+    expect(buttons).not.toContain("Create your first note");
+    expect(document.querySelector(".notes-rail__empty-action")).toBeNull();
+  });
+
+  /**
+   * The body copy repeated the heading word for word, so the panel read
+   * "No notes yet" twice in a row.
+   */
+  it("does not repeat the empty-state heading in its body copy", () => {
+    renderRail({ notes: [] });
+
+    const body = document.querySelector(".notes-rail__empty-body");
+
+    expect(document.querySelector(".notes-rail__empty-title")?.textContent).toBe(
+      "No notes yet",
     );
-    expect(
-      screen.getByRole("button", { name: "Create your first note" }),
-    ).toHaveClass("notes-rail__empty-action");
+    expect(body?.textContent).not.toContain("No notes yet");
+    expect(body?.textContent?.trim()).toBeTruthy();
   });
 });
