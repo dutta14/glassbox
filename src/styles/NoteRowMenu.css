@@ -2,10 +2,20 @@
   position: relative;
 }
 
-/* Reserved unconditionally rather than on hover, so a long title truncates in
-   the same place whether or not the pointer is over the row. */
-.note-row .note-item {
+/* Space for the trigger is held only while the trigger is actually showing.
+   Reserving it at rest truncated titles that had room for their full text.
+   :focus-within covers the open menu too, since focus moves into it. */
+.note-row:hover .note-item,
+.note-row:focus-within .note-item {
   padding-right: var(--space-8);
+}
+
+/* Touch has no hover, so the trigger is always present and its space always
+   has to be held. */
+@media (hover: none) {
+  .note-row .note-item {
+    padding-right: var(--space-8);
+  }
 }
 
 .note-row__menu {
@@ -13,6 +23,11 @@
   top: 50%;
   right: var(--space-1);
   transform: translateY(-50%);
+  /* The transform above makes this a stacking context, which traps any
+     z-index set on the menu panel inside it. Without a z-index here the
+     wrapper paints in tree order against the other rows, and every row below
+     this one draws over the open menu. */
+  z-index: 20;
 }
 
 .note-row__menu-trigger {
@@ -61,7 +76,6 @@
   position: absolute;
   top: calc(100% + var(--space-1));
   right: 0;
-  z-index: 20;
   min-width: 140px;
   padding: var(--space-1);
   background: var(--color-surface);
