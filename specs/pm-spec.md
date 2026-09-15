@@ -15,7 +15,7 @@ wrote, with the retrieval reasoning visible, so they can trust every answer.
 6. Notes persist to localStorage and reload on refresh.
 
 ### Chat / ask flow
-7. Chat input accepts up to 500 chars. Enter submits, Shift+Enter inserts newline.
+7. Chat input accepts up to 2000 chars. Enter submits, Shift+Enter inserts newline.
 8. Submitting appends a user message, then an assistant message.
 9. Every assistant search answer renders the quoted passage verbatim, the source note
    title, and a "Jump to note" control that opens that note in the editor.
@@ -54,7 +54,7 @@ wrote, with the retrieval reasoning visible, so they can trust every answer.
 - One note: retrieval runs; the gate does the work.
 - Note with empty body: title is still indexed.
 - Query matches nothing: gate returns failure; panel shows sub-threshold candidates.
-- Very long query: hard cap 500 chars, counter appears at 450+.
+- Very long query: hard cap 2000 chars, counter appears at 1800+.
 - Query of only stopwords: route to unknown, queryTerms: [].
 - Duplicate notes: both indexed, both may appear as candidates. Correct, not a bug.
 - Deleting a cited note: past messages keep their quoted text. "Jump to note" becomes

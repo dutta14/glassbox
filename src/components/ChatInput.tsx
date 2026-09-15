@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { COPY } from '../engine/copy';
+import { useScrollFades } from '../hooks/useScrollFades';
 import '../styles/ChatInput.css';
 
 interface ChatInputProps {
@@ -7,12 +8,14 @@ interface ChatInputProps {
   onSubmit: (text: string) => void;
 }
 
-const MAX_CHARS = 500;
-const COUNTER_WARNING = 450;
+const MAX_CHARS = 2000;
+const COUNTER_WARNING = 1800;
 
 export const ChatInput = ({ disabled, onSubmit }: ChatInputProps) => {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useScrollFades(textareaRef, [value]);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -74,7 +77,7 @@ export const ChatInput = ({ disabled, onSubmit }: ChatInputProps) => {
         <textarea
           id="composer-input"
           ref={textareaRef}
-          className="composer__input"
+          className="composer__input scroll-fades"
           rows={1}
           value={value}
           disabled={disabled}

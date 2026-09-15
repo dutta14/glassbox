@@ -15,37 +15,58 @@
   }
 }
 
+/* The pill is the row, not the textarea. A mask fades everything the masked
+   element paints, so a white fill on the textarea would fade out to the
+   oatmeal page at each edge and read as the pill itself dissolving. With the
+   fill on the row and the textarea transparent, only the text fades. The row's
+   padding also insets the textarea's scrollbar away from the rounded edge,
+   where it used to sit against the straight edge of the box and appear
+   detached from the control. */
 .composer__row {
   display: flex;
   align-items: flex-end;
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  /* Deliberately not --radius-pill. A browser scales a radius down when the
+     pair on one side exceeds that side's length, so 28px clamps to a true pill
+     on the resting box and stays a rounded rect once the text grows, rather
+     than stretching into a stadium at max-height. The scale stops at
+     --radius-xl, which is visibly squarer than this needs. */
+  border-radius: 28px;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+/* The caret is the focus indicator on a writing surface, the same call the
+   note editor makes. The global ring drew a hard blue rectangle inside the
+   pill, doubled by the border turning accent at the same time. */
+.composer__row:focus-within {
+  border-color: var(--color-text-secondary);
 }
 
 .composer__input {
   flex: 1;
-  min-height: 44px;
+  min-height: 24px;
   max-height: 168px;
-  padding: var(--space-3) var(--space-5);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-light);
-  /* Deliberately not --radius-pill. The browser scales a radius down when the
-     pair on one side exceeds that side's length, so 28px clamps to a true pill
-     on the 44px resting box and stays a rounded rect once the text grows,
-     rather than stretching into a stadium at max-height. The scale stops at
-     --radius-xl (16px), which is visibly squarer than this needs. */
-  border-radius: 28px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  /* Softer than the 28px default, which would eat most of a short box. */
+  --fade-size: 20px;
   color: var(--color-text);
   font-size: var(--fs-md);
   line-height: var(--leading-normal);
   resize: none;
   /* Toggled to auto by ChatInput only once the text passes max-height. */
   overflow-y: hidden;
-  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
+.composer__input:focus,
 .composer__input:focus-visible {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-focus);
+  outline: none;
+  box-shadow: none;
 }
+
 
 .composer__input::placeholder {
   color: var(--color-text-muted);

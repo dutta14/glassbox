@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { ChatInput } from "./ChatInput";
 import { ChatPanel } from "./ChatPanel";
 import { NoteEditor } from "./NoteEditor";
 import { NotesRail } from "./NotesRail";
@@ -101,6 +102,18 @@ describe("scroll fade wiring", () => {
     );
 
     expect(fades(screen.getByLabelText("Note body"))).toBe(true);
+  });
+
+  /**
+   * The fill sits on .composer__row rather than the textarea precisely so this
+   * mask only touches the text. Masking the textarea while it painted the
+   * white pill would have faded the pill out to the page colour at each edge.
+   */
+  it("fades the composer text, which scrolls once the box hits its cap", () => {
+    render(<ChatInput disabled={false} onSubmit={vi.fn()} />);
+
+    expect(fades(screen.getByLabelText("Ask a question"))).toBe(true);
+    expect(fades(document.querySelector(".composer__row"))).toBe(false);
   });
 
   it("also fades the editor section, which scrolls when the pane is too short", () => {

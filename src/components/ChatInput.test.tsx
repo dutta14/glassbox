@@ -4,10 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { ChatInput } from './ChatInput';
 
 /**
- * AC 7 — Chat input accepts up to 500 chars. Enter submits, Shift+Enter
+ * AC 7 — Chat input accepts up to 2000 chars. Enter submits, Shift+Enter
  * inserts a newline.
  *
- * Edge case in the spec: hard cap 500 chars, counter appears at 450+.
+ * Edge case in the spec: hard cap 2000 chars, counter appears at 1800+.
  */
 
 describe('ChatInput — AC 7 composer behaviour', () => {
@@ -39,38 +39,38 @@ describe('ChatInput — AC 7 composer behaviour', () => {
     expect(textarea.value).toBe('line1\nline2');
   });
 
-  it('exposes a hard cap of 500 characters via the textarea maxLength attribute', () => {
-    // Enforcement of the 500 cap is native (maxLength on the DOM element).
-    // Asserting the attribute proves the browser will refuse the 501st keystroke.
+  it('exposes a hard cap of 2000 characters via the textarea maxLength attribute', () => {
+    // Enforcement of the 2000 cap is native (maxLength on the DOM element).
+    // Asserting the attribute proves the browser will refuse the 2001st keystroke.
     render(<ChatInput disabled={false} onSubmit={vi.fn()} />);
     const textarea = screen.getByLabelText('Ask a question') as HTMLTextAreaElement;
-    expect(textarea.maxLength).toBe(500);
+    expect(textarea.maxLength).toBe(2000);
   });
 
-  it('does not render the character counter when the current length is below 450', async () => {
+  it('does not render the character counter when the current length is below 1800', async () => {
     render(<ChatInput disabled={false} onSubmit={vi.fn()} />);
     const user = userEvent.setup();
     const textarea = screen.getByLabelText('Ask a question') as HTMLTextAreaElement;
 
-    // Fill to 449 characters, one below the counter threshold.
+    // Fill to 1799 characters, one below the counter threshold.
     await user.click(textarea);
     // Bypass character-by-character typing which is O(n) slow; paste is fine.
-    await user.paste('a'.repeat(449));
+    await user.paste('a'.repeat(1799));
 
-    expect(textarea.value.length).toBe(449);
-    expect(screen.queryByText(/^449 \/ 500$/)).toBeNull();
+    expect(textarea.value.length).toBe(1799);
+    expect(screen.queryByText(/^1799 \/ 2000$/)).toBeNull();
   });
 
-  it('renders the "X / 500" counter once the current length reaches 450', async () => {
+  it('renders the "X / 2000" counter once the current length reaches 1800', async () => {
     render(<ChatInput disabled={false} onSubmit={vi.fn()} />);
     const user = userEvent.setup();
     const textarea = screen.getByLabelText('Ask a question') as HTMLTextAreaElement;
 
     await user.click(textarea);
-    await user.paste('a'.repeat(450));
+    await user.paste('a'.repeat(1800));
 
-    expect(textarea.value.length).toBe(450);
-    expect(screen.getByText('450 / 500')).toBeInTheDocument();
+    expect(textarea.value.length).toBe(1800);
+    expect(screen.getByText('1800 / 2000')).toBeInTheDocument();
   });
 
   it('does not submit when Enter is pressed on empty or whitespace-only content', async () => {
