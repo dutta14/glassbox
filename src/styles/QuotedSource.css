@@ -2,7 +2,13 @@
   margin: 0;
   padding: var(--space-5) var(--space-6);
   background: var(--color-surface-quote);
-  border-left: 3px solid var(--accent);
+  /* A quotation rule is a divider, not a control, so it belongs on the border
+     ramp rather than the accent. --accent measured 5.41:1 against the quote
+     surface in light and 6.39:1 in dark, several times louder than anything
+     else on that surface, and its blue fought the warm page. --color-border-strong
+     lands at 1.80:1 in both themes, in line with the 1.89:1 the rest of the
+     borders sit at. The source link below stays accent: it is interactive. */
+  border-left: 3px solid var(--color-border-strong);
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
 }
 
