@@ -27,6 +27,13 @@
   --color-surface-raised: #e9eaec;
   --color-surface-quote: #faf9f7;
 
+  /* The prompt bubble is the one surface that sits on --color-bg rather than
+     on a panel, so it is warm like the page instead of following the cool
+     ramp. At 1.08:1 against the page it reads as a bubble without becoming a
+     second panel; --color-surface-hover managed only 1.03:1 and disappeared.
+     Body text holds 15.2:1 on it. */
+  --color-surface-prompt: #edece9;
+
   --color-text: #14171c;
   --color-text-secondary: #4a525e;
   --color-text-muted: #5a6270;
@@ -153,6 +160,9 @@ body.dark {
   --color-surface-hover: #2e2e2e;
   --color-surface-raised: #323232;
   --color-surface-quote: #222222;
+
+  /* 1.33:1 against the page, 11.39:1 for body text. */
+  --color-surface-prompt: #2e2e2e;
 
   --color-text: #ebebeb;
   --color-text-secondary: #b0b0b0;

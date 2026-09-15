@@ -30,7 +30,7 @@
 
 .msg--user .msg__bubble {
   max-width: min(72ch, 80%);
-  background: var(--color-surface-hover);
+  background: var(--color-surface-prompt);
   color: var(--color-text);
   font-size: var(--fs-md);
   line-height: var(--leading-normal);
