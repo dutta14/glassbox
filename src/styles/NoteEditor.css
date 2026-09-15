@@ -70,6 +70,29 @@
   color: var(--color-text-muted);
 }
 
+/* tokens.css rings every :focus-visible with --shadow-focus. These two
+   surfaces are borderless, transparent and full-bleed, so that ring rendered
+   as blue lines spanning the whole pane rather than an outline around a
+   control. The caret is the focus indicator here, the way document editors
+   handle a writing surface. */
+.editor__title:focus,
+.editor__title:focus-visible,
+.editor__body:focus,
+.editor__body:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* A caret may not be enough where the palette is forced, so keep a real
+   outline there. */
+@media (forced-colors: active) {
+  .editor__title:focus-visible,
+  .editor__body:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
 .editor__meta {
   display: flex;
   justify-content: space-between;

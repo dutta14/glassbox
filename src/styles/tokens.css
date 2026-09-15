@@ -98,7 +98,13 @@
   --radius-xl: 16px;
   --radius-pill: 9999px;
 
-  --shadow-focus: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--accent);
+  /* The ring is spaced from the control by a band of whatever it sits on.
+     Containers that are not the page background override this, otherwise a
+     focused control on a white panel gets a faint oatmeal halo. Custom
+     properties resolve at the point of use, so inheriting an override is
+     enough to re-space the ring. */
+  --color-focus-spacer: var(--color-bg);
+  --shadow-focus: 0 0 0 2px var(--color-focus-spacer), 0 0 0 4px var(--accent);
 
   /* Overlays are not surfaces, so they sit outside the surface ramp. The
      fallback is heavier because without blur it is the only thing separating

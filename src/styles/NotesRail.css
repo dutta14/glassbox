@@ -9,6 +9,7 @@
    split. Children that sit on the rail therefore need --color-surface-alt, not
    --color-surface, or they render white-on-white. */
 .notes-rail {
+  --color-focus-spacer: var(--color-surface);
   width: var(--rail-notes);
   flex: 0 0 auto;
   display: flex;
