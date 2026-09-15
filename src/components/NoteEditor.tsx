@@ -1,7 +1,6 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { Note } from "../types";
 import { COPY } from "../engine/copy";
-import { ConfirmDialog } from "./ConfirmDialog";
 import "../styles/NoteEditor.css";
 
 interface NoteEditorProps {
@@ -9,7 +8,6 @@ interface NoteEditorProps {
   scrollToOffset: number | null;
   onChangeTitle: (title: string) => void;
   onChangeBody: (body: string) => void;
-  onDelete: () => void;
   onScrollHandled: () => void;
 }
 
@@ -31,14 +29,11 @@ export const NoteEditor = ({
   scrollToOffset,
   onChangeTitle,
   onChangeBody,
-  onDelete,
   onScrollHandled,
 }: NoteEditorProps) => {
   const titleRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const wasEmptyOnMountRef = useRef<string | null>(null);
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useLayoutEffect(() => {
     if (
@@ -63,18 +58,6 @@ export const NoteEditor = ({
     el.scrollTop = Math.max(0, (linesBefore - 3) * lineHeight);
     onScrollHandled();
   }, [scrollToOffset, note.body, onScrollHandled]);
-
-  const displayTitle = note.title.trim() || COPY.untitled;
-
-  const handleConfirmDelete = () => {
-    setConfirmOpen(false);
-    onDelete();
-  };
-
-  const handleCancelDelete = () => {
-    setConfirmOpen(false);
-    requestAnimationFrame(() => deleteButtonRef.current?.focus());
-  };
 
   return (
     <section
@@ -114,27 +97,7 @@ export const NoteEditor = ({
           value={note.body}
           onChange={(e) => onChangeBody(e.target.value)}
         />
-        <footer className="editor__meta">
-          <button
-            ref={deleteButtonRef}
-            type="button"
-            className="editor__delete"
-            onClick={() => setConfirmOpen(true)}
-          >
-            Delete
-          </button>
-        </footer>
       </div>
-      <ConfirmDialog
-        open={confirmOpen}
-        title={`Delete "${displayTitle}"?`}
-        description="This cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        destructive
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-      />
     </section>
   );
 };

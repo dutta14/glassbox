@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { Note } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { NoteSearchModal } from "./NoteSearchModal";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { StorageControl } from "./StorageControl";
 import { ThemeToggle } from "./ThemeToggle";
 import type { Theme } from "../hooks/useTheme";
@@ -37,6 +38,7 @@ interface NotesRailProps {
   connectError: string | null;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  onDeleteNote: (id: string) => void;
   onDeleteSamples: () => void;
   onConnectFolder: () => void;
   onReconnectFolder: () => void;
@@ -54,6 +56,7 @@ export const NotesRail = ({
   connectError,
   onSelect,
   onCreate,
+  onDeleteNote,
   onDeleteSamples,
   onConnectFolder,
   onReconnectFolder,
@@ -63,6 +66,9 @@ export const NotesRail = ({
 }: NotesRailProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  /** Held here rather than per row, so opening one menu closes any other. */
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
 
   /** Focus goes back to the glyph that opened the modal, never to the body. */
@@ -70,6 +76,26 @@ export const NotesRail = ({
     setSearchOpen(false);
     searchToggleRef.current?.focus();
   }, []);
+
+  const cancelDelete = useCallback(() => {
+    const id = pendingDelete?.id ?? null;
+    setPendingDelete(null);
+    if (id === null) return;
+    // The dialog took focus on open, so it has to be handed back. Deferred
+    // past the dialog's own teardown, which clears inert from the app root.
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-menu-for="${id}"]`)
+        ?.focus();
+    });
+  }, [pendingDelete]);
+
+  const confirmDelete = useCallback(() => {
+    if (pendingDelete === null) return;
+    const id = pendingDelete.id;
+    setPendingDelete(null);
+    onDeleteNote(id);
+  }, [pendingDelete, onDeleteNote]);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((current) => {
@@ -218,7 +244,12 @@ export const NotesRail = ({
                     key={note.id}
                     note={note}
                     isSelected={note.id === selectedNoteId}
+                    menuOpen={openMenuId === note.id}
                     onSelect={() => onSelect(note.id)}
+                    onMenuOpenChange={(open) =>
+                      setOpenMenuId(open ? note.id : null)
+                    }
+                    onRequestDelete={() => setPendingDelete(note)}
                   />
                 ))}
               </ul>
@@ -239,6 +270,17 @@ export const NotesRail = ({
           </footer>
         </>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={`Delete "${pendingDelete?.title.trim() || COPY.untitled}"?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
 
       <NoteSearchModal
         open={searchOpen}

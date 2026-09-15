@@ -21,14 +21,28 @@ const mkNote = (overrides: Partial<Note> = {}): Note => ({
 
 const renderItem = (note: Note = mkNote(), isSelected = false) => {
   const onSelect = vi.fn();
+  const onMenuOpenChange = vi.fn();
+  const onRequestDelete = vi.fn();
   render(
-    <NoteListItem note={note} isSelected={isSelected} onSelect={onSelect} />,
+    <NoteListItem
+      note={note}
+      isSelected={isSelected}
+      menuOpen={false}
+      onSelect={onSelect}
+      onMenuOpenChange={onMenuOpenChange}
+      onRequestDelete={onRequestDelete}
+    />,
     { wrapper: ({ children }) => <ul>{children}</ul> },
   );
-  return { onSelect };
+  return { onSelect, onMenuOpenChange, onRequestDelete };
 };
 
-const row = () => screen.getByRole("button");
+/** The row shares its list item with the actions menu trigger, so "the
+    button" is no longer unambiguous. */
+const row = () =>
+  screen
+    .getAllByRole("button")
+    .find((b) => !b.hasAttribute("aria-haspopup")) as HTMLElement;
 
 describe("NoteListItem", () => {
   it("renders the note title", () => {

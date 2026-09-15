@@ -1,0 +1,94 @@
+.note-row {
+  position: relative;
+}
+
+/* Reserved unconditionally rather than on hover, so a long title truncates in
+   the same place whether or not the pointer is over the row. */
+.note-row .note-item {
+  padding-right: var(--space-8);
+}
+
+.note-row__menu {
+  position: absolute;
+  top: 50%;
+  right: var(--space-1);
+  transform: translateY(-50%);
+}
+
+.note-row__menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  opacity: 0;
+  /* Not visibility or display, both of which would drop the button out of the
+     tab order entirely. It stays reachable and :focus-within reveals it. */
+  pointer-events: none;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.note-row:hover .note-row__menu-trigger,
+.note-row:focus-within .note-row__menu-trigger,
+.note-row__menu-trigger[aria-expanded="true"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Hover is not a thing a touch screen can do, so the control would otherwise
+   be permanently unreachable there. */
+@media (hover: none) {
+  .note-row__menu-trigger {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.note-row__menu-trigger:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.note-row__menu-list {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 20;
+  min-width: 140px;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+
+.note-row__menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.note-row__menu-item--danger {
+  color: var(--color-negative);
+}
+
+.note-row__menu-item--danger:hover {
+  background: var(--color-negative-light);
+}

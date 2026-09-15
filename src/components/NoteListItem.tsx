@@ -1,22 +1,29 @@
 import type { Note } from "../types";
 import { COPY } from "../engine/copy";
+import { NoteRowMenu } from "./NoteRowMenu";
 import "../styles/NoteListItem.css";
 
 interface NoteListItemProps {
   note: Note;
   isSelected: boolean;
+  menuOpen: boolean;
   onSelect: () => void;
+  onMenuOpenChange: (open: boolean) => void;
+  onRequestDelete: () => void;
 }
 
 export const NoteListItem = ({
   note,
   isSelected,
+  menuOpen,
   onSelect,
+  onMenuOpenChange,
+  onRequestDelete,
 }: NoteListItemProps) => {
   const title = note.title.trim() || COPY.untitled;
 
   return (
-    <li>
+    <li className="note-row">
       <button
         type="button"
         className={`note-item${isSelected ? " note-item--selected" : ""}`}
@@ -26,6 +33,13 @@ export const NoteListItem = ({
       >
         <span className="note-item__title">{title}</span>
       </button>
+      <NoteRowMenu
+        noteId={note.id}
+        noteTitle={title}
+        open={menuOpen}
+        onOpenChange={onMenuOpenChange}
+        onRequestDelete={onRequestDelete}
+      />
     </li>
   );
 };

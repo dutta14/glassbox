@@ -20,7 +20,6 @@ const renderEditor = (note: Note = mkNote()) =>
       scrollToOffset={null}
       onChangeTitle={vi.fn()}
       onChangeBody={vi.fn()}
-      onDelete={vi.fn()}
       onScrollHandled={vi.fn()}
     />,
   );
@@ -54,12 +53,13 @@ describe("NoteEditor edited date placement", () => {
     );
   });
 
-  it("no longer renders the edited date inside the footer", () => {
+  it("renders no footer and no delete control, both of which moved to the rail", () => {
     const { container } = renderEditor();
-    const footer = container.querySelector(".editor__meta");
 
-    expect(footer).not.toBeNull();
-    expect(footer!.querySelector(".editor__edited")).toBeNull();
+    expect(container.querySelector(".editor__meta")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Delete" }),
+    ).not.toBeInTheDocument();
   });
 
   it("exposes the edited date as a machine-readable time element", () => {

@@ -260,6 +260,7 @@ const AppReady = ({
             connectError={connectError}
             onSelect={handleSelectNote}
             onCreate={handleCreateNote}
+            onDeleteNote={handleDeleteNote}
             onDeleteSamples={deleteSampleNotes}
             onConnectFolder={onConnect}
             onReconnectFolder={onReconnect}
@@ -358,7 +359,6 @@ const AppReady = ({
                     updateNote(selectedNote.id, { title })
                   }
                   onChangeBody={(body) => updateNote(selectedNote.id, { body })}
-                  onDelete={() => handleDeleteNote(selectedNote.id)}
                   onScrollHandled={() => setPendingScrollOffset(null)}
                 />
               )}
