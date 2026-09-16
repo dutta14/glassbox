@@ -132,7 +132,6 @@ describe("panels left without their tabs", () => {
       <ChatPanel
         messages={[]}
         notes={[mkNote("n1", "Postgres tuning")]}
-        onClear={vi.fn()}
         onSubmit={vi.fn()}
         onJumpToNote={vi.fn()}
         onExamplePrompt={vi.fn()}

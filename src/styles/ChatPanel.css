@@ -6,20 +6,6 @@
   background: var(--color-bg);
 }
 
-.chat__toolbar {
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--space-2) var(--chat-gutter);
-  min-height: 36px;
-  width: min(var(--chat-column), 100% - 2 * var(--chat-gutter));
-  margin-inline: auto;
-  align-self: center;
-}
-
-.chat__clear {
-  font-size: var(--fs-xs);
-}
-
 .chat__log {
   flex: 1;
   min-height: 0;

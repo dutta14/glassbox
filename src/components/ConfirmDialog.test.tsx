@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { ConfirmDialog } from './ConfirmDialog';
 
 /**
- * AC 4 — deletion asks for confirmation.
- * AC 24 — "Clear chat" empties the transcript after confirmation.
+ * AC 4 — deleting a note asks for confirmation.
+ * AC 44 — deleting a conversation asks for confirmation.
  *
  * ConfirmDialog is the shared alertdialog used by both. These tests cover
  * the gate behaviour: confirming performs the action, cancelling does not,
@@ -15,7 +15,7 @@ import { ConfirmDialog } from './ConfirmDialog';
  * asserted here — Sasha is re-auditing that surface separately.
  */
 
-describe('ConfirmDialog — AC 4/24 gate behaviour', () => {
+describe('ConfirmDialog — AC 4/44 gate behaviour', () => {
   it('renders nothing when open is false', () => {
     render(
       <ConfirmDialog
@@ -73,16 +73,16 @@ describe('ConfirmDialog — AC 4/24 gate behaviour', () => {
     render(
       <ConfirmDialog
         open
-        title="Clear chat transcript?"
-        description="This cannot be undone."
-        confirmLabel="Clear"
-        cancelLabel="Keep"
+        title={'Delete "Postgres tuning"?'}
+        description="This deletes this conversation. Your notes stay unchanged."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
         onConfirm={onConfirm}
         onCancel={onCancel}
       />,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Keep' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();

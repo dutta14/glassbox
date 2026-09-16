@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useScrollFades } from '../hooks/useScrollFades';
 import type { ChatMessage as ChatMessageType, Note } from '../types';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
-import { ConfirmDialog } from './ConfirmDialog';
 import { COPY } from '../engine/copy';
 import '../styles/ChatPanel.css';
 
@@ -12,7 +11,6 @@ interface ChatPanelProps {
   notes: Note[];
   onSubmit: (text: string) => void;
   onJumpToNote: (noteId: string) => void;
-  onClear: () => void;
   onExamplePrompt: (text: string) => void;
   isFirstAssistantMessage: (id: string) => boolean;
 }
@@ -28,13 +26,10 @@ export const ChatPanel = ({
   notes,
   onSubmit,
   onJumpToNote,
-  onClear,
   onExamplePrompt,
   isFirstAssistantMessage,
 }: ChatPanelProps) => {
   const logRef = useRef<HTMLOListElement>(null);
-  const clearButtonRef = useRef<HTMLButtonElement>(null);
-  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const hasNotes = notes.length > 0;
   const isEmpty = messages.length === 0;
 
@@ -81,19 +76,6 @@ export const ChatPanel = ({
       aria-label="Chat"
       className={isEmpty ? 'chat chat--empty' : 'chat'}
     >
-      <div className="chat__toolbar">
-        {messages.length > 0 && (
-          <button
-            ref={clearButtonRef}
-            type="button"
-            className="btn btn--ghost chat__clear"
-            onClick={() => setConfirmClearOpen(true)}
-          >
-            Clear chat
-          </button>
-        )}
-      </div>
-
       {isEmpty ? (
         <div className="chat__empty">
           <h2 className="chat__empty-title">Ask your notes anything</h2>
@@ -146,25 +128,6 @@ export const ChatPanel = ({
       )}
 
       <ChatInput disabled={!hasNotes} onSubmit={onSubmit} />
-      <ConfirmDialog
-        open={confirmClearOpen}
-        title="Clear chat transcript?"
-        description="This cannot be undone."
-        confirmLabel="Clear"
-        cancelLabel="Keep"
-        destructive
-        onConfirm={() => {
-          setConfirmClearOpen(false);
-          onClear();
-          requestAnimationFrame(() => {
-            document.getElementById('composer-input')?.focus();
-          });
-        }}
-        onCancel={() => {
-          setConfirmClearOpen(false);
-          requestAnimationFrame(() => clearButtonRef.current?.focus());
-        }}
-      />
     </section>
   );
 };

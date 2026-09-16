@@ -85,7 +85,7 @@ const AppReady = ({
 
   const storageAvailable = storeKind === "local" ? store.isAvailable() : true;
 
-  const { messages, append, clear, isFirstAssistantMessage } = useChat();
+  const { messages, append, isFirstAssistantMessage } = useChat();
 
   const [activeTab, setActiveTab] = useState<Tab>("chat");
 
@@ -289,7 +289,6 @@ const AppReady = ({
                   notes={notes}
                   onSubmit={handleSubmit}
                   onJumpToNote={handleJumpToNote}
-                  onClear={clear}
                   onExamplePrompt={handleExamplePrompt}
                   isFirstAssistantMessage={isFirstAssistantMessage}
                 />

@@ -45,8 +45,10 @@ wrote, with the retrieval reasoning visible, so they can trust every answer.
 22. unknown returns the unknown string and skips retrieval.
 
 ### Persistence
-23. Notes persist across reloads. Chat transcript persists too.
-24. "Clear chat" empties the transcript after confirmation.
+23. Notes persist across reloads. Conversations persist too.
+24. Superseded by the conversations spec. "Clear chat" is removed. A chat is
+    no longer a single transcript to empty, so the equivalent actions are
+    starting a new chat and deleting one. See `conversations-pm-spec.md`.
 25. If localStorage is unavailable, show a non-blocking banner and run in-memory.
 
 ## Edge cases
