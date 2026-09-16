@@ -21,8 +21,8 @@ const Harness = ({
     <div>
       <button type="button">outside</button>
       <NoteRowMenu
-        noteId="n1"
-        noteTitle={title}
+        itemId="n1"
+        itemLabel={title}
         open={open}
         onOpenChange={setOpen}
         onRequestDelete={onRequestDelete}

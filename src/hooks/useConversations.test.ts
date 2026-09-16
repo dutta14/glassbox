@@ -151,6 +151,37 @@ describe('useConversations — drafts', () => {
     expect(result.current.messages).toHaveLength(4);
   });
 
+  /**
+   * AC 31. The weaker claim is that no second thread appears. The claim that
+   * matters is that no other thread changes, which is what "only that active
+   * conversation" means and what a mis-scoped append would break.
+   */
+  it('leaves every other conversation untouched when a prompt is submitted', () => {
+    const { result } = setup();
+    act(() => result.current.append('first thread', goodAnswer()));
+    const firstId = result.current.activeId;
+    act(() => result.current.startDraft());
+    act(() => result.current.append('second thread', goodAnswer()));
+
+    act(() => result.current.append('more in second', goodAnswer()));
+
+    const first = result.current.conversations.find((c) => c.id === firstId);
+    expect(first?.messages).toHaveLength(2);
+    expect(first?.messages.map((m) => m.text)).toEqual(['first thread', 'Here.']);
+  });
+
+  it('does not reopen an older thread when a new one is started', () => {
+    const { result } = setup();
+    act(() => result.current.append('older', goodAnswer()));
+    const olderId = result.current.activeId;
+
+    act(() => result.current.startDraft());
+    act(() => result.current.append('newer', goodAnswer()));
+
+    expect(result.current.activeId).not.toBe(olderId);
+    expect(result.current.messages.map((m) => m.text)).toEqual(['newer', 'Here.']);
+  });
+
   /** AC 26 and AC 30. Going back to a draft starts a genuinely new thread. */
   it('starts a second conversation when a prompt is submitted after returning to a draft', () => {
     const { result } = setup();

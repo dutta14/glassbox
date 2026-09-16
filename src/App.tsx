@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Answer } from "./types";
 import { useNotes } from "./hooks/useNotes";
-import { useChat } from "./hooks/useChat";
+import { useConversations } from "./hooks/useConversations";
 import { useStorageBackend } from "./hooks/useStorageBackend";
 import { useTheme } from "./hooks/useTheme";
 import { createIndex, route } from "./engine/router";
@@ -17,6 +17,7 @@ type PendingFocus = "note-list" | null;
 const App = () => {
   const {
     store,
+    conversationStore,
     folderState,
     folderName,
     connectError,
@@ -39,6 +40,7 @@ const App = () => {
   return (
     <AppReady
       store={store}
+      conversationStore={conversationStore}
       folderState={folderState}
       folderName={folderName}
       connectError={connectError}
@@ -51,6 +53,7 @@ const App = () => {
 
 interface AppReadyProps {
   store: NonNullable<ReturnType<typeof useStorageBackend>["store"]>;
+  conversationStore: ReturnType<typeof useStorageBackend>["conversationStore"];
   folderState: ReturnType<typeof useStorageBackend>["folderState"];
   folderName: string | null;
   connectError: string | null;
@@ -61,6 +64,7 @@ interface AppReadyProps {
 
 const AppReady = ({
   store,
+  conversationStore,
   folderState,
   folderName,
   connectError,
@@ -85,7 +89,17 @@ const AppReady = ({
 
   const storageAvailable = storeKind === "local" ? store.isAvailable() : true;
 
-  const { messages, append, isFirstAssistantMessage } = useChat();
+  const {
+    conversations,
+    activeId: activeConversationId,
+    messages,
+    startDraft,
+    select: selectConversation,
+    append,
+    remove: removeConversation,
+    isFirstAssistantMessage,
+    skippedCount: skippedChatCount,
+  } = useConversations(conversationStore);
 
   const [activeTab, setActiveTab] = useState<Tab>("chat");
 

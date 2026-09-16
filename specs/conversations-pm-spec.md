@@ -4,7 +4,7 @@
 Let users keep separate chat transcripts for different lines of thinking, while preserving the promise that every answer is a quote from something they wrote.
 
 ## User stories
-1. As a user, I want each new line of questioning to live in its own conversation, so that old answers do not mix with my current task.
+1. As a user, I want everything I ask in a conversation to stay in that conversation, so that a new line of questioning never mixes into an older thread and an older thread never grows messages I did not send to it. (AC 26, 27, 30, 31)
 2. As a user, I want the first prompt to title the conversation, so that I can recognize the chat without the app inventing a summary.
 3. As a user, I want conversations listed beside my notes, so that I can switch between notes and chats from one place.
 4. As a user, I want to delete conversations one at a time, so that I can remove old transcripts without touching my notes.

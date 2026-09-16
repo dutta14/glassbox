@@ -34,8 +34,8 @@ export const NoteListItem = ({
         <span className="note-item__title">{title}</span>
       </button>
       <NoteRowMenu
-        noteId={note.id}
-        noteTitle={title}
+        itemId={note.id}
+        itemLabel={title}
         open={menuOpen}
         onOpenChange={onMenuOpenChange}
         onRequestDelete={onRequestDelete}

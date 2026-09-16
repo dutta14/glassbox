@@ -3,8 +3,9 @@ import { createPortal } from "react-dom";
 import "../styles/NoteRowMenu.css";
 
 interface NoteRowMenuProps {
-  noteId: string;
-  noteTitle: string;
+  /** Generic on purpose. Used by note rows and by conversation rows. */
+  itemId: string;
+  itemLabel: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRequestDelete: () => void;
@@ -22,8 +23,8 @@ const OFFSCREEN: MenuPosition = { top: -9999, left: -9999 };
 const VIEWPORT_MARGIN = 8;
 
 export const NoteRowMenu = ({
-  noteId,
-  noteTitle,
+  itemId,
+  itemLabel,
   open,
   onOpenChange,
   onRequestDelete,
@@ -135,12 +136,12 @@ export const NoteRowMenu = ({
         ref={triggerRef}
         type="button"
         className="note-row__menu-trigger"
-        data-menu-for={noteId}
+        data-menu-for={itemId}
         aria-haspopup="menu"
         aria-expanded={open}
         // Twenty identical "More actions" buttons are unusable in a screen
         // reader's element list, so each one names its own note.
-        aria-label={`More actions for ${noteTitle}`}
+        aria-label={`More actions for ${itemLabel}`}
         onClick={() => onOpenChange(!open)}
       >
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
