@@ -194,3 +194,60 @@ describe('useStorageBackend.reconnectFolder — bug 2 regression (merge skipped 
     expect(createFolder).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Notes and chats must always point at the same folder. The hook has eight
+ * setStore call sites, so a parallel setConversationStore would be eight
+ * chances to miss one and leave chats reading the previous folder while notes
+ * read the new one. The conversation store is derived from `store` instead,
+ * and these tests hold that relationship rather than the implementation.
+ */
+describe('useStorageBackend — the conversation store follows the notes store', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+    vi.spyOn(fileSystemStore, 'isFolderStoreSupported').mockReturnValue(true);
+  });
+
+  it('gives a local conversation store when no folder is connected', async () => {
+    setupHandle(null);
+    const { result } = renderHook(() => useStorageBackend());
+
+    await waitFor(() => expect(result.current.store).not.toBeNull());
+
+    expect(result.current.store?.kind).toBe('local');
+    expect(result.current.conversationStore?.kind).toBe('local');
+  });
+
+  it('gives a folder conversation store once a folder is connected', async () => {
+    const handle = new FakeDirHandle({ initialPermission: 'granted' });
+    setupHandle(handle);
+    vi.spyOn(fileSystemStore, 'createFileSystemStore').mockReturnValue(
+      new InMemoryStore()
+    );
+    const { result } = renderHook(() => useStorageBackend());
+
+    await waitFor(() => expect(result.current.store?.kind).toBe('folder'));
+
+    expect(result.current.conversationStore?.kind).toBe('folder');
+  });
+
+  it('never leaves the two stores on different backends', async () => {
+    const handle = new FakeDirHandle({ initialPermission: 'granted' });
+    setupHandle(handle);
+    vi.spyOn(fileSystemStore, 'createFileSystemStore').mockReturnValue(
+      new InMemoryStore()
+    );
+    const { result } = renderHook(() => useStorageBackend());
+
+    await waitFor(() => expect(result.current.store).not.toBeNull());
+    expect(result.current.conversationStore?.kind).toBe(result.current.store?.kind);
+
+    await act(async () => {
+      await result.current.disconnectFolder();
+    });
+
+    expect(result.current.store?.kind).toBe('local');
+    expect(result.current.conversationStore?.kind).toBe(result.current.store?.kind);
+  });
+});

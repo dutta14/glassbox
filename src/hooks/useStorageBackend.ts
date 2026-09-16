@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { NotesStore } from '../storage/types';
+import type { ConversationStore, NotesStore } from '../storage/types';
+import {
+  createFolderConversationStore,
+  createLocalConversationStore,
+} from '../storage/conversationStore';
 import { createLocalStorageStore } from '../storage/localStorageStore';
 import {
   createFileSystemStore,
@@ -36,6 +40,8 @@ export type FolderState =
 
 export interface UseStorageBackendResult {
   store: NotesStore | null;
+  /** Always points at the same folder as `store`. Derived, never set. */
+  conversationStore: ConversationStore | null;
   folderState: FolderState;
   folderName: string | null;
   connectError: string | null;
@@ -250,9 +256,24 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     setStore(local);
   }, [getLocalStore, store]);
 
+  /* Derived from `store` rather than set alongside it. There are eight places
+     that call setStore, and a parallel setConversationStore at each one is
+     eight chances to miss one and leave chats pointing at the previous folder
+     while notes point at the new one. handleRef is assigned immediately before
+     setStore at every folder site, so reading it here is in step by
+     construction. */
+  const conversationStore = useMemo<ConversationStore | null>(() => {
+    if (store === null) return null;
+    const handle = handleRef.current;
+    return store.kind === 'folder' && handle !== null
+      ? createFolderConversationStore(handle)
+      : createLocalConversationStore();
+  }, [store]);
+
   return useMemo<UseStorageBackendResult>(
     () => ({
       store,
+      conversationStore,
       folderState,
       folderName,
       connectError,
@@ -262,6 +283,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     }),
     [
       store,
+      conversationStore,
       folderState,
       folderName,
       connectError,
