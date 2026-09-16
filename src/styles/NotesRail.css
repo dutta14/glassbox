@@ -227,12 +227,16 @@
   font-size: var(--fs-xs);
   color: var(--accent);
   font-weight: var(--fw-medium);
+  /* Underlined at rest, not just on hover. The accent is ink rather than a
+     hue, so colour no longer separates this from the sentence above it and
+     weight alone is too quiet an affordance to carry a destructive action. */
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .notes-rail__banner-action:hover {
   color: var(--accent-hover);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
 }
 
 .notes-rail__list {

@@ -14,17 +14,22 @@
    --color-text-muted #6b7280 and --color-negative #dc2626 both measure 4.39:1,
    below the 4.5 body-text threshold, so the values below are used instead.
 
+   There is no brand hue. The accent is ink in light mode and paper in dark,
+   because every coloured accent this app tried read as a link and sent people
+   clicking. Colour is reserved for the three semantic states.
+
    Light mode, worst case across bg, surface, alt and hover:
-     text 16.32  text-secondary 7.17  text-muted 5.59  accent 5.17
-     positive 5.14  warning 5.13  negative 5.94  text-on-accent 5.79
-   Borders sit at 1.89:1, matching dark's 1.41-1.98. They divide content
-   rather than identify controls, so 1.4.11 does not apply. */
+     text 16.30  text-secondary 7.21  text-muted 5.63  text-quote 13.58
+     accent 15.66  positive 5.14  warning 5.14  negative 5.95
+     text-on-accent 17.21
+   Borders sit at 1.90:1 at their strongest, matching dark's 1.41-1.98. They
+   divide content rather than identify controls, so 1.4.11 does not apply. */
 :root {
   --color-bg: #f6f5f3;
   --color-surface: #ffffff;
-  --color-surface-alt: #f7f7f8;
-  --color-surface-hover: #f3f4f6;
-  --color-surface-raised: #e9eaec;
+  --color-surface-alt: #f8f7f5;
+  --color-surface-hover: #f5f4f2;
+  --color-surface-raised: #ebeae8;
   --color-surface-quote: #faf9f7;
 
   /* The prompt bubble is the one surface that sits on --color-bg rather than
@@ -34,20 +39,20 @@
      Body text holds 15.2:1 on it. */
   --color-surface-prompt: #edece9;
 
-  --color-text: #14171c;
-  --color-text-secondary: #4a525e;
-  --color-text-muted: #5a6270;
+  --color-text: #181715;
+  --color-text-secondary: #52514f;
+  --color-text-muted: #62615f;
   --color-text-on-accent: #ffffff;
-  --color-text-quote: #23282f;
+  --color-text-quote: #282725;
 
-  --color-border: #e4e7ed;
-  --color-border-light: #d3d8e0;
-  --color-border-strong: #b6bdc9;
+  --color-border: #e8e7e5;
+  --color-border-light: #d8d7d5;
+  --color-border-strong: #bdbcba;
 
-  --accent: #185aea;
-  --accent-hover: #1d4ed8;
-  --accent-light: #185aea1f;
-  --accent-lighter: #f0f5ff;
+  --accent: #1c1b19;
+  --accent-hover: #000000;
+  --accent-light: #1c1b191f;
+  --accent-lighter: #f1efec;
 
   --color-positive: #0e755b;
   --color-warning: #886000;
@@ -116,8 +121,8 @@
   /* Overlays are not surfaces, so they sit outside the surface ramp. The
      fallback is heavier because without blur it is the only thing separating
      the modal from the page behind it. */
-  --color-search-backdrop: rgba(20, 23, 28, 0.24);
-  --color-search-backdrop-fallback: rgba(20, 23, 28, 0.42);
+  --color-search-backdrop: rgba(24, 23, 21, 0.24);
+  --color-search-backdrop-fallback: rgba(24, 23, 21, 0.42);
   --backdrop-search-filter: blur(12px) saturate(1.2);
 
   --duration-fast: 120ms;
@@ -152,7 +157,8 @@
 
    Dark mode, worst case across all six surfaces:
      text 10.75  text-secondary 5.91  text-muted 4.56  text-quote 9.35
-     accent 5.15  positive 6.24  warning 6.47  negative 4.90 */
+     accent 10.75  positive 6.24  warning 6.47  negative 4.90
+     text-on-accent 15.18 */
 body.dark {
   --color-bg: #161616;
   --color-surface: #1e1e1e;
@@ -174,10 +180,10 @@ body.dark {
   --color-border-light: #3a3a3a;
   --color-border-strong: #4a4a4a;
 
-  --accent: #7aa2ff;
-  --accent-hover: #5f8cf5;
-  --accent-light: #7aa2ff1f;
-  --accent-lighter: #16233d;
+  --accent: #ebebeb;
+  --accent-hover: #ffffff;
+  --accent-light: #ebebeb1f;
+  --accent-lighter: #2e2e2e;
 
   --color-positive: #4ec9a4;
   --color-warning: #e0b155;
