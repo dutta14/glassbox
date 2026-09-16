@@ -29,6 +29,8 @@ export interface UseConversationsResult {
   append: (text: string, answer: Answer) => void;
   remove: (id: string) => void;
   isFirstAssistantMessage: (id: string) => boolean;
+  /** Records the store found but could not read. Drives the warning banner. */
+  skippedCount: number;
 }
 
 export const useConversations = (
@@ -36,18 +38,20 @@ export const useConversations = (
 ): UseConversationsResult => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [skippedCount, setSkippedCount] = useState(0);
 
   useEffect(() => {
     if (store === null) return;
     let cancelled = false;
     void store
       .list()
-      .then((loaded) => {
+      .then(({ conversations: loaded, skipped }) => {
         if (cancelled) return;
         // Sorted here rather than trusted from the backend. Order is what the
         // rail shows, so it stays this hook's responsibility no matter which
         // store is behind it or what someone hand-edited on disk.
         setConversations([...loaded].sort(byNewestFirst));
+        setSkippedCount(skipped);
       })
       .catch(() => {
         // A backend that cannot be read leaves the user in an empty draft
@@ -170,5 +174,6 @@ export const useConversations = (
     append,
     remove,
     isFirstAssistantMessage,
+    skippedCount,
   };
 };

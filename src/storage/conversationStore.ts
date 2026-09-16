@@ -1,12 +1,14 @@
 import type { Answer, ChatMessage, Conversation, ScoredChunk, Trace } from '../types';
-import type { ConversationStore } from './types';
-import { slugify } from './markdown';
+import type { ConversationStore, ConversationListResult } from './types';
 
 export const CHATS_DIR = 'chats';
 export const CONVERSATIONS_KEY = 'glassbox.conversations.v1';
 
+/* Named by id alone. The title is the user's first prompt and can contain
+   anything they typed, so deriving a filename from it means sanitising text
+   that is allowed to be arbitrary. The id is already filename safe. */
 export const conversationFilename = (conversation: Conversation): string =>
-  `${slugify(conversation.title)}-${conversation.id}.json`;
+  `${conversation.id}.json`;
 
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'string');
@@ -120,8 +122,9 @@ export const createFolderConversationStore = (root: FileSystemDirectoryHandle): 
     return { conversation: parsed, filename: fileHandle.name };
   };
 
-  const list = async (): Promise<Conversation[]> => {
+  const list = async (): Promise<ConversationListResult> => {
     const conversations: Conversation[] = [];
+    let skipped = 0;
     const handle = await dir();
 
     for await (const entry of handle.values()) {
@@ -129,13 +132,18 @@ export const createFolderConversationStore = (root: FileSystemDirectoryHandle): 
       if (!entry.name.toLowerCase().endsWith('.json')) continue;
 
       const parsed = await readFile(entry);
-      if (!parsed) continue;
+      if (!parsed) {
+        skipped++;
+        continue;
+      }
 
+      // The name on disk, not the name we would generate. A file renamed by
+      // hand still deletes correctly because this is what remove looks up.
       filenamesById.set(parsed.conversation.id, parsed.filename);
       conversations.push(parsed.conversation);
     }
 
-    return sortByUpdatedAtDesc(conversations);
+    return { conversations: sortByUpdatedAtDesc(conversations), skipped };
   };
 
   const writeFile = async (name: string, contents: string): Promise<void> => {
@@ -155,19 +163,10 @@ export const createFolderConversationStore = (root: FileSystemDirectoryHandle): 
   };
 
   const remove = async (id: string): Promise<void> => {
-    let name = filenamesById.get(id);
-    if (!name) {
-      for await (const entry of (await dir()).values()) {
-        if (entry.kind !== 'file') continue;
-        if (!entry.name.toLowerCase().endsWith('.json')) continue;
-        const parsed = await readFile(entry);
-        if (parsed && parsed.conversation.id === id) {
-          name = entry.name;
-          break;
-        }
-      }
-    }
-    if (!name) return;
+    /* list() records the real filename for everything it read, so a file
+       renamed by hand is still found. Anything else is at the name we would
+       have written it under. */
+    const name = filenamesById.get(id) ?? `${id}.json`;
 
     try {
       await (await dir()).removeEntry(name);
@@ -186,15 +185,19 @@ export const createFolderConversationStore = (root: FileSystemDirectoryHandle): 
 };
 
 export const createLocalConversationStore = (): ConversationStore => {
-  const readAll = (): Conversation[] => {
+  const readAll = (): ConversationListResult => {
     try {
       const raw = localStorage.getItem(CONVERSATIONS_KEY);
-      if (raw === null) return [];
+      if (raw === null) return { conversations: [], skipped: 0 };
       const parsed: unknown = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      return sortByUpdatedAtDesc(parsed.filter(isConversation));
+      if (!Array.isArray(parsed)) return { conversations: [], skipped: 0 };
+      const conversations = parsed.filter(isConversation);
+      return {
+        conversations: sortByUpdatedAtDesc(conversations),
+        skipped: parsed.length - conversations.length,
+      };
     } catch {
-      return [];
+      return { conversations: [], skipped: 0 };
     }
   };
 
@@ -208,16 +211,17 @@ export const createLocalConversationStore = (): ConversationStore => {
 
   return {
     kind: 'local',
-    list: async (): Promise<Conversation[]> => readAll(),
+    list: async (): Promise<ConversationListResult> => readAll(),
     put: async (conversation: Conversation): Promise<void> => {
-      const conversations = readAll();
+      const { conversations } = readAll();
       const idx = conversations.findIndex((item) => item.id === conversation.id);
       if (idx >= 0) conversations[idx] = conversation;
       else conversations.push(conversation);
       writeAll(conversations);
     },
     remove: async (id: string): Promise<void> => {
-      writeAll(readAll().filter((conversation) => conversation.id !== id));
+      const { conversations } = readAll();
+      writeAll(conversations.filter((conversation) => conversation.id !== id));
     },
   };
 };

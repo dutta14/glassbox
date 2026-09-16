@@ -56,7 +56,7 @@ const fakeStore = (initial: Conversation[] = []): FakeStore => ({
   kind: 'local',
   puts: [],
   removed: [],
-  list: async () => initial,
+  list: async () => ({ conversations: initial, skipped: 0 }),
   async put(conversation) {
     this.puts.push(conversation);
   },
@@ -360,7 +360,7 @@ describe('useConversations — persistence calls', () => {
   it('survives a store whose put rejects', () => {
     const store: ConversationStore = {
       kind: 'local',
-      list: async () => [],
+      list: async () => ({ conversations: [], skipped: 0 }),
       put: () => Promise.reject(new Error('disk full')),
       remove: async () => {},
     };

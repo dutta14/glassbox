@@ -43,11 +43,21 @@ export interface NotesStore {
  * so a transcript sitting beside notes would be indexed and quoted back as
  * though the user had written it.
  */
+/**
+ * What a load found. `skipped` counts records that were present but could not
+ * be read as a conversation, so the app can say some chats are missing instead
+ * of quietly showing a shorter list than the folder contains.
+ */
+export interface ConversationListResult {
+  conversations: Conversation[];
+  skipped: number;
+}
+
 export interface ConversationStore {
   readonly kind: 'local' | 'folder';
 
-  /** Load every conversation. Malformed records are dropped, never thrown. */
-  list(): Promise<Conversation[]>;
+  /** Load every conversation. Malformed records are skipped, never thrown. */
+  list(): Promise<ConversationListResult>;
 
   /** Create or update a single conversation. One file / one record touched. */
   put(conversation: Conversation): Promise<void>;
