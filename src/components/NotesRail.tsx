@@ -4,6 +4,7 @@ import { NoteListItem } from "./NoteListItem";
 import { ConversationItem } from "./ConversationItem";
 import { NoteSearchModal } from "./NoteSearchModal";
 import { RailFlyout } from "./RailFlyout";
+import { RailTip } from "./RailTip";
 import { useScrollFades } from "../hooks/useScrollFades";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { StorageControl } from "./StorageControl";
@@ -275,7 +276,7 @@ export const NotesRail = ({
             way back once the rail is shut. */}
         <button
           type="button"
-          className="notes-rail__toggle"
+          className="notes-rail__toggle rail-tip-host"
           onClick={toggleCollapsed}
           aria-expanded={!collapsed}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -298,6 +299,7 @@ export const NotesRail = ({
             />
             <path d="M7.75 4v12" stroke="currentColor" strokeWidth="1.5" />
           </svg>
+          <RailTip label={collapsed ? "Expand sidebar" : "Collapse sidebar"} />
         </button>
       </div>
 
@@ -488,7 +490,7 @@ export const NotesRail = ({
         <div className="notes-rail__icons">
           <button
             type="button"
-            className="rail-flyout__trigger"
+            className="rail-flyout__trigger rail-tip-host"
             onClick={onNewChat}
             aria-label="New chat"
             aria-current={draftActive ? "true" : undefined}
@@ -501,11 +503,12 @@ export const NotesRail = ({
                 strokeLinejoin="round"
               />
             </svg>
+            <RailTip label="New chat" />
           </button>
 
           <button
             type="button"
-            className="rail-flyout__trigger"
+            className="rail-flyout__trigger rail-tip-host"
             onClick={onCreate}
             aria-label="New note"
           >
@@ -517,12 +520,13 @@ export const NotesRail = ({
                 strokeLinecap="round"
               />
             </svg>
+            <RailTip label="New note" />
           </button>
 
           <button
             ref={searchToggleRef}
             type="button"
-            className="rail-flyout__trigger"
+            className="rail-flyout__trigger rail-tip-host"
             onClick={() => setSearchOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={searchOpen}
@@ -537,6 +541,7 @@ export const NotesRail = ({
                 strokeLinecap="round"
               />
             </svg>
+            <RailTip label="Search notes" />
           </button>
 
           <div className="notes-rail__icons-divider" />

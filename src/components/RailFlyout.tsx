@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useDismissable } from "../hooks/useDismissable";
+import { RailTip } from "./RailTip";
 import "../styles/RailFlyout.css";
 
 interface FlyoutPosition {
@@ -101,13 +102,16 @@ export const RailFlyout = ({
       <button
         ref={triggerRef}
         type="button"
-        className={`rail-flyout__trigger${open ? " rail-flyout__trigger--open" : ""}`}
+        className={`rail-flyout__trigger rail-tip-host${open ? " rail-flyout__trigger--open" : ""}`}
         onClick={() => onOpenChange(!open)}
         aria-haspopup="true"
         aria-expanded={open}
         aria-label={label}
       >
         {icon}
+        {/* Dropped while the panel is open. The panel names itself in its own
+            heading, and the tip would otherwise sit on top of it. */}
+        {!open && <RailTip label={label} />}
       </button>
       {open &&
         createPortal(

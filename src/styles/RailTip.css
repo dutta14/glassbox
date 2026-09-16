@@ -1,0 +1,62 @@
+/* Labels for the collapsed rail's icons.
+
+   The rail is one icon wide, so the tip has to sit outside it. It is absolutely
+   positioned rather than portalled like the flyout panel: a tip is small enough
+   to clear the rail without reaching the viewport edge, so none of the flipping
+   and clamping the panel needs applies here. Nothing between the button and
+   .app clips, so absolute positioning is enough. */
+
+.rail-tip-host {
+  position: relative;
+}
+
+.rail-tip {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + var(--space-2));
+  transform: translateY(-50%);
+  /* Above the rail but below the flyout panel, which can overlap this space
+     while it is open. */
+  z-index: 55;
+  padding: 5px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  line-height: 1.2;
+  white-space: nowrap;
+  /* Never steals the pointer: the tip overlaps the editor, and a tip that can
+     be hovered would flicker as the cursor crosses its own label. */
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--duration-fast) var(--ease-out),
+    visibility var(--duration-fast);
+}
+
+/* Delayed on hover so the tips do not fire in sequence while the pointer is
+   only passing through the column on its way somewhere else. */
+.rail-tip-host:hover > .rail-tip {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 400ms;
+}
+
+/* Immediate on focus. A keyboard user has already committed to the control by
+   the time they land on it, so there is nothing to wait out. Declared after
+   the hover rule so it wins the delay when both apply. */
+.rail-tip-host:focus-visible > .rail-tip {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-tip {
+    transition: none;
+  }
+}
