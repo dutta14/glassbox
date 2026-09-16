@@ -103,7 +103,21 @@ const AppReady = ({
 
   const [activeTab, setActiveTab] = useState<Tab>("chat");
 
-  const handleOpenChat = useCallback(() => setActiveTab("chat"), []);
+  /* Always a fresh draft. Returning to whatever thread was last open would
+     make the row ambiguous: it would sometimes resume and sometimes start
+     over, depending on history the user cannot see. */
+  const handleNewChat = useCallback(() => {
+    setActiveTab("chat");
+    startDraft();
+  }, [startDraft]);
+
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      setActiveTab("chat");
+      selectConversation(id);
+    },
+    [selectConversation],
+  );
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
     notes[0]?.id ?? null,
   );
@@ -246,7 +260,11 @@ const AppReady = ({
             connectError={connectError}
             onSelect={handleSelectNote}
             onCreate={handleCreateNote}
-            onOpenChat={handleOpenChat}
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            onNewChat={handleNewChat}
+            onSelectConversation={handleSelectConversation}
+            onDeleteConversation={removeConversation}
             chatActive={activeTab === "chat"}
             onDeleteNote={handleDeleteNote}
             onDeleteSamples={deleteSampleNotes}
@@ -268,6 +286,20 @@ const AppReady = ({
             {!storageAvailable && (
               <div className="stage__banner" role="status">
                 {COPY.storageUnavailable}
+              </div>
+            )}
+
+            {/* AC 60. Skipping unreadable chats without saying so leaves the
+                rail looking like a complete list that is quietly short. This
+                is status rather than alert: nothing the user just did caused
+                it, and it is already true by the time they see the app. */}
+            {skippedChatCount > 0 && (
+              <div className="stage__banner stage__banner--warn" role="status">
+                <span>
+                  {skippedChatCount === 1
+                    ? "1 chat could not be loaded. Your notes are unaffected."
+                    : `${skippedChatCount} chats could not be loaded. Your notes are unaffected.`}
+                </span>
               </div>
             )}
 

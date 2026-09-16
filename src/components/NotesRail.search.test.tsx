@@ -43,7 +43,11 @@ const renderRail = (overrides: { notes?: Note[] } = {}) => {
       connectError={null}
       onSelect={onSelect}
       onCreate={onCreate}
-      onOpenChat={vi.fn()}
+      conversations={[]}
+      activeConversationId={null}
+      onNewChat={vi.fn()}
+      onSelectConversation={vi.fn()}
+      onDeleteConversation={vi.fn()}
       chatActive={false}
       onDeleteNote={vi.fn()}
       onDeleteSamples={vi.fn()}
@@ -74,13 +78,26 @@ describe("NotesRail search wiring", () => {
     expect(topRow!.textContent).toContain("Glassbox");
   });
 
-  it("no longer keeps an actions group beside the Notes heading", () => {
+  /* There are two section headers now, Chats and Notes. Targeting the
+     heading and walking up means this keeps testing the Notes header rather
+     than whichever one happens to come first in the DOM. */
+  it("no longer keeps a search control beside the Notes heading", () => {
     renderRail();
-    const section = document.querySelector(".notes-rail__section");
+    const section = screen
+      .getByRole("heading", { name: "Notes" })
+      .closest(".notes-rail__section");
 
     expect(section).not.toBeNull();
     expect(section!.textContent).toContain("Notes");
-    expect(section!.querySelector("button")).toBeNull();
+    // The heading does own a button now, the accordion toggle. Naming it here
+    // rather than asserting "no buttons" keeps the claim about search.
+    const buttons = Array.from(section!.querySelectorAll("button"));
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveAttribute("aria-expanded");
+    expect(buttons[0].textContent).toContain("Notes");
+    expect(
+      section!.querySelector('[aria-label="Search notes"]'),
+    ).toBeNull();
   });
 
   it("keeps the modal closed until the glyph is used", () => {
@@ -203,12 +220,28 @@ describe("NotesRail search wiring", () => {
   it("does not repeat the empty-state heading in its body copy", () => {
     renderRail({ notes: [] });
 
-    const body = document.querySelector(".notes-rail__empty-body");
+    // Both lists are empty here, so this has to pick the notes one by name
+    // rather than by position.
+    const title = screen.getByText("No notes yet");
+    const body = title.parentElement?.querySelector(".notes-rail__empty-body");
 
-    expect(document.querySelector(".notes-rail__empty-title")?.textContent).toBe(
-      "No notes yet",
-    );
+    expect(title).toHaveClass("notes-rail__empty-title");
     expect(body?.textContent).not.toContain("No notes yet");
     expect(body?.textContent?.trim()).toBeTruthy();
+  });
+
+  it("gives the chats list its own empty state, distinct from the notes one", () => {
+    renderRail({ notes: [] });
+
+    const chatsTitle = screen.getByText("No chats yet");
+    const chatsBody =
+      chatsTitle.parentElement?.querySelector(".notes-rail__empty-body");
+
+    expect(chatsBody?.textContent).not.toContain("No chats yet");
+    expect(chatsBody?.textContent).not.toBe(
+      screen
+        .getByText("No notes yet")
+        .parentElement?.querySelector(".notes-rail__empty-body")?.textContent,
+    );
   });
 });

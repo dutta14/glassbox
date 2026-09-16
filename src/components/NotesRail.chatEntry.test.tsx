@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { ChatPanel } from "./ChatPanel";
 import { NoteEditor } from "./NoteEditor";
 import { NotesRail } from "./NotesRail";
-import type { Note } from "../types";
+import type { Conversation, Note } from "../types";
 
 /**
  * The Chat/Editor tablist above the stage is gone and the rail is now the only
@@ -25,10 +25,23 @@ const mkNote = (id: string, title: string, body = ""): Note => ({
   updatedAt: iso,
 });
 
+const mkConversation = (id: string, title: string): Conversation => ({
+  id,
+  title,
+  messages: [],
+  createdAt: iso,
+  updatedAt: iso,
+});
+
 const renderRail = (
-  overrides: { chatActive?: boolean; selectedNoteId?: string | null } = {},
+  overrides: {
+    chatActive?: boolean;
+    selectedNoteId?: string | null;
+    conversations?: Conversation[];
+    activeConversationId?: string | null;
+  } = {},
 ) => {
-  const onOpenChat = vi.fn();
+  const onNewChat = vi.fn();
   const onCreate = vi.fn();
   render(
     <NotesRail
@@ -40,7 +53,11 @@ const renderRail = (
       connectError={null}
       onSelect={vi.fn()}
       onCreate={onCreate}
-      onOpenChat={onOpenChat}
+      conversations={overrides.conversations ?? []}
+      activeConversationId={overrides.activeConversationId ?? null}
+      onNewChat={onNewChat}
+      onSelectConversation={vi.fn()}
+      onDeleteConversation={vi.fn()}
       chatActive={overrides.chatActive ?? false}
       onDeleteNote={vi.fn()}
       onDeleteSamples={vi.fn()}
@@ -51,10 +68,10 @@ const renderRail = (
       onToggleTheme={vi.fn()}
     />,
   );
-  return { onOpenChat, onCreate };
+  return { onNewChat, onCreate };
 };
 
-const chatEntry = () => screen.getByRole("button", { name: "Chat" });
+const chatEntry = () => screen.getByRole("button", { name: "New chat" });
 const newNote = () => screen.getByRole("button", { name: "New note" });
 
 describe("rail chat entry", () => {
@@ -67,16 +84,16 @@ describe("rail chat entry", () => {
     expect(chatEntry().nextElementSibling).toBe(newNote());
   });
 
-  it("opens the chat when the entry is pressed", async () => {
-    const { onOpenChat, onCreate } = renderRail();
+  it("starts a new chat when the entry is pressed", async () => {
+    const { onNewChat, onCreate } = renderRail();
 
     await userEvent.click(chatEntry());
 
-    expect(onOpenChat).toHaveBeenCalledTimes(1);
+    expect(onNewChat).toHaveBeenCalledTimes(1);
     expect(onCreate).not.toHaveBeenCalled();
   });
 
-  it("marks the chat entry as current while the chat is showing", () => {
+  it("marks the new-chat entry as current while an unsent draft is showing", () => {
     renderRail({ chatActive: true });
 
     expect(chatEntry()).toHaveAttribute("aria-current", "true");
@@ -112,6 +129,84 @@ describe("rail chat entry", () => {
     expect(
       screen.getByRole("button", { name: "Postgres tuning" }),
     ).toHaveAttribute("aria-current", "true");
+  });
+
+  /**
+   * Three things can be current now: an unsent draft, a saved conversation,
+   * and a note. Exactly one of them may say so. These are the pairs that a
+   * naive implementation marks twice.
+   */
+  it("drops the current marker from the new-chat entry once a saved chat is open", () => {
+    renderRail({
+      chatActive: true,
+      conversations: [mkConversation("c1", "why is the fog grading?")],
+      activeConversationId: "c1",
+    });
+
+    expect(chatEntry()).not.toHaveAttribute("aria-current");
+    expect(
+      screen.getByRole("button", { name: "why is the fog grading?" }),
+    ).toHaveAttribute("aria-current", "true");
+  });
+
+  it("marks exactly one row current when a saved chat is open", () => {
+    renderRail({
+      chatActive: true,
+      selectedNoteId: "n1",
+      conversations: [
+        mkConversation("c1", "first chat"),
+        mkConversation("c2", "second chat"),
+      ],
+      activeConversationId: "c2",
+    });
+
+    expect(document.querySelectorAll('[aria-current="true"]')).toHaveLength(1);
+  });
+
+  it("marks no conversation current while a note is open", () => {
+    renderRail({
+      chatActive: false,
+      selectedNoteId: "n1",
+      conversations: [mkConversation("c1", "first chat")],
+      activeConversationId: "c1",
+    });
+
+    expect(
+      screen.getByRole("button", { name: "first chat" }),
+    ).not.toHaveAttribute("aria-current");
+    expect(document.querySelectorAll('[aria-current="true"]')).toHaveLength(1);
+  });
+
+  it("shows the chats empty state when there are no conversations", () => {
+    renderRail();
+
+    expect(screen.getByText("No chats yet")).toBeInTheDocument();
+  });
+
+  it("lists the chats section above the notes section", () => {
+    renderRail({ conversations: [mkConversation("c1", "a chat")] });
+
+    const chats = screen.getByRole("heading", { name: "Chats" });
+    const notes = screen.getByRole("heading", { name: "Notes" });
+
+    expect(
+      chats.compareDocumentPosition(notes) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  /* One scroll area, not two. Two would run out of room independently and
+     strand one list while the other still had space. */
+  it("puts both lists inside the same scrolling element", () => {
+    renderRail({ conversations: [mkConversation("c1", "a chat")] });
+
+    const scroller = document.querySelector(".notes-rail__list");
+
+    expect(scroller?.contains(screen.getByRole("button", { name: "a chat" }))).toBe(
+      true,
+    );
+    expect(
+      scroller?.contains(screen.getByRole("button", { name: "Postgres tuning" })),
+    ).toBe(true);
   });
 
   it("no longer renders a tablist anywhere in the rail", () => {

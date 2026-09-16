@@ -19,6 +19,11 @@ export const COPY = {
   tagEmpty: (tag: string) => `No notes tagged #${tag}.`,
 
   untitled: 'Untitled',
+  /* A chat is titled by its first prompt, so this only appears if that prompt
+     was whitespace. Distinct from a note's "Untitled" so the two lists in the
+     rail never show an identical unlabelled row. */
+  untitledChat: 'Untitled chat',
+  emptyChatsSidebar: 'Ask a question to start a chat.',
 
   emptyNotesSidebar: 'Use New note to start one.',
   emptyNotesChat: 'Add a note to ask questions about it.',

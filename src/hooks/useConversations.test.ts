@@ -356,6 +356,38 @@ describe('useConversations — reasoning disclosure', () => {
   });
 });
 
+/**
+ * AC 10, carried over from useChat when it was deleted. A message is a
+ * snapshot taken at the moment of citing, not a live view onto the Answer the
+ * engine handed back. If the caller reuses or mutates that object, what was
+ * already quoted must not change underneath the user.
+ */
+describe('useConversations — a cited answer is frozen at cite time', () => {
+  it('keeps the message text when the caller mutates the Answer afterwards', () => {
+    const ans = goodAnswer('original text');
+    const { result } = setup();
+    act(() => result.current.append('q', ans));
+
+    ans.text = 'mutated after append';
+
+    expect(result.current.messages[1].text).toBe('original text');
+  });
+
+  it('keeps the message text when the same Answer object is reused for a second prompt', () => {
+    const ans = goodAnswer('first');
+    const { result } = setup();
+    act(() => result.current.append('q1', ans));
+    ans.text = 'second';
+    act(() => result.current.append('q2', ans));
+
+    const assistantTexts = result.current.messages
+      .filter((m) => m.role === 'assistant')
+      .map((m) => m.text);
+
+    expect(assistantTexts).toEqual(['first', 'second']);
+  });
+});
+
 describe('useConversations — persistence calls', () => {
   it('writes only the touched conversation rather than the whole list', async () => {
     const store = fakeStore([

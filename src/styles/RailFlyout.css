@@ -1,0 +1,85 @@
+/* The collapsed rail's icon buttons and the panels they open. */
+
+.rail-flyout__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.rail-flyout__trigger:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+/* Held while the panel is open, so the icon still reads as the source of the
+   panel once the pointer has moved off it. */
+.rail-flyout__trigger--open {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.rail-flyout__panel {
+  position: fixed;
+  z-index: 60;
+  width: 260px;
+  max-height: min(70vh, 460px);
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  /* Raised rather than flat: this floats over the editor, so it needs to read
+     as a layer above it rather than a hole cut into it. */
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-lg);
+}
+
+.rail-flyout__panel:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.rail-flyout__heading {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-muted);
+}
+
+.rail-flyout__empty {
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.rail-flyout__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* The icon column itself. */
+.notes-rail__icons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+}
+
+/* Separates the two list flyouts from the actions above them, echoing the gap
+   the expanded rail puts above each section heading. */
+.notes-rail__icons-divider {
+  width: 22px;
+  height: 1px;
+  margin: var(--space-2) 0;
+  background: var(--color-border);
+}

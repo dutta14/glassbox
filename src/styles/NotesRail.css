@@ -45,7 +45,11 @@
      need padding for a hit area and their glyphs carry transparent margin
      inside the viewBox, so they pull back out by exactly that much: 4px of
      button padding plus the 4px the hamburger bars sit in from x=0. */
-  margin-left: calc(var(--space-2) * -1);
+  /* Sits at the end of the row now. The negative margin sheds the button's
+     own padding so the glyph lines up with the rail's right edge the same way
+     the search glyph does. */
+  margin-left: 0;
+  margin-right: calc(var(--space-2) * -1);
   color: var(--color-text-muted);
   border-radius: var(--radius);
   transition:
@@ -62,6 +66,7 @@
    resolves --fs-md through body.modern-design, which redefines it to 0.875rem.
    Matching the declaration would have rendered 2px larger than the reference. */
 .notes-rail__brand {
+  margin-right: auto;
   font-size: var(--fs-sm);
   font-weight: var(--fw-bold);
   color: var(--color-text);
@@ -129,6 +134,31 @@
   padding: 0 var(--space-3);
   margin-bottom: var(--space-2);
 }
+
+/* A large gap above the label and a tight one below it, so the label reads as
+   belonging to the rows underneath rather than floating between two lists.
+   The gap is what separates the sections; there is no rule or divider. */
+.notes-rail__list > .notes-rail__section {
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-1);
+}
+
+/* The first label sits closer to the New note row above it. A full gap there
+   would leave the list looking detached from the two entries it belongs to. */
+.notes-rail__list > .notes-rail__section:first-child {
+  margin-top: var(--space-4);
+}
+
+/* Opaque, because rows scroll underneath it. Sitting above them in the stack
+   is not enough on its own: without a background the text overlaps. */
+.notes-rail__section--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-surface);
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+}
 .notes-rail__title {
   margin: 0;
   font-size: var(--fs-sm);
@@ -141,8 +171,8 @@
 .notes-rail__actions {
   display: flex;
   align-items: center;
-  /* Pushed to the far end of the top row, away from the brand. */
-  margin-left: auto;
+  /* The brand claims the free space now, so this just sits where it falls,
+     between the brand and the sidebar toggle. */
   /* Mirror of the toggle: shed the 28px button's inner 6px so the glyph sits
      the same 24px off the rail edge as the titles do on the left. */
   margin-right: -6px;
@@ -272,5 +302,45 @@
     padding: 0;
     overflow: hidden;
     border-right: 0;
+  }
+}
+
+/* Accordion heading. The h2 keeps the heading role for the outline; this
+   button inside it is what actually toggles. Full width so the whole heading
+   row is the hit area, not just the word. */
+.notes-rail__title-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.notes-rail__title-toggle:hover {
+  color: var(--color-text);
+}
+
+.notes-rail__chevron {
+  flex: 0 0 auto;
+  /* Right when shut, down when open. Rotating one glyph rather than swapping
+     two keeps the turn readable as the same arrow moving. */
+  transform: rotate(0deg);
+  transition: transform 150ms ease-in-out;
+}
+
+.notes-rail__chevron--open {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-rail__chevron {
+    transition: none;
   }
 }

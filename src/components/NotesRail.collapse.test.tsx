@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { NotesRail } from "./NotesRail";
 import type { Note } from "../types";
 
@@ -27,7 +28,7 @@ const notes = [
   mkNote("n2", "Sourdough", "the starter was underfed"),
 ];
 
-const renderRail = () =>
+const renderRail = (overrides: Partial<ComponentProps<typeof NotesRail>> = {}) =>
   render(
     <NotesRail
       notes={notes}
@@ -38,7 +39,11 @@ const renderRail = () =>
       connectError={null}
       onSelect={vi.fn()}
       onCreate={vi.fn()}
-      onOpenChat={vi.fn()}
+      conversations={[]}
+      activeConversationId={null}
+      onNewChat={vi.fn()}
+      onSelectConversation={vi.fn()}
+      onDeleteConversation={vi.fn()}
       chatActive={false}
       onDeleteNote={vi.fn()}
       onDeleteSamples={vi.fn()}
@@ -47,6 +52,7 @@ const renderRail = () =>
       onDisconnectFolder={vi.fn()}
       theme="dark"
       onToggleTheme={vi.fn()}
+      {...overrides}
     />,
   );
 
@@ -128,7 +134,9 @@ describe("NotesRail collapse", () => {
    * collapsing has to reset. What collapsing must still do is take the glyph
    * out of the tab order rather than leave an invisible control behind.
    */
-  it("hides the search glyph while collapsed and brings it back on expand", async () => {
+  /* Search survives the collapse now. It used to be dropped, which meant
+     collapsing the rail quietly took a feature away. */
+  it("keeps search reachable while collapsed", async () => {
     const user = userEvent.setup();
     renderRail();
 
@@ -138,13 +146,55 @@ describe("NotesRail collapse", () => {
 
     await user.click(collapseButton());
     expect(
-      screen.queryByRole("button", { name: "Search notes" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Search notes" }),
+    ).toBeInTheDocument();
 
     await user.click(collapseButton());
     expect(
       screen.getByRole("button", { name: "Search notes" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps both list sections reachable while collapsed, as flyout triggers", async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(collapseButton());
+
+    expect(screen.getByRole("button", { name: "Chats" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: "Notes" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
+  it("opens the collapsed Notes flyout onto the notes themselves", async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(collapseButton());
+    await user.click(screen.getByRole("button", { name: "Notes" }));
+
+    const panel = screen.getByRole("group", { name: "Notes" });
+    expect(within(panel).getByText("Postgres tuning")).toBeInTheDocument();
+  });
+
+  it("closes the collapsed flyout once a note in it is chosen", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    renderRail({ onSelect });
+
+    await user.click(collapseButton());
+    await user.click(screen.getByRole("button", { name: "Notes" }));
+    await user.click(within(screen.getByRole("group", { name: "Notes" })).getByText(
+      "Postgres tuning",
+    ));
+
+    expect(onSelect).toHaveBeenCalledWith("n1");
+    expect(screen.queryByRole("group", { name: "Notes" })).toBeNull();
   });
 
   it("keeps every note in the rail list across a collapse and expand", async () => {
@@ -171,5 +221,49 @@ describe("NotesRail collapse", () => {
 
     expect(screen.queryByText("Glassbox")).not.toBeInTheDocument();
     setItem.mockRestore();
+  });
+
+  /* Ordering is the part of this layout a test can hold. The rail's CSS is not
+     exercised by the suite, so position on screen is not verifiable here, but
+     DOM order drives both the visual order and the tab order. */
+  it("puts the sidebar toggle last in the header, after the search glyph", () => {
+    renderRail();
+
+    const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
+    const search = screen.getByRole("button", { name: "Search notes" });
+    const topRow = toggle.closest(".notes-rail__top-row");
+
+    expect(topRow).not.toBeNull();
+    expect(topRow!.lastElementChild).toBe(toggle);
+    expect(
+      search.compareDocumentPosition(toggle) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("puts the brand before both header controls", () => {
+    renderRail();
+
+    const brand = screen.getByText("Glassbox");
+    const search = screen.getByRole("button", { name: "Search notes" });
+
+    expect(
+      brand.compareDocumentPosition(search) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("keeps the toggle rendered when the rail is collapsed, since nothing else can reopen it", async () => {
+    renderRail();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+
+    expect(
+      screen.getByRole("button", { name: "Expand sidebar" }),
+    ).toBeInTheDocument();
+    // The brand is the thing that actually goes away, so it stands in for
+    // "the rail really is collapsed" now that search stays.
+    expect(screen.queryByText("Glassbox")).toBeNull();
   });
 });

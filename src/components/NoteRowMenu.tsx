@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useDismissable } from "../hooks/useDismissable";
 import { createPortal } from "react-dom";
 import "../styles/NoteRowMenu.css";
 
@@ -77,58 +78,14 @@ export const NoteRowMenu = ({
     firstItemRef.current?.focus();
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
+  const close = useCallback(() => onOpenChange(false), [onOpenChange]);
 
-    /** The menu is no longer a DOM descendant of the row, so containment has
-        to be asked of both halves. */
-    const inside = (target: Node | null): boolean =>
-      rootRef.current?.contains(target) === true ||
-      listRef.current?.contains(target) === true;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      // Stopped so the editor and any ancestor handler do not also react to
-      // the same Escape that only meant "close this menu".
-      e.stopPropagation();
-      onOpenChange(false);
-      triggerRef.current?.focus();
-    };
-
-    /** Pointer rather than click, so the menu is gone before the press lands
-        on whatever is underneath it. */
-    const onPointerDown = (e: PointerEvent) => {
-      if (inside(e.target as Node)) return;
-      onOpenChange(false);
-    };
-
-    // Tabbing out of the menu should dismiss it. Deferred because at keydown
-    // time focus has not moved yet.
-    const onFocusOut = () => {
-      requestAnimationFrame(() => {
-        if (inside(document.activeElement)) return;
-        onOpenChange(false);
-      });
-    };
-
-    /** Fixed positioning does not follow a scrolling ancestor, so the menu
-        would drift away from its row. Capture, because it is the rail's list
-        that scrolls rather than the window. */
-    const onReflow = () => onOpenChange(false);
-
-    document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("focusout", onFocusOut);
-    document.addEventListener("scroll", onReflow, true);
-    window.addEventListener("resize", onReflow);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("focusout", onFocusOut);
-      document.removeEventListener("scroll", onReflow, true);
-      window.removeEventListener("resize", onReflow);
-    };
-  }, [open, onOpenChange]);
+  useDismissable({
+    open,
+    onClose: close,
+    parts: [rootRef, listRef],
+    returnFocusTo: triggerRef,
+  });
 
   return (
     <div className="note-row__menu" ref={rootRef}>
