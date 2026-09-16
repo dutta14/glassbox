@@ -1,7 +1,7 @@
 import type { Note } from "../types";
 import { COPY } from "../engine/copy";
 import { NoteRowMenu } from "./NoteRowMenu";
-import "../styles/NoteListItem.css";
+import "../styles/RailRow.css";
 
 interface NoteListItemProps {
   note: Note;

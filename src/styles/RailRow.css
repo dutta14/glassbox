@@ -1,11 +1,22 @@
+/* One row style for both rail lists. Chats and notes sit in the same column,
+   one section above the other, so any difference between them would read as
+   meaning rather than as decoration. The two lists are told apart by their
+   headings, not by their rows. */
+
+.conversation-item,
 .note-item {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
   width: 100%;
+  min-width: 0;
   padding: var(--space-2) var(--space-3);
-  background: transparent;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--fs-sm);
   text-align: left;
   cursor: pointer;
   transition:
@@ -13,46 +24,38 @@
     color var(--duration-fast) var(--ease-out);
 }
 
+.conversation-item:hover,
 .note-item:hover {
   background: var(--color-surface-alt);
-}
-
-.note-item:hover .note-item__title {
   color: var(--color-text);
 }
 
 /* Neutral rather than an accent wash, matching how chat apps mark the open
-   conversation. Selection takes the heavier surface step and hover the lighter
-   one, so a selected row does not appear to lighten when the pointer lands on
-   it. Listed after :hover so it wins on a selected row. */
+   conversation. Listed after :hover so it wins on a selected row. */
+.conversation-item--selected,
+.conversation-item--selected:hover,
 .note-item--selected,
 .note-item--selected:hover {
-  background: var(--color-surface-raised);
-}
-
-/* Full-strength text and weight carry the selection alongside the wash, so it
-   does not rest on one quiet background difference. */
-.note-item--selected .note-item__title {
+  background: var(--color-surface-alt);
   color: var(--color-text);
-  font-weight: var(--fw-semibold);
 }
 
 /* The wash is deliberately quiet, and a background difference may not survive
    a forced-colors palette swap. aria-current carries the signal for assistive
    tech; this covers sighted high-contrast users. */
 @media (forced-colors: active) {
+  .conversation-item--selected,
   .note-item--selected {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
 }
 
+.conversation-item__title,
 .note-item__title {
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  color: var(--color-text-muted);
+  flex: 1;
+  min-width: 0;
   line-height: var(--leading-tight);
-  transition: color var(--duration-fast) var(--ease-out);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
