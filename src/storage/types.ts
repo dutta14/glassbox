@@ -1,4 +1,4 @@
-import type { Note } from '../types';
+import type { Conversation, Note } from '../types';
 
 /**
  * NotesStore abstracts how notes are persisted. The engine and UI never see a
@@ -28,5 +28,30 @@ export interface NotesStore {
   put(note: Note): Promise<void>;
 
   /** Remove a single note by id. Safe to call for an unknown id. */
+  remove(id: string): Promise<void>;
+}
+
+
+/**
+ * ConversationStore is the same shape as NotesStore, for the same reasons, over
+ * a different record. Conversations are whole-record writes rather than
+ * per-field: a transcript is appended to as a unit, and a conversation is small
+ * enough that rewriting one file per submitted prompt costs nothing.
+ *
+ * Conversations live in `chats/`, notes in `notes/`. They must never share a
+ * directory. The folder note store reads every `.md` file it scans as a note,
+ * so a transcript sitting beside notes would be indexed and quoted back as
+ * though the user had written it.
+ */
+export interface ConversationStore {
+  readonly kind: 'local' | 'folder';
+
+  /** Load every conversation. Malformed records are dropped, never thrown. */
+  list(): Promise<Conversation[]>;
+
+  /** Create or update a single conversation. One file / one record touched. */
+  put(conversation: Conversation): Promise<void>;
+
+  /** Remove a single conversation by id. Safe to call for an unknown id. */
   remove(id: string): Promise<void>;
 }
