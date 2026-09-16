@@ -67,18 +67,26 @@ export const useDismissable = ({
     /** Fixed positioning does not follow a scrolling ancestor, so the layer
         would drift away from its anchor. Capture, because it is an inner
         container that scrolls rather than the window. */
+    const onScroll = (e: Event) => {
+      // A layer that scrolls its own contents has not moved relative to its
+      // anchor, so it must not dismiss itself. Only an ancestor scrolling
+      // drifts it.
+      if (inside(e.target as Node)) return;
+      onClose();
+    };
+
     const onReflow = () => onClose();
 
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("focusout", onFocusOut);
-    document.addEventListener("scroll", onReflow, true);
+    document.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onReflow);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("focusout", onFocusOut);
-      document.removeEventListener("scroll", onReflow, true);
+      document.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onReflow);
     };
   }, [open, onClose]);

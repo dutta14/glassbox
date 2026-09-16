@@ -344,3 +344,20 @@
     transition: none;
   }
 }
+
+/* Collapsed, the toggle is the first item in the icon column rather than the
+   last item in a header row, so it drops the pull-right that lined it up with
+   the rail's right edge and takes the same 34px box as the icons below it. */
+.notes-rail--collapsed .notes-rail__top-row {
+  justify-content: center;
+  padding: 0;
+}
+
+.notes-rail--collapsed .notes-rail__toggle {
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-right: 0;
+  padding: 0;
+  border-radius: var(--radius-md);
+}
