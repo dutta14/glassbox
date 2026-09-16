@@ -7,6 +7,13 @@ import { noteFilename, parseNote, serialiseNote } from './markdown';
  * identity carried in the frontmatter `id`, filename is a human-friendly
  * slug plus id. See glassbox-storage-architecture.md.
  *
+ * Notes live in a `notes/` subfolder of the folder the user picked, and
+ * conversations live beside them in `chats/`. Keeping them apart is not
+ * tidiness. Every `.md` file in the scanned directory is read as a note, so a
+ * transcript sharing that directory would be indexed and the retrieval engine
+ * would start quoting the app's own past answers back as though the user had
+ * written them.
+ *
  * Two invariants that matter and are easy to break:
  *
  * 1. Writes must be serialised per file. `useNotes` already serialises per
@@ -23,10 +30,24 @@ import { noteFilename, parseNote, serialiseNote } from './markdown';
 export const isFolderStoreSupported = (): boolean =>
   typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
 
+export const NOTES_DIR = 'notes';
+
 export const createFileSystemStore = (
-  handle: FileSystemDirectoryHandle
+  root: FileSystemDirectoryHandle
 ): NotesStore => {
   const filenamesById = new Map<string, string>();
+
+  /* Resolved once and kept. Concurrent callers may each ask for it before the
+     first resolves, which is harmless: getDirectoryHandle with create is
+     idempotent. Caching the handle rather than the promise means a failure
+     (permission revoked mid-session) is retried on the next call instead of
+     being memoised forever. */
+  let notesDir: FileSystemDirectoryHandle | null = null;
+  const dir = async (): Promise<FileSystemDirectoryHandle> => {
+    if (notesDir) return notesDir;
+    notesDir = await root.getDirectoryHandle(NOTES_DIR, { create: true });
+    return notesDir;
+  };
 
   const readFile = async (
     fileHandle: FileSystemFileHandle
@@ -57,6 +78,7 @@ export const createFileSystemStore = (
 
   const list = async (): Promise<Note[]> => {
     const byId = new Map<string, { note: Note; filename: string }>();
+    const handle = await dir();
 
     for await (const entry of handle.values()) {
       if (entry.kind !== 'file') continue;
@@ -81,7 +103,7 @@ export const createFileSystemStore = (
   };
 
   const writeFile = async (name: string, contents: string): Promise<void> => {
-    const fileHandle = await handle.getFileHandle(name, { create: true });
+    const fileHandle = await (await dir()).getFileHandle(name, { create: true });
     const writable = await fileHandle.createWritable();
     try {
       await writable.write(contents);
@@ -100,7 +122,7 @@ export const createFileSystemStore = (
 
     if (oldName && oldName !== newName) {
       try {
-        await handle.removeEntry(oldName);
+        await (await dir()).removeEntry(oldName);
       } catch {
         // The old file may already be gone (external delete, or a previous
         // rename that finished halfway). Nothing to do.
@@ -112,7 +134,7 @@ export const createFileSystemStore = (
     let name = filenamesById.get(id);
     if (!name) {
       // Cache cold: scan and populate. Cheaper on the second call.
-      for await (const entry of handle.values()) {
+      for await (const entry of (await dir()).values()) {
         if (entry.kind !== 'file') continue;
         if (!entry.name.toLowerCase().endsWith('.md')) continue;
         const parsed = await readFile(entry);
@@ -125,7 +147,7 @@ export const createFileSystemStore = (
     if (!name) return;
 
     try {
-      await handle.removeEntry(name);
+      await (await dir()).removeEntry(name);
     } catch {
       // Unknown id or already deleted. Silent by contract.
     }
@@ -134,7 +156,9 @@ export const createFileSystemStore = (
 
   return {
     kind: 'folder',
-    label: handle.name,
+    /* The folder the user picked, not the notes/ subfolder inside it. This is
+       the name shown back to them as the connected folder. */
+    label: root.name,
     isAvailable: isFolderStoreSupported,
     list,
     put,

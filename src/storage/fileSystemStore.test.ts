@@ -37,6 +37,16 @@ class FakeDir {
       },
     };
   }
+  dirs = new Map<string, FakeDir>();
+  async getDirectoryHandle(name: string, opts?: { create?: boolean }) {
+    if (!this.dirs.has(name)) {
+      if (!opts?.create) throw Object.assign(new Error('NotFound'), { name: 'NotFoundError' });
+      const child = new FakeDir();
+      child.name = name;
+      this.dirs.set(name, child);
+    }
+    return this.dirs.get(name)!;
+  }
   async removeEntry(name: string) { this.files.delete(name); }
   async *values() {
     for (const f of this.files.values()) yield await this.getFileHandle(f.name);
@@ -48,7 +58,19 @@ const mk = (id: string, title: string, body: string, updatedAt: string): Note =>
   id, title, body, tags: [], createdAt: '2026-01-01T00:00:00.000Z', updatedAt,
 });
 
-const store = (d: FakeDir) => createFileSystemStore(d as unknown as FileSystemDirectoryHandle);
+/* Notes live in a notes/ subfolder now. The fake passed in by each test is
+   mounted AS that subfolder, so every assertion below still reads the
+   directory the notes actually land in and none of them had to change. Tests
+   that care about the root itself build it explicitly. */
+const rootFor = (d: FakeDir): FakeDir => {
+  const root = new FakeDir();
+  root.name = 'picked-folder';
+  root.dirs.set('notes', d);
+  return root;
+};
+
+const store = (d: FakeDir) =>
+  createFileSystemStore(rootFor(d) as unknown as FileSystemDirectoryHandle);
 
 it('writes one .md file per note and reads them back', async () => {
   const d = new FakeDir(); const s = store(d);
@@ -245,4 +267,59 @@ it('round-trips a note whose title is punctuation-only through put and list', as
   expect(listed[0].id).toBe('punct-title');
   expect(listed[0].title).toBe('???!!!');
   expect(listed[0].body).toBe('punct body');
+});
+
+
+/* The folder layout itself. Notes are scoped to notes/ so that conversations
+   can sit beside them in chats/ without being scanned. Every .md in the
+   scanned directory becomes a note, so a transcript landing in the same
+   directory would be indexed and the engine would quote the app's own answers
+   back as though the user had written them. */
+
+it('creates the notes subfolder and writes note files inside it, not at the root', async () => {
+  const root = new FakeDir();
+  const s = createFileSystemStore(root as unknown as FileSystemDirectoryHandle);
+
+  await s.put(mk('a1', 'Postgres index tuning', 'body', '2026-01-02T00:00:00.000Z'));
+
+  expect(root.files.size).toBe(0);
+  const notesDir = root.dirs.get('notes');
+  expect(notesDir).toBeDefined();
+  expect([...notesDir!.files.keys()]).toHaveLength(1);
+  expect([...notesDir!.files.keys()][0]).toMatch(/\.md$/);
+});
+
+it('ignores markdown sitting at the root of the picked folder', async () => {
+  const root = new FakeDir();
+  root.files.set('README.md', new FakeFile('README.md', serialiseNote(
+    mk('stray', 'Stray', 'should not be adopted', '2026-01-02T00:00:00.000Z'),
+  )));
+  const s = createFileSystemStore(root as unknown as FileSystemDirectoryHandle);
+
+  const listed = await s.list();
+
+  expect(listed).toHaveLength(0);
+});
+
+it('reads notes already sitting in an existing notes subfolder', async () => {
+  const root = new FakeDir();
+  const notesDir = new FakeDir();
+  notesDir.name = 'notes';
+  root.dirs.set('notes', notesDir);
+  notesDir.files.set('existing-pre-1.md', new FakeFile('existing-pre-1.md', serialiseNote(
+    mk('pre-1', 'Written by another tool', 'body', '2026-01-02T00:00:00.000Z'),
+  )));
+  const s = createFileSystemStore(root as unknown as FileSystemDirectoryHandle);
+
+  const listed = await s.list();
+
+  expect(listed.map(n => n.id)).toEqual(['pre-1']);
+});
+
+it('labels the store with the folder the user picked rather than the notes subfolder', () => {
+  const root = new FakeDir();
+  root.name = 'my-brain';
+  const s = createFileSystemStore(root as unknown as FileSystemDirectoryHandle);
+
+  expect(s.label).toBe('my-brain');
 });
