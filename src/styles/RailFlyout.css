@@ -28,7 +28,7 @@
 .rail-flyout__panel {
   position: fixed;
   z-index: 60;
-  width: 260px;
+  width: 280px;
   max-height: min(70vh, 460px);
   overflow-y: auto;
   padding: var(--space-2);
@@ -64,6 +64,15 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+}
+
+/* The panel is portalled to the body, so it sits outside .notes-rail and none
+   of the rail's list resets reach it. Without this the rows render with
+   bullets. */
+.rail-flyout__list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* The icon column itself. */
