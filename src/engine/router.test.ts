@@ -374,3 +374,69 @@ describe('route: search intent', () => {
     expect(a.trace.confidence).toBe(a.sources[0]?.score);
   });
 });
+
+/**
+ * Writing that the user did not write is kept in the library but must never
+ * reach an answer. The risk is not that it looks untidy, it is that this
+ * product's whole claim is that every answer is the user's own words.
+ */
+describe('notes excluded from the answerable corpus', () => {
+  const mine = makeNote({
+    id: 'mine',
+    title: 'A note I wrote myself',
+    body: 'The harbour lights came on one at a time along the seawall.',
+    tags: ['harbour'],
+    updatedAt: '2024-03-01T10:00:00.000Z',
+  });
+  const notMine = makeNote({
+    id: 'theirs',
+    title: 'A note a machine wrote',
+    body: 'The harbour lights came on one at a time along the seawall.',
+    tags: ['harbour', 'ai-generated'],
+    updatedAt: '2024-03-02T10:00:00.000Z',
+  });
+
+  const ask = (query: string, notes = [notMine, mine]) =>
+    route(query, notes, createIndex(notes), new Date('2024-03-03T10:00:00.000Z'));
+
+  it('never quotes an excluded note even when it is the only match', () => {
+    const notes = [notMine];
+    const result = route('harbour lights seawall', notes, createIndex(notes));
+
+    expect(result.text).not.toContain('harbour lights');
+    expect(result.sources).toHaveLength(0);
+  });
+
+  /* Both notes carry the same sentence, so an excluded note leaking in would
+     otherwise be invisible: the text would look right and come from the wrong
+     note. The source id is what catches it. */
+  it('quotes the note the user wrote when an excluded note says the same thing', () => {
+    const result = ask('harbour lights seawall');
+
+    expect(result.sources.map((s) => s.noteId)).toEqual(['mine']);
+  });
+
+  it('leaves excluded notes out of a tag listing', () => {
+    const result = ask('notes tagged #harbour');
+
+    expect(result.text).toContain('A note I wrote myself');
+    expect(result.text).not.toContain('A note a machine wrote');
+  });
+
+  it('leaves excluded notes out of a recency listing', () => {
+    const result = ask('what did I write recently');
+
+    expect(result.text).toContain('A note I wrote myself');
+    expect(result.text).not.toContain('A note a machine wrote');
+  });
+
+  it('does not count excluded notes', () => {
+    expect(ask('how many notes do I have').text).toContain('1');
+  });
+
+  it('leaves ordinary notes alone', () => {
+    const result = ask('harbour lights seawall', [mine]);
+
+    expect(result.sources.map((s) => s.noteId)).toEqual(['mine']);
+  });
+});

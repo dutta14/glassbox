@@ -108,15 +108,38 @@ const answer = (
   },
 });
 
+/**
+ * The tag that takes a note out of the answerable corpus.
+ *
+ * Some writing in the library was not written by the person who owns it. It is
+ * kept, because it is part of the record, but this product answers by quoting
+ * the user's own words back at them, and quoting a machine's words as though
+ * they were theirs would be the worst thing it could do.
+ */
+export const EXCLUDED_TAG = 'ai-generated';
+
+/**
+ * The notes a question may be answered from.
+ *
+ * Applied inside both route and createIndex rather than at the call site. The
+ * router reads the note list directly for counts, tags and recency while the
+ * index is built separately, so a filter applied to only one of them would let
+ * the two disagree about what exists. Putting it here means there is no way to
+ * assemble an answer that saw an excluded note.
+ */
+export const answerable = (notes: Note[]): Note[] =>
+  notes.filter((note) => !note.tags.includes(EXCLUDED_TAG));
+
 export const route = (query: string, notes: Note[], index: TfIdfIndex, now = new Date()): Answer => {
   const intent = classify(query);
   const terms = tokenize(query);
+  const corpus = answerable(notes);
 
   if (intent === 'greeting') return answer(COPY.greeting, intent, 'matched a greeting pattern');
   if (intent === 'help') return answer(COPY.help, intent, 'matched a help pattern');
 
   if (intent === 'count') {
-    const n = notes.length;
+    const n = corpus.length;
     return answer(
       n === 1 ? COPY.countOne : COPY.count(n),
       intent,
@@ -126,25 +149,25 @@ export const route = (query: string, notes: Note[], index: TfIdfIndex, now = new
 
   if (intent === 'tag') {
     const tag = (query.match(TAG)?.[1] ?? '').toLowerCase();
-    const matches = notes.filter((n) => n.tags.includes(tag));
+    const matches = corpus.filter((n) => n.tags.includes(tag));
     return answer(
       matches.length === 0 ? COPY.tagEmpty(tag) : listTitles(matches),
       intent,
       `filtered notes by tag #${tag}`,
-      { candidatesConsidered: notes.length }
+      { candidatesConsidered: corpus.length }
     );
   }
 
   if (intent === 'recent') {
     const window = parseRecentWindow(query, now) ?? { label: 'recently', since: new Date(0) };
-    const matches = notes
+    const matches = corpus
       .filter((n) => new Date(n.updatedAt) >= window.since)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return answer(
       matches.length === 0 ? COPY.recentEmpty : listTitles(matches),
       intent,
       `filtered notes updated since ${window.since.toDateString()}`,
-      { candidatesConsidered: notes.length }
+      { candidatesConsidered: corpus.length }
     );
   }
 
@@ -177,4 +200,4 @@ const notFoundReason = (top: ScoredChunk | undefined): string => {
   return `best passage scored ${top.score.toFixed(2)}, below the ${GATE.minScore} threshold`;
 };
 
-export const createIndex = (notes: Note[]): TfIdfIndex => buildIndex(notes);
+export const createIndex = (notes: Note[]): TfIdfIndex => buildIndex(answerable(notes));

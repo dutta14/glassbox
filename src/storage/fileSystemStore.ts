@@ -76,17 +76,33 @@ export const createFileSystemStore = (
     return { note, filename: fileHandle.name };
   };
 
+  const READ_BATCH = 24;
+
   const list = async (): Promise<Note[]> => {
     const byId = new Map<string, { note: Note; filename: string }>();
     const handle = await dir();
 
+    const entries: FileSystemFileHandle[] = [];
     for await (const entry of handle.values()) {
       if (entry.kind !== 'file') continue;
       if (!entry.name.toLowerCase().endsWith('.md')) continue;
+      entries.push(entry as FileSystemFileHandle);
+    }
 
-      const parsed = await readFile(entry);
+    // Read in parallel batches rather than one file at a time. Every note is
+    // read on open, so with a library of several hundred the per-file latency
+    // was multiplying by the size of the collection and showing up as a pause
+    // before anything appeared. The batch is bounded because a few hundred
+    // simultaneous file handles is its own kind of rude.
+    const parsedEntries: Array<Awaited<ReturnType<typeof readFile>>> = [];
+    for (let i = 0; i < entries.length; i += READ_BATCH) {
+      parsedEntries.push(...(await Promise.all(entries.slice(i, i + READ_BATCH).map(readFile))));
+    }
+
+    // Kept as a separate pass so the newest-wins rule still sees the files in
+    // directory order, exactly as the sequential version did.
+    for (const parsed of parsedEntries) {
       if (!parsed) continue;
-
       const existing = byId.get(parsed.note.id);
       if (!existing || parsed.note.updatedAt > existing.note.updatedAt) {
         byId.set(parsed.note.id, parsed);
