@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Answer, ChatMessage, Conversation } from '../types';
 import type { ConversationStore } from '../storage/types';
 import { createId } from '../storage/notes';
@@ -82,12 +82,36 @@ export const useConversations = (
   /* A no-op when already in a draft. The composer owns its own text, so
      leaving this alone is what keeps a half-typed prompt from being thrown
      away when the user clicks "New chat" a second time. */
+  /*
+   * AC 13 expands the first assistant message of a *session*, once, so the
+   * reasoning panel introduces itself to someone who has never seen it. It used
+   * to be found by scanning the open transcript for its first answer, which was
+   * the same thing back when a session held exactly one. With conversations it
+   * is not: every thread has a first answer, so every thread reopened expanded
+   * itself again, and a panel the user had already closed came back each visit.
+   *
+   * Two pieces, because one is not enough. The ref records that the session has
+   * already spent its one expansion, so no later answer takes another. The
+   * state records which message is expanded *right now*, and select() clears
+   * it. Without that clearing, returning to the thread that produced the
+   * message would expand it again, because the disclosure remounts and reads
+   * this value afresh. The expansion belongs to the arrival of the answer, not
+   * to the message for ever.
+   *
+   * startDraft deliberately does not clear. A draft renders no transcript, and
+   * the only way back to the old thread is select(), which does clear. Adding
+   * it there would be a line no test could kill.
+   */
+  const spentRef = useRef(false);
+  const [autoExpandId, setAutoExpandId] = useState<string | null>(null);
+
   const startDraft = useCallback(() => {
     setActiveId(null);
   }, []);
 
   const select = useCallback((id: string) => {
     setActiveId(id);
+    setAutoExpandId(null);
   }, []);
 
   /* Everything is computed before any setState. React invokes an updater
@@ -109,6 +133,10 @@ export const useConversations = (
         answer,
         createdAt: new Date().toISOString(),
       };
+      if (!spentRef.current) {
+        spentRef.current = true;
+        setAutoExpandId(assistantMsg.id);
+      }
 
       const existing = conversations.find((c) => c.id === activeId) ?? null;
 
@@ -158,11 +186,8 @@ export const useConversations = (
   );
 
   const isFirstAssistantMessage = useCallback(
-    (id: string): boolean => {
-      const first = messages.find((m) => m.role === 'assistant');
-      return first?.id === id;
-    },
-    [messages]
+    (id: string): boolean => autoExpandId === id,
+    [autoExpandId]
   );
 
   return {

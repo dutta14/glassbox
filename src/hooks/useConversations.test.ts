@@ -10,6 +10,8 @@ import type {
 } from '../types';
 import type { ConversationStore } from '../storage/types';
 
+const ISO = '2026-01-01T00:00:00.000Z';
+
 const goodChunk = (): ScoredChunk => ({
   noteId: 'n1',
   noteTitle: 'Note',
@@ -339,14 +341,61 @@ describe('useConversations — reasoning disclosure', () => {
   });
 
   /**
-   * Scoped per conversation. Reading across the whole list would collapse the
-   * reasoning on the first message of every thread after the first.
+   * Inverted. This used to assert the opposite, on the reasoning that scoping
+   * per conversation stopped later threads from losing the expanded panel. But
+   * AC 13 expands the first answer of a *session*, not of every thread, and the
+   * per-conversation reading meant a panel you had closed reopened on each
+   * visit to that thread. Once is once.
    */
-  it('treats the first assistant message of a second conversation as first too', () => {
+  it('does not treat the first assistant message of a second conversation as first', () => {
     const { result } = setup();
     act(() => result.current.append('one', goodAnswer()));
     act(() => result.current.startDraft());
     act(() => result.current.append('two', goodAnswer()));
+
+    const assistant = result.current.messages.find(
+      (m) => m.role === 'assistant'
+    );
+
+    expect(result.current.isFirstAssistantMessage(assistant!.id)).toBe(false);
+  });
+
+  /**
+   * The reported bug, at the level the user meets it: open an existing thread
+   * and its reasoning is expanded again. Messages restored from storage were
+   * never produced in this session, so none of them may claim the expansion.
+   */
+  it('expands nothing in a conversation loaded from storage', async () => {
+    const stored: Conversation = {
+      id: 'c1',
+      title: 'An earlier thread',
+      messages: [
+        { id: 'u1', role: 'user', text: 'q', createdAt: ISO },
+        {
+          id: 'a1',
+          role: 'assistant',
+          text: 'a',
+          answer: goodAnswer(),
+          createdAt: ISO,
+        },
+      ],
+      createdAt: ISO,
+      updatedAt: ISO,
+    };
+    const { result } = setup(fakeStore([stored]));
+    await waitFor(() => expect(result.current.conversations).toHaveLength(1));
+    act(() => result.current.select('c1'));
+
+    expect(result.current.isFirstAssistantMessage('a1')).toBe(false);
+  });
+
+  /**
+   * Guards the other direction: a fix that simply never expands anything would
+   * pass both tests above and quietly delete AC 13.
+   */
+  it('still expands the very first answer produced in the session', () => {
+    const { result } = setup();
+    act(() => result.current.append('one', goodAnswer()));
 
     const assistant = result.current.messages.find(
       (m) => m.role === 'assistant'
