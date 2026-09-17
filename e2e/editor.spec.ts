@@ -119,13 +119,46 @@ test("the section scrolls the whole note, navigation included", async ({
  * caret, and this asserts that the ancestor is in fact the section and that
  * nothing between them traps the scroll.
  */
+/**
+ * How a reader actually starts writing. The note is rendered as prose so it can
+ * carry a drop cap, and the field waits underneath until it is wanted, so the
+ * prose is what receives the click. Clicking the field directly does not work
+ * and is not something anyone does.
+ */
+const startWriting = async (page: import("@playwright/test").Page) => {
+  await page.locator(".editor__read").click();
+  const body = page.getByLabel("Note body");
+  await expect(body).toBeFocused();
+  return body;
+};
+
+test("clicking the prose hands over to the field, ready to type", async ({
+  page,
+}) => {
+  await open(page);
+
+  await expect(page.locator(".editor__read")).toBeVisible();
+  await startWriting(page);
+  // The prose steps aside rather than sitting over the text being typed.
+  await expect(page.locator(".editor__read")).toHaveCount(0);
+});
+
+test("the drop cap is withheld from a note too short to carry one", async ({
+  page,
+}) => {
+  await open(page, { title: "The older note that came before it" });
+
+  await expect(page.locator(".editor__read")).not.toHaveAttribute(
+    "data-dropcap",
+  );
+});
+
 test("typing at the end of a long note keeps the caret in view", async ({
   page,
 }) => {
-  await open(page, "A note with a great deal to say");
+  await open(page);
 
-  const body = page.getByLabel("Note body");
-  await body.click();
+  const body = await startWriting(page);
   // Collapsing a select-all to its right edge lands at the very end on any
   // platform, unlike the Ctrl/Cmd+End pair which differ on macOS.
   await page.keyboard.press("ControlOrMeta+a");

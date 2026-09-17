@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useScrollFades } from "../hooks/useScrollFades";
 import type { Note } from "../types";
 import { COPY } from "../engine/copy";
 import { readingTime } from "../utils/readingTime";
+import { dropCapDepth } from "../utils/dropCap";
 import { NoteNav } from "./NoteNav";
 import "../styles/NoteEditor.css";
 
@@ -34,6 +42,29 @@ const formatEdited = (iso: string): string => {
     unreadable. */
 const FALLBACK_LINE_HEIGHT = 31.5;
 
+/**
+ * Where in the text a click landed. The reading view holds the body as a
+ * single text node, so the offset within that node is the offset within the
+ * note, and the caret can be put exactly where the reader pointed rather than
+ * at the end of the note.
+ *
+ * Two spellings because the standard one is recent and the WebKit one is what
+ * older engines shipped. Returning null when neither is available is fine: the
+ * caller falls back to the end of the text.
+ */
+const caretOffsetFromPoint = (
+  x: number,
+  y: number,
+  root: HTMLElement
+): number | null => {
+  const doc = root.ownerDocument;
+  const pos = doc.caretPositionFromPoint?.(x, y);
+  if (pos && root.contains(pos.offsetNode)) return pos.offset;
+  const range = doc.caretRangeFromPoint?.(x, y);
+  if (range && root.contains(range.startContainer)) return range.startOffset;
+  return null;
+};
+
 export const NoteEditor = ({
   note,
   scrollToOffset,
@@ -45,15 +76,30 @@ export const NoteEditor = ({
   onSelectNote,
 }: NoteEditorProps) => {
   const scrollRef = useRef<HTMLElement>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const readRef = useRef<HTMLDivElement>(null);
   const wasEmptyOnMountRef = useRef<string | null>(null);
+  const pendingCaretRef = useRef<number | null>(null);
+
+  /**
+   * A drop cap cannot be drawn on a textarea. ::first-letter matches one and is
+   * then silently ignored, and getComputedStyle happily reports the styles it
+   * did not apply, so the only way to see it is to render.
+   *
+   * So the note is read as prose and typed into as a field. The field stays
+   * mounted underneath the whole time rather than being swapped in on demand:
+   * it keeps the accessible name, the value and the caret in one place, so
+   * assistive technology sees an ordinary textarea throughout and none of the
+   * focus juggling a swap would need can go wrong.
+   */
+  const [editing, setEditing] = useState(false);
 
   // One scroller, not two. The body grows to fit its text rather than scrolling
   // inside itself, so the note reads as a single document and the navigation at
   // its foot is reached by scrolling past the writing, the way it is under a
   // blog post.
-  useScrollFades(scrollRef, [note.id, note.body]);
+  useScrollFades(scrollRef, [note.id, note.body, editing]);
 
   /**
    * Collapses first, because scrollHeight can only grow while the old height is
@@ -67,19 +113,44 @@ export const NoteEditor = ({
    * time this runs the browser has already scrolled to reveal the caret, so the
    * saved value is the one that keeps it in sight.
    */
+  // Both fields, because the title wraps too. It has to be a textarea to be
+  // centred at all: an input cannot wrap, so a long title scrolled sideways
+  // and sat hard against the left edge, which is the one thing a centred
+  // chapter heading must not do.
   const fitToContent = useCallback(() => {
-    const el = bodyRef.current;
-    if (!el) return;
     const scroller = scrollRef.current;
     const restore = scroller?.scrollTop;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    for (const el of [titleRef.current, bodyRef.current]) {
+      if (!el) continue;
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
     if (scroller && restore !== undefined && scroller.scrollTop !== restore) {
       scroller.scrollTop = restore;
     }
   }, []);
 
-  useLayoutEffect(fitToContent, [fitToContent, note.body, note.id]);
+  useLayoutEffect(fitToContent, [
+    fitToContent,
+    note.body,
+    note.title,
+    note.id,
+  ]);
+
+  /**
+   * A title is one line. An input enforced that for free; a textarea does not,
+   * so both ways of getting a newline in are closed here. It matters beyond
+   * looks: the title is written to the note's front matter as `title: ...`,
+   * where a newline would break the file.
+   */
+  const handleTitleChange = (value: string) =>
+    onChangeTitle(value.replace(/\s*\n+\s*/g, " "));
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    bodyRef.current?.focus();
+  };
 
   // Width changes reflow the text, which changes how many lines it needs. The
   // section is observed rather than the textarea, since resizing the textarea
@@ -114,9 +185,23 @@ export const NoteEditor = ({
   // when a citation is steering, since that effect sets its own position.
   useLayoutEffect(() => {
     if (scrollToOffset !== null) return;
+    setEditing(false);
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
+
+  /* Runs after the swap, because setSelectionRange on a field that is still
+     hidden and unsized does not survive it being laid out. */
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const field = bodyRef.current;
+    const at = pendingCaretRef.current;
+    if (!field || at === null) return;
+    pendingCaretRef.current = null;
+    const clamped = Math.min(Math.max(0, at), note.body.length);
+    field.setSelectionRange(clamped, clamped);
+    fitToContent();
+  }, [editing, note.body.length, fitToContent]);
 
   useLayoutEffect(() => {
     if (scrollToOffset === null) return;
@@ -143,6 +228,32 @@ export const NoteEditor = ({
     onScrollHandled();
   }, [scrollToOffset, note.body, onScrollHandled]);
 
+  const isEmpty = note.body === "";
+  // 0 when the note is too short to carry one; otherwise the number of lines
+  // the capital sinks, which is also the value the stylesheet keys on.
+  const cap = dropCapDepth(note.body);
+
+  /**
+   * Puts the caret where the reader actually pointed. Without this, moving from
+   * reading to writing would drop you at one fixed place in the note and you
+   * would have to find your way back to the sentence you meant to change.
+   *
+   * preventDefault stops the div taking focus, so the only thing that ever
+   * holds it is the field.
+   */
+  const handleReadMouseDown = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      const root = readRef.current;
+      const field = bodyRef.current;
+      if (!root || !field) return;
+      e.preventDefault();
+      pendingCaretRef.current =
+        caretOffsetFromPoint(e.clientX, e.clientY, root) ?? note.body.length;
+      field.focus();
+    },
+    [note.body.length]
+  );
+
   return (
     <section
       id="editor-panel"
@@ -152,41 +263,77 @@ export const NoteEditor = ({
     >
       <h2 className="sr-only">Editor</h2>
       <div className="editor__inner">
-        <input
+        <textarea
           ref={titleRef}
           className="editor__title"
           aria-label="Note title"
+          rows={1}
           placeholder={COPY.placeholderTitle}
           value={note.title}
-          onChange={(e) => onChangeTitle(e.target.value)}
+          onKeyDown={handleTitleKeyDown}
+          onChange={(e) => handleTitleChange(e.target.value)}
         />
-        <p className="editor__edited">
-          Edited{" "}
-          <time dateTime={note.updatedAt}>{formatEdited(note.updatedAt)}</time>
-          <span className="editor__meta-separator" aria-hidden="true">
-            {" · "}
-          </span>
-          <span className="editor__reading-time">
-            {readingTime(note.body)} min read
-          </span>
-        </p>
-        {note.tags.length > 0 && (
-          <div className="editor__tags" role="group" aria-label="Tags">
-            {note.tags.map((tag) => (
-              <span key={tag} className="tag">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-        <textarea
-          ref={bodyRef}
-          className="editor__body"
-          aria-label="Note body"
-          placeholder={COPY.placeholderBody}
-          value={note.body}
-          onChange={(e) => onChangeBody(e.target.value)}
-        />
+        {/* A chapter rule. Decorative only, so it is kept out of the
+            accessibility tree: there is nothing here to announce. */}
+        <div className="editor__ornament" aria-hidden="true">
+          <span className="editor__ornament-mark" />
+        </div>
+        <div className="editor__bodywrap">
+          {!editing && (
+            /* Hidden from assistive technology on purpose. It is a second copy
+               of text the field below already exposes, and a screen reader
+               meeting both would hear the note twice. Sighted readers get the
+               prose, everyone else gets the textarea, and neither knows about
+               the other. */
+            <div
+              ref={readRef}
+              aria-hidden="true"
+              className={`editor__body editor__read${
+                isEmpty ? " editor__read--empty" : ""
+              }`}
+              data-dropcap={cap === 0 ? undefined : String(cap)}
+              onMouseDown={handleReadMouseDown}
+            >
+              {isEmpty ? COPY.placeholderBody : note.body}
+            </div>
+          )}
+          <textarea
+            ref={bodyRef}
+            className="editor__body"
+            data-editing={editing ? "on" : undefined}
+            aria-label="Note body"
+            placeholder={COPY.placeholderBody}
+            value={note.body}
+            onFocus={() => setEditing(true)}
+            onBlur={() => setEditing(false)}
+            onChange={(e) => onChangeBody(e.target.value)}
+          />
+        </div>
+        {/* A chapter opens with its title and nothing else, so when the note
+            was edited and what it is tagged with are held back to the foot.
+            They are still the first thing after the prose ends, just no longer
+            standing between the title and the first line. */}
+        <footer className="editor__colophon">
+          <p className="editor__edited">
+            Edited{" "}
+            <time dateTime={note.updatedAt}>{formatEdited(note.updatedAt)}</time>
+            <span className="editor__meta-separator" aria-hidden="true">
+              {" · "}
+            </span>
+            <span className="editor__reading-time">
+              {readingTime(note.body)} min read
+            </span>
+          </p>
+          {note.tags.length > 0 && (
+            <div className="editor__tags" role="group" aria-label="Tags">
+              {note.tags.map((tag) => (
+                <span key={tag} className="tag">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </footer>
         <NoteNav
           previous={previousNote}
           next={nextNote}

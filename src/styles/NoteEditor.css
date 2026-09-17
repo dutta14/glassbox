@@ -34,31 +34,36 @@
    header and above the navigation stop at the text they divide rather than
    running the full width of the pane. */
 
+/* Sits after the prose, not before it. No rule of its own: NoteNav already
+   draws one directly below, and two lines this close read as a box. */
+.editor__colophon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-10);
+  text-align: center;
+}
+
 .editor__edited {
-  /* Cancels .editor__inner's row gap so the date sits directly beneath the
-     title and the two read as one block rather than two stacked fields. */
-  margin: calc(var(--space-3) * -1) 0 0;
-  padding-bottom: var(--space-6);
-  border-bottom: 1px solid var(--color-border);
+  margin: 0;
   font-family: var(--font-ui);
   font-size: 13px;
   color: var(--color-text-muted);
 }
 
-/* The rule belongs under the whole header, so when tags follow they sit above
-   it rather than orphaned below. */
-.editor__edited:has(+ .editor__tags) {
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.editor__tags {
-  padding-bottom: var(--space-6);
-  border-bottom: 1px solid var(--color-border);
-}
-
 .editor__title {
-  padding-block: var(--space-4);
+  /* Deep space above, because a chapter starts down the page rather than at
+     the top of it, and enough below to part the title from its first line. */
+  padding-block: var(--space-12) var(--space-5);
+  text-align: center;
+  /* Grown to fit its text by fitToContent, so it must not offer a drag handle
+     or a scrollbar of its own. */
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
   background: transparent;
   border: 0;
   color: var(--color-text);
@@ -71,6 +76,35 @@
   line-height: 1.25;
 }
 
+/* The rule a chapter opens under: two short strokes parted by a lozenge. The
+   strokes are pseudo-elements and the lozenge is the one real child, because
+   the lozenge has to be rotated and a rotation would carry its siblings with
+   it. All of it is decorative and none of it is announced. */
+.editor__ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
+}
+
+.editor__ornament::before,
+.editor__ornament::after {
+  content: "";
+  width: 44px;
+  height: 1px;
+  background: var(--color-text-muted);
+}
+
+.editor__ornament-mark {
+  width: 7px;
+  height: 7px;
+  /* The same token as the strokes either side. They read as one mark, so a
+     different weight of grey on the lozenge shows up immediately. */
+  border: 1px solid var(--color-text-muted);
+  transform: rotate(45deg);
+}
+
 .editor__title::placeholder {
   color: var(--color-text-muted);
 }
@@ -78,6 +112,7 @@
 .editor__tags {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-2);
 }
 
@@ -106,6 +141,74 @@
   /* Never scrolls itself now that it grows to fit. Left visible it would show
      a phantom scrollbar for one frame between a keystroke and the refit. */
   overflow-y: hidden;
+}
+
+/* The field sits underneath the reading view the whole time rather than being
+   swapped in when needed. Kept out of flow and invisible while reading, but
+   still focusable, so Tab reaches it and its focus handler brings it forward.
+   opacity rather than visibility or display, both of which would take it out
+   of the accessibility tree and leave a screen reader with nothing to read. */
+.editor__bodywrap {
+  position: relative;
+}
+
+/* The field used to be a flex child of .editor__inner and was stretched to the
+   column by align-items. Wrapped, it falls back to the width of its cols
+   attribute, which is twenty characters. */
+.editor__bodywrap > .editor__body {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* The element selector is load-bearing: the reading view carries .editor__body
+   too, to inherit the same type, and without it this rule hides the very thing
+   it is meant to reveal. */
+textarea.editor__body:not([data-editing]) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.editor__read {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  cursor: text;
+}
+
+.editor__read--empty {
+  color: var(--color-text-muted);
+}
+
+/* initial-letter sizes the capital to span three lines and sets it on the
+   third baseline, which is the part the old float-and-guess technique never
+   got right. Where it is unsupported nothing is declared and the letter simply
+   reads at its normal size. */
+@supports (initial-letter: 3) or (-webkit-initial-letter: 3) {
+  .editor__read[data-dropcap]::first-letter {
+    font-weight: 400;
+    /* Fonts tighten the side bearing on open and triangular capitals so they
+       sit evenly inside words. At this size that tightness reads as the text
+       touching the letter: B, D, F, P and S all collide without this. Rendering
+       the whole alphabet, one value clears every shape, so there is no case for
+       twenty-six hand-tuned ones. */
+    padding-right: 0.06em;
+  }
+
+  /* Sink depth follows the length of the note, so the capital always lands on
+     a line that has text on it. See dropCap.ts for where the tiers come from. */
+  .editor__read[data-dropcap="2"]::first-letter {
+    -webkit-initial-letter: 2;
+    initial-letter: 2;
+  }
+
+  .editor__read[data-dropcap="3"]::first-letter {
+    -webkit-initial-letter: 3;
+    initial-letter: 3;
+  }
 }
 
 .editor__body::placeholder {

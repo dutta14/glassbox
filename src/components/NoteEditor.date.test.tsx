@@ -27,33 +27,56 @@ const renderEditor = (note: Note = mkNote()) =>
     />,
   );
 
-describe("NoteEditor edited date placement", () => {
-  it("renders the edited date immediately after the title field", () => {
+/**
+ * The date and tags used to sit between the title and the first line, the way
+ * a blog post stamps itself. The editor now opens like a chapter: title, then
+ * writing, with the housekeeping held back to the foot. These pin that order,
+ * since it is the kind of thing a stray reorder undoes without failing
+ * anything else.
+ */
+describe("NoteEditor chapter layout", () => {
+  it("puts only the chapter rule between the title and the writing", () => {
     const { container } = renderEditor();
-    const inner = container.querySelector(".editor__inner");
-    const children = Array.from(inner?.children ?? []);
-    const titleIndex = children.findIndex((el) =>
-      el.classList.contains("editor__title"),
+    const children = Array.from(
+      container.querySelector(".editor__inner")?.children ?? [],
     );
-    const dateIndex = children.findIndex((el) =>
-      el.classList.contains("editor__edited"),
-    );
+    const at = (name: string) =>
+      children.findIndex((el) => el.classList.contains(name));
 
-    expect(titleIndex).toBeGreaterThanOrEqual(0);
-    expect(dateIndex).toBe(titleIndex + 1);
+    const title = at("editor__title");
+    expect(title).toBeGreaterThanOrEqual(0);
+    expect(at("editor__ornament")).toBe(title + 1);
+    expect(at("editor__bodywrap")).toBe(title + 2);
   });
 
-  it("renders the edited date above the body rather than below it", () => {
+  it("keeps the chapter rule out of the accessibility tree", () => {
     const { container } = renderEditor();
-    const date = container.querySelector(".editor__edited");
-    const body = container.querySelector(".editor__body");
+    const ornament = container.querySelector(".editor__ornament");
 
-    expect(date).not.toBeNull();
+    expect(ornament).not.toBeNull();
+    expect(ornament).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("renders the edited date below the writing rather than above it", () => {
+    const { container } = renderEditor();
+    const body = container.querySelector(".editor__bodywrap");
+    const date = container.querySelector(".editor__edited");
+
     expect(body).not.toBeNull();
-    // DOCUMENT_POSITION_FOLLOWING === the body comes after the date.
-    expect(date!.compareDocumentPosition(body!)).toBe(
+    expect(date).not.toBeNull();
+    // DOCUMENT_POSITION_FOLLOWING === the date comes after the body.
+    expect(body!.compareDocumentPosition(date!)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
+  });
+
+  it("gathers the date and the tags into one footer at the foot", () => {
+    const { container } = renderEditor();
+    const colophon = container.querySelector(".editor__colophon");
+
+    expect(colophon).not.toBeNull();
+    expect(colophon!.querySelector(".editor__edited")).not.toBeNull();
+    expect(colophon!.querySelector(".editor__tags")).not.toBeNull();
   });
 
   it("renders no footer and no delete control, both of which moved to the rail", () => {
