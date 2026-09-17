@@ -280,8 +280,92 @@ test("a poem is centred as a block with its lines left aligned", async ({
   });
   expect(Math.abs(box.width - widest)).toBeLessThan(1.5);
 
-  // And the block is centred on the same axis as the title above it.
+  // The block is NOT centred on its bounding box. Centring the widest line on
+  // the page leaves every shorter line stopping short of that right edge, the
+  // weight of the text collects on the left, and the poem reads as though it
+  // has slipped sideways from the title. It is the average line that is
+  // centred instead. See verseOpticalShift.
   const title = (await page.getByLabel("Note title").boundingBox())!;
+  const titleCentre = title.x + title.width / 2;
+  expect(Math.abs(box.x + box.width / 2 - titleCentre)).toBeGreaterThan(4);
+});
+
+test("a ragged poem is centred on its average line, not its longest", async ({
+  page,
+}) => {
+  // Ragged enough that bounding-box centring visibly fails, but not so ragged
+  // that the correction runs out of column to move into. The clamped case is
+  // covered separately below.
+  const ragged = [
+    "A line of a rather more moderate length here,",
+    "Short line here,",
+    "Another short one,",
+    "And a third,",
+  ].join("\n");
+  await open(page, { body: ragged, format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  const read = page.locator(".editor__read");
+  const lines = await read.evaluate((el) => {
+    const node = el.firstChild!;
+    const text = node.textContent ?? "";
+    const widths: number[] = [];
+    let at = 0;
+    for (const line of text.split("\n")) {
+      if (line.trim() !== "") {
+        const r = document.createRange();
+        r.setStart(node, at);
+        r.setEnd(node, at + line.length);
+        for (const rect of r.getClientRects()) widths.push(rect.width);
+      }
+      at += line.length + 1;
+    }
+    return widths;
+  });
+  const mean = lines.reduce((a, b) => a + b, 0) / lines.length;
+
+  const box = (await read.boundingBox())!;
+  const title = (await page.getByLabel("Note title").boundingBox())!;
+  const opticalCentre = box.x + mean / 2;
+
+  expect(Math.abs(opticalCentre - (title.x + title.width / 2))).toBeLessThan(2);
+});
+
+/* The correction is capped so that the longest line can never be pushed out of
+   the column. A poem ragged enough to want more than there is room for gets
+   what is available and no more, which leaves it short of optically centred.
+   That is the right trade: text leaving the page is a worse fault than text
+   sitting a little left. */
+test("the nudge never pushes the longest line out of the column", async ({
+  page,
+}) => {
+  const veryRagged = [
+    "A line that runs on considerably longer than all of the others below it,",
+    "Short line here,",
+    "Another short one,",
+    "And a third,",
+  ].join("\n");
+  await open(page, { body: veryRagged, format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  const read = (await page.locator(".editor__read").boundingBox())!;
+  const column = (await page.locator(".editor__inner").boundingBox())!;
+
+  expect(read.x).toBeGreaterThanOrEqual(column.x - 1);
+  expect(read.x + read.width).toBeLessThanOrEqual(column.x + column.width + 1);
+});
+
+/* The correction is proportional to how ragged the poem is, so a block of
+   even lines needs none and must not be pushed off the axis it already sits
+   on. */
+test("a poem with even line lengths is left where it is", async ({ page }) => {
+  const even = ["Even lines of a kind,", "Even lines of a kind,", "Even lines of a kind,"].join("\n");
+  await open(page, { body: even, format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  const box = (await page.locator(".editor__read").boundingBox())!;
+  const title = (await page.getByLabel("Note title").boundingBox())!;
+
   expect(Math.abs(box.x + box.width / 2 - (title.x + title.width / 2))).toBeLessThan(2);
 });
 

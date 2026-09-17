@@ -25,6 +25,47 @@ interface NoteEditorProps {
   onSelectNote: (id: string) => void;
 }
 
+/**
+ * How far right a block of verse has to move to look centred.
+ *
+ * Centring the block on its bounding box puts the middle of the *longest* line
+ * on the page's axis. Every shorter line then stops well before that right
+ * edge, so the weight of the text collects on the left and the poem reads as
+ * though it has slipped sideways, even though a ruler says it has not. The eye
+ * centres on the average line, not the longest one, so the block is nudged by
+ * half the gap between the two.
+ *
+ * It is self-limiting: a poem whose lines are all about the same length has an
+ * average near its longest and barely moves, which is right, because a squared
+ * off block needs no correction.
+ */
+const verseOpticalShift = (read: HTMLElement, columnWidth: number): number => {
+  const node = read.firstChild;
+  if (node === null || node.nodeType !== Node.TEXT_NODE) return 0;
+  const text = node.textContent ?? "";
+
+  const widths: number[] = [];
+  let at = 0;
+  for (const line of text.split("\n")) {
+    if (line.trim() !== "") {
+      const range = document.createRange();
+      range.setStart(node, at);
+      range.setEnd(node, at + line.length);
+      // Per rect rather than the union, so a line long enough to wrap counts as
+      // the two lines it is drawn as and does not report the whole column.
+      for (const rect of range.getClientRects()) widths.push(rect.width);
+    }
+    at += line.length + 1;
+  }
+  if (widths.length === 0) return 0;
+
+  const longest = Math.max(...widths);
+  const mean = widths.reduce((sum, w) => sum + w, 0) / widths.length;
+  // Never past the point where the longest line would leave the column.
+  const room = Math.max(0, (columnWidth - longest) / 2);
+  return Math.min((longest - mean) / 2, room);
+};
+
 const formatEdited = (iso: string): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -102,6 +143,7 @@ export const NoteEditor = ({
    */
   const [editing, setEditing] = useState(false);
   const [verseWidth, setVerseWidth] = useState<number>();
+  const [verseShift, setVerseShift] = useState(0);
   const [fontsReady, setFontsReady] = useState(false);
 
   // A poem is set as it was written. The capital that opens a chapter would
@@ -223,11 +265,14 @@ export const NoteEditor = ({
   useLayoutEffect(() => {
     if (!verse) {
       setVerseWidth(undefined);
+      setVerseShift(0);
       return;
     }
     const read = readRef.current;
     if (!read) return;
     setVerseWidth(read.getBoundingClientRect().width);
+    const column = read.parentElement?.parentElement?.getBoundingClientRect().width;
+    setVerseShift(verseOpticalShift(read, column ?? read.getBoundingClientRect().width));
   }, [verse, note.body, note.id, editing, fontsReady]);
 
   /* Runs after the swap, because setSelectionRange on a field that is still
@@ -320,6 +365,13 @@ export const NoteEditor = ({
         </div>
         <div
           className={`editor__bodywrap${verse ? " editor__bodywrap--verse" : ""}`}
+          /* Moves the reading view and the field together, so the poem is
+             optically centred whether it is being read or written. */
+          style={
+            verse && verseShift > 0
+              ? { transform: `translateX(${verseShift}px)` }
+              : undefined
+          }
         >
           {!editing && (
             /* Hidden from assistive technology on purpose. It is a second copy
