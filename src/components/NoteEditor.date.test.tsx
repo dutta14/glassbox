@@ -21,6 +21,9 @@ const renderEditor = (note: Note = mkNote()) =>
       onChangeTitle={vi.fn()}
       onChangeBody={vi.fn()}
       onScrollHandled={vi.fn()}
+      previousNote={null}
+      nextNote={null}
+      onSelectNote={vi.fn()}
     />,
   );
 

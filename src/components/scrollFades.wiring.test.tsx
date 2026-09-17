@@ -93,7 +93,14 @@ describe("scroll fade wiring", () => {
     expect(fades(log)).toBe(true);
   });
 
-  it("fades the note body textarea, which is what scrolls a long note", () => {
+  /**
+   * Inverted deliberately. The body used to be its own scroller and carried its
+   * own fade. It now grows to fit its text so the whole note scrolls as one
+   * document, which is what lets the previous/next links sit at its foot. A
+   * fade on a field that never scrolls would dim the first and last lines of
+   * every note for no reason.
+   */
+  it("leaves the note body unfaded, since it grows instead of scrolling", () => {
     render(
       <NoteEditor
         note={mkNote("n1", "A title", "a long body")}
@@ -101,10 +108,13 @@ describe("scroll fade wiring", () => {
         onChangeTitle={vi.fn()}
         onChangeBody={vi.fn()}
         onScrollHandled={vi.fn()}
+        previousNote={null}
+        nextNote={null}
+        onSelectNote={vi.fn()}
       />,
     );
 
-    expect(fades(screen.getByLabelText("Note body"))).toBe(true);
+    expect(fades(screen.getByLabelText("Note body"))).toBe(false);
   });
 
   /**
@@ -119,7 +129,7 @@ describe("scroll fade wiring", () => {
     expect(fades(document.querySelector(".composer__row"))).toBe(false);
   });
 
-  it("also fades the editor section, which scrolls when the pane is too short", () => {
+  it("fades the editor section, now the single scroller for the whole note", () => {
     render(
       <NoteEditor
         note={mkNote("n1", "A title", "a long body")}
@@ -127,6 +137,9 @@ describe("scroll fade wiring", () => {
         onChangeTitle={vi.fn()}
         onChangeBody={vi.fn()}
         onScrollHandled={vi.fn()}
+        previousNote={null}
+        nextNote={null}
+        onSelectNote={vi.fn()}
       />,
     );
 

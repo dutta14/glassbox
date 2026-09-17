@@ -85,6 +85,12 @@
   --font-mono:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
     monospace;
+  /* The reading pair, shared with the blog so a note and a post are set the
+     same way. Georgia is the fallback because it is the only serif that is
+     everywhere; it is wider than Garamond, so a note will reflow slightly
+     before the webfont lands. */
+  --font-serif: "EB Garamond", Georgia, serif;
+  --font-ui: "Inter", var(--font-sans);
 
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
@@ -143,7 +149,10 @@
      font-independent: `ch` resolves differently on the title (--fs-2xl) than
      on the body (--fs-lg), which knocks the fields out of alignment.
      36rem is approximately 68ch at --fs-lg. */
-  --editor-measure: 36rem;
+  /* 680px, the measure the blog sets its post body to. At 18px Garamond that
+     is a little over 70 characters a line, inside the 45-75 that reads
+     comfortably. */
+  --editor-measure: 42.5rem;
   --chat-column: 46rem;
   --chat-gutter: var(--space-8);
 

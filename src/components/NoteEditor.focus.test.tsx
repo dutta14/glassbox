@@ -41,6 +41,9 @@ describe('NoteEditor — AC 1 focus behaviour for a freshly created note', () =>
         onChangeTitle={vi.fn()}
         onChangeBody={vi.fn()}
         onScrollHandled={vi.fn()}
+        previousNote={null}
+        nextNote={null}
+        onSelectNote={vi.fn()}
       />,
     );
 
@@ -56,6 +59,9 @@ describe('NoteEditor — AC 1 focus behaviour for a freshly created note', () =>
         onChangeTitle={vi.fn()}
         onChangeBody={vi.fn()}
         onScrollHandled={vi.fn()}
+        previousNote={null}
+        nextNote={null}
+        onSelectNote={vi.fn()}
       />,
     );
 
@@ -73,6 +79,9 @@ describe('NoteEditor — AC 1 focus behaviour for a freshly created note', () =>
         onChangeTitle={vi.fn()}
         onChangeBody={vi.fn()}
         onScrollHandled={vi.fn()}
+        previousNote={null}
+        nextNote={null}
+        onSelectNote={vi.fn()}
       />,
     );
 
@@ -90,6 +99,9 @@ describe('NoteEditor — AC 1 focus behaviour for a freshly created note', () =>
         onChangeTitle={vi.fn()}
         onChangeBody={vi.fn()}
         onScrollHandled={vi.fn()}
+        previousNote={null}
+        nextNote={null}
+        onSelectNote={vi.fn()}
       />,
     );
 

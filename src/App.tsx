@@ -7,6 +7,7 @@ import { useTheme } from "./hooks/useTheme";
 import { createIndex, route } from "./engine/router";
 import { COPY } from "./engine/copy";
 import { NotesRail } from "./components/NotesRail";
+import { useNoteNeighbours } from "./hooks/useNoteNeighbours";
 import { NoteEditor } from "./components/NoteEditor";
 import { ChatPanel } from "./components/ChatPanel";
 import "./styles/App.css";
@@ -155,6 +156,11 @@ const AppReady = ({
     setSelectedNoteId(note.id);
     setActiveTab("editor");
   }, [createNote]);
+
+  const { previous: previousNote, next: nextNote } = useNoteNeighbours(
+    notes,
+    selectedNoteId,
+  );
 
   const handleSelectNote = useCallback((id: string) => {
     setSelectedNoteId(id);
@@ -348,6 +354,9 @@ const AppReady = ({
                   }
                   onChangeBody={(body) => updateNote(selectedNote.id, { body })}
                   onScrollHandled={() => setPendingScrollOffset(null)}
+                  previousNote={previousNote}
+                  nextNote={nextNote}
+                  onSelectNote={handleSelectNote}
                 />
               )}
               {activeTab === "editor" && !selectedNote && (

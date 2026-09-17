@@ -1,0 +1,98 @@
+/* Ported from the blog's post navigation, so the foot of a note reads the same
+   way as the foot of a post. Values follow that stylesheet rather than being
+   re-derived here. */
+
+.note-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--color-border);
+}
+
+.note-nav__link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  /* Held to under half the row so a long title cannot run into its opposite
+     number. */
+  max-width: 45%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.note-nav__link--prev {
+  align-items: flex-start;
+}
+
+.note-nav__link--next {
+  align-items: flex-end;
+  /* Pushed right rather than relying on space-between, so it stays on the
+     right edge when there is no Previous to balance it. */
+  margin-left: auto;
+  text-align: right;
+}
+
+.note-nav__direction {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.note-nav__title {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--color-text);
+  line-height: 1.35;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.note-nav__link:hover .note-nav__title,
+.note-nav__link:hover .note-nav__direction {
+  color: var(--accent);
+}
+
+.note-nav__link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 2px;
+  /* tokens.css puts a soft ring on every :focus-visible. Cleared so the two
+     do not stack into a double halo around a borderless button. */
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .note-nav__link,
+  .note-nav__direction,
+  .note-nav__title {
+    transition: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .note-nav {
+    flex-direction: column;
+    gap: var(--space-6);
+  }
+
+  .note-nav__link {
+    max-width: 100%;
+  }
+
+  .note-nav__link--next {
+    align-items: flex-start;
+    text-align: left;
+    margin-left: 0;
+  }
+}

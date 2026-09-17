@@ -12,32 +12,49 @@
   flex-direction: column;
   gap: var(--space-3);
   width: 100%;
+  max-width: calc(var(--editor-measure) + var(--space-6) * 2);
+  margin-inline: auto;
   padding-block: var(--space-6);
-  flex: 1;
-  min-height: 0;
+  padding-inline: var(--space-6);
+  /* Sized by its content, not by the pane. It used to be pinned to the pane's
+     height back when the body filled it and scrolled inside itself; left that
+     way it caps the note at one screen and the section has nothing to scroll. */
 }
 
-/* The inset lives on each field rather than on the wrapper so that the body
-   textarea spans the full pane and its scrollbar sits against the right edge.
-   The space-6 term preserves the inner padding the wrapper used to add, so
-   the text stays exactly where it was. */
-.editor__title,
-.editor__edited,
-.editor__tags,
-.editor__body,
-.editor__meta {
-  padding-inline: max(
-    var(--space-6),
-    (100% - var(--editor-measure)) / 2 + var(--space-6)
-  );
+/* Flex items shrink by default, which would undo the height the body is given
+   to fit its text and crop the note to whatever the pane can hold. */
+.editor__inner > * {
+  flex-shrink: 0;
 }
+
+/* The inset used to live on each field so the body textarea could span the
+   full pane and put its scrollbar against the right edge. The body no longer
+   scrolls, so that reason is gone, and with it the reason to keep the column
+   from being a column. Centring the wrapper instead means the rules under the
+   header and above the navigation stop at the text they divide rather than
+   running the full width of the pane. */
 
 .editor__edited {
   /* Cancels .editor__inner's row gap so the date sits directly beneath the
      title and the two read as one block rather than two stacked fields. */
-  margin-top: calc(var(--space-3) * -1);
-  font-size: var(--fs-xs);
+  margin: calc(var(--space-3) * -1) 0 0;
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-ui);
+  font-size: 13px;
   color: var(--color-text-muted);
+}
+
+/* The rule belongs under the whole header, so when tags follow they sit above
+   it rather than orphaned below. */
+.editor__edited:has(+ .editor__tags) {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.editor__tags {
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .editor__title {
@@ -45,9 +62,13 @@
   background: transparent;
   border: 0;
   color: var(--color-text);
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-semibold);
-  line-height: var(--leading-tight);
+  /* The blog's post title: Garamond at 2.5rem, regular weight. A serif at this
+     size does not need bolding to carry, and semibold made it shout next to
+     the body it introduces. */
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1.25;
 }
 
 .editor__title::placeholder {
@@ -61,18 +82,30 @@
 }
 
 .editor__body {
-  flex: 1;
+  /* Height is set from scrollHeight on every change, so the field is exactly
+     as tall as its text and the section does the scrolling. The floor only
+     applies to a short note, where it keeps a generous click target for
+     starting to write. */
   min-height: 300px;
   padding-block: var(--space-4);
   background: transparent;
   border: 0;
   color: var(--color-text);
-  font-size: var(--fs-lg);
-  line-height: var(--leading-relaxed);
+  font-family: var(--font-serif);
+  /* A point larger than the blog sets, because Garamond is a narrow face with
+     a small x-height: 18px of it reads smaller and packs more characters into
+     a line than 18px of the sans it sits beside. At 19px the measure holds
+     about 75 characters, the top of the comfortable range, instead of 81. */
+  font-size: 19px;
+  line-height: 1.75;
+  /* Old-style serifs set their spaces tight, which is handsome in print at
+     10pt and crowded on a backlit screen. A hair of extra air between words
+     is what separates them back into phrases you can scan. */
+  word-spacing: 0.05em;
   resize: none;
-  font-family: inherit;
-  /* Keeps the body text aligned with the title when the textarea overflows. */
-  scrollbar-gutter: stable both-edges;
+  /* Never scrolls itself now that it grows to fit. Left visible it would show
+     a phantom scrollbar for one frame between a keystroke and the refit. */
+  overflow-y: hidden;
 }
 
 .editor__body::placeholder {
@@ -102,43 +135,17 @@
   }
 }
 
-.editor__meta {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-  font-size: var(--fs-xs);
-  color: var(--color-text-muted);
-}
-
-.editor__delete {
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--fs-xs);
-  font-weight: var(--fw-medium);
-  color: var(--color-negative);
-  border-radius: var(--radius);
-  background: transparent;
-  transition: background-color var(--duration-fast) var(--ease-out);
-}
-
-.editor__delete:hover {
-  background: var(--color-negative-light);
-}
 
 @media (max-width: 479px) {
   .editor__title {
-    font-size: var(--fs-xl);
+    font-size: 1.875rem;
   }
 
   .editor__inner {
     padding-block: var(--space-4);
   }
 
-  .editor__title,
-  .editor__tags,
-  .editor__body,
-  .editor__meta {
+  .editor__inner {
     padding-inline: var(--space-4);
   }
 }
