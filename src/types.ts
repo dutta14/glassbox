@@ -1,3 +1,9 @@
+/**
+ * How a note is set. Prose wraps into paragraphs and can carry a drop cap;
+ * verse keeps the line breaks it was typed with.
+ */
+export type NoteFormat = 'prose' | 'verse';
+
 export interface Note {
   id: string;
   title: string;
@@ -5,6 +11,12 @@ export interface Note {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  /**
+   * Absent means prose. Optional rather than required so that the notes
+   * already on disk, and every fixture that builds a Note, stay valid without
+   * a migration.
+   */
+  format?: NoteFormat;
 }
 
 export interface Chunk {

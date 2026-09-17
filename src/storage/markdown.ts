@@ -1,10 +1,13 @@
-import type { Note } from '../types';
+import type { Note, NoteFormat } from '../types';
 
 /**
  * Markdown + YAML-frontmatter (de)serialiser. Zero dependencies.
  *
  * The frontmatter shape is fixed and small: five keys, always emitted in the
- * same order, always with the same encoding. That makes the parser strict but
+ * same order, always with the same encoding, plus `format` which is emitted
+ * only when the note has one. Omitting it for prose is deliberate: it is the
+ * default, and always writing it would rewrite every file already on disk the
+ * first time it was touched, for no gain. That makes the parser strict but
  * predictable, which is what a persistence layer wants.
  *
  * String values (title) and array-of-string values (tags) are always emitted
@@ -30,6 +33,9 @@ export const serialiseNote = (note: Note): string => {
     `tags: ${JSON.stringify(note.tags)}`,
     `createdAt: ${note.createdAt}`,
     `updatedAt: ${note.updatedAt}`,
+    ...(note.format === undefined
+      ? []
+      : [`format: ${JSON.stringify(note.format)}`]),
     '---',
     '',
     note.body,
@@ -93,6 +99,7 @@ export const parseNote = (text: string): ParseResult | ParseError => {
 
   const createdAt = normaliseDate(createdAtRaw);
   const updatedAt = normaliseDate(updatedAtRaw);
+  const format = parseFormat(fields.format);
 
   return {
     ok: true,
@@ -103,8 +110,29 @@ export const parseNote = (text: string): ParseResult | ParseError => {
       createdAt: createdAt ?? '',
       updatedAt: updatedAt ?? '',
       body,
+      // Only ever present when the file said so, so that a note read from disk
+      // and written straight back out is byte-identical.
+      ...(format === undefined ? {} : { format }),
     },
   };
+};
+
+/**
+ * A missing, empty, unquoted or unrecognised format all mean prose. Losing a
+ * whole note because someone hand-edited this line badly would be a far worse
+ * outcome than quietly setting their poem as a paragraph, so this never fails
+ * the parse.
+ */
+const parseFormat = (raw: string | undefined): NoteFormat | undefined => {
+  if (raw === undefined) return undefined;
+  let value = raw.trim();
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (typeof parsed === 'string') value = parsed;
+  } catch {
+    // Not JSON. Fall through and read it bare, so `format: verse` works too.
+  }
+  return value === 'prose' || value === 'verse' ? value : undefined;
 };
 
 /**

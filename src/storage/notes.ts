@@ -93,5 +93,8 @@ export const newNote = (partial: Partial<Note> = {}): Note => {
     tags: partial.tags ?? [],
     createdAt: partial.createdAt ?? now,
     updatedAt: partial.updatedAt ?? now,
+    // Spread rather than defaulted: a prose note must carry no format key at
+    // all, so that it serialises to exactly the file it does today.
+    ...(partial.format === undefined ? {} : { format: partial.format }),
   };
 };

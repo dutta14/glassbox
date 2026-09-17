@@ -96,3 +96,29 @@ describe("NoteEditor chapter layout", () => {
     expect(time!.getAttribute("dateTime")).toBe("2026-03-04T05:06:07.000Z");
   });
 });
+
+/* Notes here go back to 2010, so a date without a year is not just terse, it is
+   wrong: it reads as this year's. */
+describe("the edited year", () => {
+  const renderAt = (updatedAt: string) => {
+    renderEditor(mkNote({ updatedAt }));
+    return screen.getByText(/Edited/).textContent ?? "";
+  };
+
+  it("names the year of a note written years ago", () => {
+    expect(renderAt("2010-12-28T10:00:00.000Z")).toContain("2010");
+  });
+
+  it("names the year even for a note edited earlier this year", () => {
+    const thisYear = new Date().getFullYear();
+    const text = renderAt(`${thisYear}-01-05T10:00:00.000Z`);
+
+    expect(text).toContain(String(thisYear));
+  });
+
+  /* Anything inside the relative window is still phrased in the relative way,
+     where a year would be noise. */
+  it("still says just now for an edit a moment ago", () => {
+    expect(renderAt(new Date().toISOString())).toContain("just now");
+  });
+});

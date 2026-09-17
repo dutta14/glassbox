@@ -10,7 +10,23 @@ const LONG = Array.from(
   (_, i) => `Paragraph ${i + 1}. ${"The quick brown fox jumps over it. ".repeat(3)}`,
 ).join("\n\n");
 
-const init = ({ body, theme }: { body: string; theme: "light" | "dark" }) => {
+const VERSE = [
+  "Walking the long road home in the falling light,",
+  "Wondering why the lamps came on so early,",
+  "",
+  "I counted every window on the street,",
+  "And found the one I used to know by heart,",
+].join("\n");
+
+const init = ({
+  body,
+  theme,
+  format,
+}: {
+  body: string;
+  theme: "light" | "dark";
+  format?: "prose" | "verse";
+}) => {
   const now = new Date("2024-03-01T10:00:00Z").toISOString();
   localStorage.setItem("glassbox.seeded.v1", "true");
   localStorage.setItem("glassbox.theme.v1", theme);
@@ -24,6 +40,7 @@ const init = ({ body, theme }: { body: string; theme: "light" | "dark" }) => {
         tags: ["evaluation", "ambiguity"],
         createdAt: new Date("2024-02-02T10:00:00Z").toISOString(),
         updatedAt: now,
+        ...(format === undefined ? {} : { format }),
       },
       {
         id: "n1",
@@ -62,9 +79,10 @@ const open = async (
     body = LONG,
     theme = "light" as "light" | "dark",
     title = NOTE,
+    format = undefined as "prose" | "verse" | undefined,
   } = {},
 ) => {
-  await page.addInitScript(init, { body, theme });
+  await page.addInitScript(init, { body, theme, format });
   await page.goto("/");
   await expect(page.getByText("These are sample notes")).toHaveCount(0);
   // Targeted by data attribute rather than accessible name: the rail's notes
@@ -239,3 +257,62 @@ for (const theme of ["light", "dark"] as const) {
     );
   });
 }
+
+/* Verse is laid out by measuring the reading view, and a measurement is only
+   ever as good as the moment it was taken. jsdom has no layout at all, so none
+   of this can be caught anywhere but here. */
+test("a poem is centred as a block with its lines left aligned", async ({
+  page,
+}) => {
+  await open(page, { body: VERSE, format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  const read = page.locator(".editor__read");
+  const box = (await read.boundingBox())!;
+
+  // The column is exactly as wide as the poem's longest line. Measuring before
+  // the serif loads reports the fallback's wider metrics and the poem then sits
+  // off centre for the life of the note, which is the bug this pins.
+  const widest = await read.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    return Math.max(...Array.from(range.getClientRects()).map((r) => r.width));
+  });
+  expect(Math.abs(box.width - widest)).toBeLessThan(1.5);
+
+  // And the block is centred on the same axis as the title above it.
+  const title = (await page.getByLabel("Note title").boundingBox())!;
+  expect(Math.abs(box.x + box.width / 2 - (title.x + title.width / 2))).toBeLessThan(2);
+});
+
+test("a poem does not shift when it is clicked to start writing", async ({
+  page,
+}) => {
+  await open(page, { body: VERSE, format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  const before = (await page.locator(".editor__read").boundingBox())!;
+  await page.locator(".editor__read").click();
+  await expect(page.getByLabel("Note body")).toBeFocused();
+  const after = (await page.getByLabel("Note body").boundingBox())!;
+
+  expect(Math.abs(after.x - before.x)).toBeLessThan(1.5);
+  expect(Math.abs(after.width - before.width)).toBeLessThan(1.5);
+});
+
+test("a poem line longer than the column stays inside it", async ({ page }) => {
+  const long = `${"A line far longer than the column can hold ".repeat(4)}\nShort one.`;
+  await open(page, { body: long, format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  const read = (await page.locator(".editor__read").boundingBox())!;
+  const wrap = (await page.locator(".editor__bodywrap").boundingBox())!;
+
+  expect(read.width).toBeLessThanOrEqual(wrap.width + 1);
+});
+
+test("a poem is never given a chapter drop cap", async ({ page }) => {
+  await open(page, { body: VERSE, format: "verse" });
+
+  await expect(page.locator(".editor__read")).not.toHaveAttribute("data-dropcap");
+});

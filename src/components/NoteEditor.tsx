@@ -35,7 +35,14 @@ const formatEdited = (iso: string): string => {
   if (mins < 60) return `${mins} min ago`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours} h ago`;
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  // The year is always carried. Notes here go back well over a decade, and a
+  // bare "Dec 28" on something written in 2010 reads as though it were written
+  // last winter.
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 };
 
 /** Matches .editor__body's line-height, as a floor if the computed value is
@@ -94,6 +101,12 @@ export const NoteEditor = ({
    * focus juggling a swap would need can go wrong.
    */
   const [editing, setEditing] = useState(false);
+  const [verseWidth, setVerseWidth] = useState<number>();
+  const [fontsReady, setFontsReady] = useState(false);
+
+  // A poem is set as it was written. The capital that opens a chapter would
+  // indent the first three lines of it out of shape, so verse never takes one.
+  const verse = (note.format ?? "prose") === "verse";
 
   // One scroller, not two. The body grows to fit its text rather than scrolling
   // inside itself, so the note reads as a single document and the navigation at
@@ -190,6 +203,33 @@ export const NoteEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
 
+  /* Measured once the serif has actually loaded. Measuring before it does
+     reports the fallback font's wider metrics, and that stale number then sets
+     the width of the field for the life of the note. */
+  useEffect(() => {
+    let live = true;
+    void document.fonts?.ready.then(() => {
+      if (live) setFontsReady(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  /* The width of the poem's longest line, taken from the reading view, which
+     is laid out at max-content and so is exactly that wide. Only the field
+     needs it. While editing there is no reading view to measure, so the last
+     value stands and the lines do not shuffle under the caret as you type. */
+  useLayoutEffect(() => {
+    if (!verse) {
+      setVerseWidth(undefined);
+      return;
+    }
+    const read = readRef.current;
+    if (!read) return;
+    setVerseWidth(read.getBoundingClientRect().width);
+  }, [verse, note.body, note.id, editing, fontsReady]);
+
   /* Runs after the swap, because setSelectionRange on a field that is still
      hidden and unsized does not survive it being laid out. */
   useLayoutEffect(() => {
@@ -231,7 +271,7 @@ export const NoteEditor = ({
   const isEmpty = note.body === "";
   // 0 when the note is too short to carry one; otherwise the number of lines
   // the capital sinks, which is also the value the stylesheet keys on.
-  const cap = dropCapDepth(note.body);
+  const cap = verse ? 0 : dropCapDepth(note.body);
 
   /**
    * Puts the caret where the reader actually pointed. Without this, moving from
@@ -278,7 +318,9 @@ export const NoteEditor = ({
         <div className="editor__ornament" aria-hidden="true">
           <span className="editor__ornament-mark" />
         </div>
-        <div className="editor__bodywrap">
+        <div
+          className={`editor__bodywrap${verse ? " editor__bodywrap--verse" : ""}`}
+        >
           {!editing && (
             /* Hidden from assistive technology on purpose. It is a second copy
                of text the field below already exposes, and a screen reader
@@ -300,6 +342,13 @@ export const NoteEditor = ({
           <textarea
             ref={bodyRef}
             className="editor__body"
+            /* The reading view centres itself on its longest line without any
+               help. A textarea cannot: it has no max-content width to take. So
+               it is given the width the reading view worked out, which is what
+               keeps the poem from jumping sideways the moment it is clicked. */
+            style={
+              verse && verseWidth !== undefined ? { width: verseWidth } : undefined
+            }
             data-editing={editing ? "on" : undefined}
             aria-label="Note body"
             placeholder={COPY.placeholderBody}

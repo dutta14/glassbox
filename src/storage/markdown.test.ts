@@ -186,3 +186,94 @@ describe('slugify and noteFilename', () => {
     expect(name).toBe('untitled-abc123.md');
   });
 });
+
+/**
+ * Format is the one optional key in the frontmatter, which makes it the one
+ * that can break the round-trip invariant. All three states are pinned: absent,
+ * explicitly prose, and verse.
+ */
+describe('note format', () => {
+  const base = {
+    id: 'abc',
+    title: 'Hope is the thing with feathers',
+    tags: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-02T00:00:00.000Z',
+    body: 'Hope is the thing with feathers\nThat perches in the soul,',
+  };
+
+  it('round-trips a verse note', () => {
+    const note = { ...base, format: 'verse' as const };
+    const result = parseNote(serialiseNote(note));
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.note).toEqual(note);
+  });
+
+  it('round-trips a note with no format, leaving the key off entirely', () => {
+    const result = parseNote(serialiseNote(base));
+
+    expect(serialiseNote(base)).not.toContain('format');
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.note).toEqual(base);
+  });
+
+  /* Writing `format: "prose"` into every existing file the first time it was
+     touched would churn the whole folder for no gain. */
+  it('leaves a prose note byte-identical to what it was before formats existed', () => {
+    expect(serialiseNote(base)).toBe(
+      [
+        '---',
+        'id: abc',
+        'title: "Hope is the thing with feathers"',
+        'tags: []',
+        'createdAt: 2026-01-01T00:00:00.000Z',
+        'updatedAt: 2026-01-02T00:00:00.000Z',
+        '---',
+        '',
+        base.body,
+      ].join('\n'),
+    );
+  });
+
+  it('round-trips a note whose format is explicitly prose', () => {
+    const note = { ...base, format: 'prose' as const };
+    const result = parseNote(serialiseNote(note));
+
+    expect(result.ok && result.note).toEqual(note);
+  });
+
+  it('reads a bare unquoted format, as a hand-edited file would have it', () => {
+    const text = serialiseNote(base).replace(
+      'updatedAt: 2026-01-02T00:00:00.000Z',
+      'updatedAt: 2026-01-02T00:00:00.000Z\nformat: verse',
+    );
+    const result = parseNote(text);
+
+    expect(result.ok && result.note.format).toBe('verse');
+  });
+
+  /* A bad format is never a reason to lose a note. */
+  it('keeps the note and falls back to prose when the format is unrecognised', () => {
+    const text = serialiseNote(base).replace(
+      'updatedAt: 2026-01-02T00:00:00.000Z',
+      'updatedAt: 2026-01-02T00:00:00.000Z\nformat: "haiku"',
+    );
+    const result = parseNote(text);
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.note.format).toBeUndefined();
+    expect(result.ok && result.note.body).toBe(base.body);
+  });
+
+  it('keeps the note when the format line is empty', () => {
+    const text = serialiseNote(base).replace(
+      'updatedAt: 2026-01-02T00:00:00.000Z',
+      'updatedAt: 2026-01-02T00:00:00.000Z\nformat:',
+    );
+    const result = parseNote(text);
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.note.format).toBeUndefined();
+  });
+});

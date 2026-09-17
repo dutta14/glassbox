@@ -267,3 +267,43 @@ textarea.editor__body:not([data-editing]) {
   background: var(--color-surface-prompt);
   border-radius: var(--radius-sm);
 }
+
+/* Verse. A poem is centred as a block on the page while its lines stay left
+   aligned to each other, which is how poetry is set in print: the eye still
+   gets a straight left edge to return to, and the shape of the stanza is not
+   destroyed by centring every line individually. The width comes from
+   NoteEditor, which measures the longest line. */
+.editor__bodywrap--verse {
+  max-width: 100%;
+  /* Load-bearing twice over. .editor__inner is a flex column, so this wrapper
+     would otherwise be stretched to the full measure by the default
+     align-items. An auto margin on the cross axis suppresses that stretch,
+     which lets the wrapper shrink to the poem, and then centres it. Take this
+     away and the poem is full width and hard left. */
+  margin-inline: auto;
+}
+
+/* max-content lays the reading view out to its longest line, which is what
+   gives the shrink-wrapping wrapper above its width. No measurement is
+   involved, so this is right on the very first paint and stays right through a
+   font swap or a resize. max-width caps a line too long for the column so it
+   wraps rather than running off the page.
+   The compound selector is load-bearing: it beats
+   `.editor__bodywrap > .editor__body { width: 100% }`, which would otherwise
+   stretch it to the full column and size the wrapper to nothing useful. */
+.editor__bodywrap--verse > .editor__read.editor__body {
+  width: max-content;
+  max-width: 100%;
+}
+
+/* The field is given its width by NoteEditor, since a textarea has no
+   max-content width of its own to take. */
+.editor__bodywrap--verse > textarea.editor__body {
+  margin-inline: auto;
+}
+
+/* Poems are read a line at a time rather than swept through, and the extra
+   leading is what gives each line room to land. */
+.editor__bodywrap--verse > .editor__body {
+  line-height: 2.1;
+}
