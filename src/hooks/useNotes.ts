@@ -281,6 +281,11 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       if (!current) return;
       const title = patch.title ?? current.title;
       const body = patch.body ?? current.body;
+      // A patch that changes nothing is not an edit. Without this guard any
+      // caller that hands back the current value still restamps updatedAt and
+      // schedules a disk write, which reorders the rail, marks an untouched
+      // note "Edited just now", and quietly rewrites the file on open.
+      if (title === current.title && body === current.body) return;
       const tags =
         body === current.body
           ? current.tags
