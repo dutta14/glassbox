@@ -140,7 +140,7 @@
   --ease-in: cubic-bezier(0.55, 0.06, 0.68, 0.19);
   --ease-in-out: cubic-bezier(0.65, 0.05, 0.36, 1);
 
-  --rail-notes: 220px;
+  --rail-notes: 248px;
   --rail-collapsed: 56px;
   --stage-min: 480px;
   --measure: 68ch;
