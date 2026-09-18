@@ -201,3 +201,65 @@ describe('AC 5 — tag extraction from #word tokens in note body', () => {
     expect(tags.filter((t) => t === 'sample')).toHaveLength(1);
   });
 });
+
+/**
+ * Tags do not only come from the body. Notes brought in from elsewhere carry
+ * them in front matter with no hashtag anywhere in the text, and rebuilding
+ * the list from the body alone deleted every one of them on the first
+ * keystroke. For most tags that costs a subject or a series. For the tag that
+ * withholds a note from search it is worse: the note quietly becomes
+ * answerable, and nothing about the note looks any different.
+ */
+describe('tags that were not written into the body', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    markSeeded();
+  });
+
+  it('keeps an imported tag when the body is edited and never mentioned it', async () => {
+    const rendered = await setup(mkNote('i', 'A poem from 2011.', ['verses', 'octaves']));
+
+    const tags = await editBody(rendered, 'i', 'A poem from 2011, lightly corrected.');
+
+    expect(new Set(tags)).toEqual(new Set(['verses', 'octaves']));
+  });
+
+  it('keeps withholding an imported note from answers after it is edited', async () => {
+    const rendered = await setup(mkNote('a', 'In shadowed garden.', ['verses', 'ai-generated']));
+
+    const tags = await editBody(rendered, 'a', 'In shadowed garden, veiled in night.');
+
+    expect(tags).toContain('ai-generated');
+  });
+
+  it('adds a newly typed hashtag without discarding the imported tags', async () => {
+    const rendered = await setup(mkNote('b', 'A poem.', ['verses']));
+
+    const tags = await editBody(rendered, 'b', 'A poem. #autumn');
+
+    expect(new Set(tags)).toEqual(new Set(['verses', 'autumn']));
+  });
+
+  /* The rule is "the body owns what the body wrote", so a tag the body did
+     put there must still be removable. Preserving everything unconditionally
+     would fix the import at the cost of making tags permanent. */
+  it('still removes a tag when its hashtag is deleted from the body', async () => {
+    const rendered = await setup(mkNote('c', 'A poem. #draft', ['verses', 'draft']));
+
+    const tags = await editBody(rendered, 'c', 'A poem.');
+
+    expect(tags).not.toContain('draft');
+    expect(tags).toContain('verses');
+  });
+
+  /* ai-generated is provenance, not a subject: it describes where the writing
+     came from. Deleting the hashtag must not be able to make a machine's poem
+     answerable as the user's own. */
+  it('refuses to let the withholding tag be removed by deleting its hashtag', async () => {
+    const rendered = await setup(mkNote('d', 'A poem. #ai-generated', ['ai-generated']));
+
+    const tags = await editBody(rendered, 'd', 'A poem.');
+
+    expect(tags).toContain('ai-generated');
+  });
+});

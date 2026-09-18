@@ -10,24 +10,58 @@ const AUTOSAVE_MS = 500;
  * Tags that describe where a note came from, not something the user wrote in
  * the body. These are preserved across edits so a user typing into a sample
  * note does not silently strip its provenance.
+ *
+ * `ai-generated` is here because it is load-bearing rather than descriptive:
+ * it is what keeps writing the user did not write out of every answer. Losing
+ * it does not show up as a missing label, it shows up months later as a poem
+ * a machine wrote being quoted back as theirs.
  */
-const PROVENANCE_TAGS: ReadonlySet<string> = new Set(['sample']);
+const PROVENANCE_TAGS: ReadonlySet<string> = new Set(['sample', 'ai-generated']);
 
 const extractTagsFromBody = (body: string): string[] => {
   const matches = body.match(/#[a-z0-9][a-z0-9-]*/gi) ?? [];
   return parseTags(matches.join(' '));
 };
 
-const mergeProvenance = (previous: string[], fromBody: string[]): string[] => {
-  const merged = [...fromBody];
+/**
+ * The tags a note should carry after its body was edited.
+ *
+ * Tags are written as hashtags in the body, so the body is their source. But
+ * it is not their only source: notes brought in from elsewhere carry tags in
+ * their front matter with no hashtag anywhere in the text. Rebuilding the list
+ * from the body alone deleted every one of those on the first keystroke, which
+ * silently cost a note its subject, its series, and its exclusion from search.
+ *
+ * So the previous body is consulted too. A tag the old body produced and the
+ * new one does not was deliberately removed by deleting its hashtag, and goes.
+ * A tag the body never produced was set some other way and stays.
+ */
+const mergeTags = (previous: string[], previousBody: string, nextBody: string): string[] => {
+  const fromOldBody = new Set(extractTagsFromBody(previousBody));
+  const merged = [...extractTagsFromBody(nextBody)];
   for (const tag of previous) {
-    if (PROVENANCE_TAGS.has(tag) && !merged.includes(tag)) merged.push(tag);
+    const managedByBody = fromOldBody.has(tag) && !PROVENANCE_TAGS.has(tag);
+    if (!managedByBody && !merged.includes(tag)) merged.push(tag);
   }
   return merged;
 };
 
-const sortByUpdated = (notes: Note[]): Note[] =>
-  [...notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+/**
+ * The library in the order it was written, newest first.
+ *
+ * Ordered on createdAt, not updatedAt. Sorting on updatedAt makes the list
+ * restless: fixing one tag on a poem from 2011 rewrites its updatedAt and
+ * throws it to the top, above everything written since. In a working set of a
+ * dozen notes that reads as "what I touched last". In a library of several
+ * hundred archived pieces it reads as the archive rearranging itself every
+ * time you correct a typo, and the reader loses the place they were in.
+ *
+ * createdAt is the date the piece was written and never changes, so the
+ * shelf stays in the same order you left it. This also matches the order
+ * Previous and Next already move through, in useNoteNeighbours.
+ */
+const sortByCreated = (notes: Note[]): Note[] =>
+  [...notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
 export type NotesStatus = 'loading' | 'ready' | 'error';
 
@@ -144,7 +178,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
         // more copies. Combined with the stable ids in sampleNotes.ts this
         // makes the seeding path idempotent under any timing.
         if (hasSeeded()) {
-          setNotes(sortByUpdated(existing));
+          setNotes(sortByCreated(existing));
           setStatus('ready');
           return;
         }
@@ -160,7 +194,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
         const byId = new Map<string, Note>();
         for (const n of existing) byId.set(n.id, n);
         for (const n of seeded) byId.set(n.id, n);
-        setNotes(sortByUpdated([...byId.values()]));
+        setNotes(sortByCreated([...byId.values()]));
         setStatus('ready');
       } catch (e) {
         if (cancelled) return;
@@ -227,7 +261,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       nextById.set(id, remote);
     }
 
-    setNotes(sortByUpdated([...nextById.values()]));
+    setNotes(sortByCreated([...nextById.values()]));
     if (conflicts.length > 0) {
       setExternalConflicts((prevConflicts) => {
         const seen = new Set(prevConflicts.map((c) => c.id));
@@ -270,7 +304,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
 
   const createNote = useCallback((): Note => {
     const note = newNote();
-    setNotes((prev) => sortByUpdated([note, ...prev]));
+    setNotes((prev) => sortByCreated([note, ...prev]));
     scheduleWrite(note);
     return note;
   }, [scheduleWrite]);
@@ -287,9 +321,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       // note "Edited just now", and quietly rewrites the file on open.
       if (title === current.title && body === current.body) return;
       const tags =
-        body === current.body
-          ? current.tags
-          : mergeProvenance(current.tags, extractTagsFromBody(body));
+        body === current.body ? current.tags : mergeTags(current.tags, current.body, body);
       const nextNote: Note = {
         ...current,
         title,
@@ -298,7 +330,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
         updatedAt: new Date().toISOString(),
       };
       setNotes((prev) =>
-        sortByUpdated(prev.map((n) => (n.id === id ? nextNote : n))),
+        sortByCreated(prev.map((n) => (n.id === id ? nextNote : n))),
       );
       scheduleWrite(nextNote);
     },
