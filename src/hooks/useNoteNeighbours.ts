@@ -11,14 +11,13 @@ export interface NoteNeighbours {
 /**
  * The notes either side of the open one, in the order they were written.
  *
- * Ordered by createdAt rather than by updatedAt, which is what the rail sorts
- * on. The rail's order is deliberately restless: it surfaces whatever you
- * touched last, so it reshuffles as you type. Navigation cannot work that way.
- * Keyed on updatedAt, a single keystroke would move the open note to the front,
- * making it the newest note and dropping its "Next" link mid-sentence.
+ * Ordered by createdAt, the same order the rail lists them in, so moving with
+ * Previous and Next walks the shelf exactly as it is drawn.
  *
- * createdAt never changes, so the sequence is fixed and Previous still leads
- * where it led a moment ago.
+ * createdAt is used rather than updatedAt because updatedAt moves. Keyed on
+ * it, a single keystroke would make the open note the newest note and drop its
+ * "Next" link mid-sentence. createdAt never changes, so the sequence is fixed
+ * and Previous still leads where it led a moment ago.
  */
 export const useNoteNeighbours = (
   notes: Note[],

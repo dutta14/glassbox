@@ -45,7 +45,7 @@
   text-align: center;
 }
 
-.editor__edited {
+.editor__written {
   margin: 0;
   font-family: var(--font-ui);
   font-size: 13px;

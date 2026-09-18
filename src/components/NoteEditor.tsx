@@ -66,7 +66,7 @@ const verseOpticalShift = (read: HTMLElement, columnWidth: number): number => {
   return Math.min((longest - mean) / 2, room);
 };
 
-const formatEdited = (iso: string): string => {
+const formatWritten = (iso: string): string => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const now = Date.now();
@@ -411,13 +411,21 @@ export const NoteEditor = ({
           />
         </div>
         {/* A chapter opens with its title and nothing else, so when the note
-            was edited and what it is tagged with are held back to the foot.
+            was written and what it is tagged with are held back to the foot.
             They are still the first thing after the prose ends, just no longer
-            standing between the title and the first line. */}
+            standing between the title and the first line.
+
+            The date is createdAt, not updatedAt. A poem from 2011 belongs to
+            2011, and correcting a typo in it this afternoon does not make it a
+            poem from this afternoon. The rail orders on createdAt for the same
+            reason, so the foot of the note now agrees with the list it came
+            from. */}
         <footer className="editor__colophon">
-          <p className="editor__edited">
-            Edited{" "}
-            <time dateTime={note.updatedAt}>{formatEdited(note.updatedAt)}</time>
+          <p className="editor__written">
+            Written{" "}
+            <time dateTime={note.createdAt}>
+              {formatWritten(note.createdAt)}
+            </time>
             <span className="editor__meta-separator" aria-hidden="true">
               {" · "}
             </span>
