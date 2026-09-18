@@ -23,11 +23,30 @@ export interface UseConversationsResult {
   conversations: Conversation[];
   /** null means a draft: the chat is open but nothing has been sent. */
   activeId: string | null;
+  /**
+   * False until the initial load settles, true afterwards even when the store
+   * held nothing. An empty folder and a folder still being read both look like
+   * `conversations: []`, and telling a deep link at /chat/<id> "no such chat"
+   * during that gap is exactly the bounce this flag exists to prevent. A route
+   * is only judged invalid once this is true.
+   */
+  loaded: boolean;
   messages: ChatMessage[];
   startDraft: () => void;
   select: (id: string) => void;
-  append: (text: string, answer: Answer) => void;
-  remove: (id: string) => void;
+  /**
+   * Returns the id of the conversation the prompt landed in. On a draft that is
+   * a freshly minted id the caller needs so it can replace `/` with `/chat/<id>`
+   * without waiting for a state change to observe.
+   */
+  append: (text: string, answer: Answer, targetId?: string | null) => string;
+  /**
+   * Returns where selection moved to: the neighbour id when the active thread
+   * was the one deleted, null when nothing is left, or the unchanged active id
+   * when some other thread was removed. The caller uses it to replace a now-dead
+   * URL, which is why it is returned rather than only kept in state.
+   */
+  remove: (id: string) => string | null;
   isFirstAssistantMessage: (id: string) => boolean;
   /** Records the store found but could not read. Drives the warning banner. */
   skippedCount: number;
@@ -39,6 +58,7 @@ export const useConversations = (
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [skippedCount, setSkippedCount] = useState(0);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (store === null) return;
@@ -57,6 +77,12 @@ export const useConversations = (
         // A backend that cannot be read leaves the user in an empty draft
         // rather than a broken panel. Individual malformed records are already
         // dropped inside the store.
+      })
+      .finally(() => {
+        // Marked loaded on success and on failure alike. A store that threw is
+        // still "done loading"; a chat route pointing into it should resolve to
+        // not-found, not hang on a spinner for ever.
+        if (!cancelled) setLoaded(true);
       });
     return () => {
       cancelled = true;
@@ -118,7 +144,7 @@ export const useConversations = (
      twice under StrictMode, so generating an id or writing a file inside one
      would mint two ids and leave two files on disk for a single prompt. */
   const append = useCallback(
-    (text: string, answer: Answer) => {
+    (text: string, answer: Answer, targetId?: string | null) => {
       const now = new Date().toISOString();
       const userMsg: ChatMessage = {
         id: createId(),
@@ -138,7 +164,16 @@ export const useConversations = (
         setAutoExpandId(assistantMsg.id);
       }
 
-      const existing = conversations.find((c) => c.id === activeId) ?? null;
+      // When the caller passes targetId it is speaking for the URL, which is the
+      // real source of truth; a bare call falls back to activeId for the many
+      // callers that have no route. null means "mint a new thread no matter what
+      // activeId says", which is how a submit right after "New chat" avoids
+      // extending the thread the async route change has not yet left.
+      const resolvedTarget = targetId === undefined ? activeId : targetId;
+      const existing =
+        resolvedTarget !== null
+          ? conversations.find((c) => c.id === resolvedTarget) ?? null
+          : null;
 
       const updated: Conversation = existing
         ? {
@@ -160,7 +195,14 @@ export const useConversations = (
         [updated, ...prev.filter((c) => c.id !== updated.id)].sort(byNewestFirst)
       );
       if (!existing) setActiveId(updated.id);
+      else if (targetId !== undefined) setActiveId(existing.id);
       void store?.put(updated);
+
+      // Returned so the caller on a draft can replace `/` with `/chat/<id>` in
+      // the same click. The id is known here and nowhere earlier; reaching for
+      // it by watching activeId change in an effect would race the route-to-
+      // state sync and let a draft reset fire on the conversation just created.
+      return updated.id;
     },
     [activeId, conversations, store]
   );
@@ -170,7 +212,7 @@ export const useConversations = (
      neighbour, which exists so keyboard focus has somewhere to land instead of
      falling to <body>. */
   const remove = useCallback(
-    (id: string) => {
+    (id: string): string | null => {
       if (id === activeId) {
         const idx = conversations.findIndex((c) => c.id === id);
         const next =
@@ -178,9 +220,18 @@ export const useConversations = (
             ? (conversations[idx + 1] ?? conversations[idx - 1] ?? null)
             : null;
         setActiveId(next?.id ?? null);
+        setConversations((prev) => prev.filter((c) => c.id !== id));
+        void store?.remove(id);
+        // The neighbour the caller must replace the dead URL with. Returned
+        // rather than left for an effect to notice, because the old /chat/<id>
+        // is gone and must not linger in history for one extra render.
+        return next?.id ?? null;
       }
       setConversations((prev) => prev.filter((c) => c.id !== id));
       void store?.remove(id);
+      // A thread other than the open one was removed. Selection did not move,
+      // so the URL should not either; hand back the still-active id unchanged.
+      return activeId;
     },
     [activeId, conversations, store]
   );
@@ -193,6 +244,7 @@ export const useConversations = (
   return {
     conversations,
     activeId,
+    loaded,
     messages,
     startDraft,
     select,
