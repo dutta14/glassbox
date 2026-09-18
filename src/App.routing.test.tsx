@@ -370,7 +370,7 @@ describe("deleting the open thread replaces the URL (AC 8)", () => {
     await user.click(
       screen.getByRole("button", { name: "More actions for Chat one" }),
     );
-    await user.click(screen.getByRole("menuitem"));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
@@ -394,7 +394,7 @@ describe("deleting the open thread replaces the URL (AC 8)", () => {
     await user.click(
       screen.getByRole("button", { name: "More actions for Only note" }),
     );
-    await user.click(screen.getByRole("menuitem"));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 

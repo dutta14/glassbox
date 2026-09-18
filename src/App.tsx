@@ -195,6 +195,7 @@ export const AppReady = ({
     storeKind,
     createNote,
     updateNote,
+    setNoteFormat,
     deleteNote,
     hasSampleNotes,
     deleteSampleNotes,
@@ -374,6 +375,18 @@ export const AppReady = ({
     [notes, selectedNoteId, navigate],
   );
 
+  /* Reached from any row in the rail, so it works on a note the reader is not
+     looking at. It deliberately does not navigate: reshaping a poem three
+     rows down should not drag the reader away from what they are reading. */
+  const handleToggleNoteFormat = useCallback(
+    (id: string) => {
+      const note = notes.find((n) => n.id === id);
+      if (!note) return;
+      setNoteFormat(id, (note.format ?? "prose") === "verse" ? "prose" : "verse");
+    },
+    [notes, setNoteFormat],
+  );
+
   const handleDeleteNote = useCallback(
     (id: string) => {
       const idx = notes.findIndex((n) => n.id === id);
@@ -512,6 +525,7 @@ export const AppReady = ({
             onDeleteConversation={handleDeleteConversation}
             chatActive={activeTab === "chat"}
             onDeleteNote={handleDeleteNote}
+            onToggleNoteFormat={handleToggleNoteFormat}
             onDeleteSamples={deleteSampleNotes}
             onConnectFolder={onConnect}
             onReconnectFolder={onReconnect}

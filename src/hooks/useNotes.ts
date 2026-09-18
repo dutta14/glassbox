@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Note } from '../types';
+import type { Note, NoteFormat } from '../types';
 import type { NotesStore } from '../storage/types';
 import { hasSeeded, markSeeded, newNote, parseTags } from '../storage/notes';
 import { sampleNotes } from '../data/sampleNotes';
@@ -76,8 +76,10 @@ export interface UseNotesResult {
   error: string | null;
   storeLabel: string;
   storeKind: NotesStore['kind'];
-  createNote: () => Note;
+  createNote: (format?: NoteFormat) => Note;
   updateNote: (id: string, patch: { title?: string; body?: string }) => void;
+  /** Prose is stored as the absence of the key, which a patch cannot express. */
+  setNoteFormat: (id: string, format: NoteFormat) => void;
   deleteNote: (id: string) => void;
   hasSampleNotes: boolean;
   deleteSampleNotes: () => void;
@@ -302,12 +304,54 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     [flushAllPending]
   );
 
-  const createNote = useCallback((): Note => {
-    const note = newNote();
-    setNotes((prev) => sortByCreated([note, ...prev]));
-    scheduleWrite(note);
-    return note;
-  }, [scheduleWrite]);
+  const createNote = useCallback(
+    (format: NoteFormat = 'prose'): Note => {
+      const note = newNote(format === 'prose' ? {} : { format });
+      setNotes((prev) => sortByCreated([note, ...prev]));
+      scheduleWrite(note);
+      return note;
+    },
+    [scheduleWrite]
+  );
+
+  /**
+   * Format is its own kind of change, so it gets its own function rather than
+   * joining updateNote's patch. updateNote takes a partial and reads "absent"
+   * as "unchanged", which works for title and body but cannot express this
+   * one: prose is stored as the *absence* of the format key, so a patch of
+   * `{ format: undefined }` is indistinguishable from not asking to change it.
+   *
+   * Carrying prose as an absent key rather than `format: "prose"` is
+   * deliberate and worth keeping. Most of the library is prose, and writing
+   * the key would rewrite hundreds of files on disk to say what the default
+   * already says.
+   *
+   * Nothing here touches the body. The same characters are laid out
+   * differently, so switching back and forth has to return the note the writer
+   * typed, byte for byte.
+   */
+  const setNoteFormat = useCallback(
+    (id: string, format: NoteFormat) => {
+      const current = notesRef.current.find((n) => n.id === id);
+      if (!current) return;
+      // Already in that shape. Same reasoning as updateNote's no-op guard:
+      // restamping updatedAt here would mark an untouched note as edited and
+      // rewrite its file for nothing.
+      if ((current.format ?? 'prose') === format) return;
+
+      const { format: _dropped, ...withoutFormat } = current;
+      const nextNote: Note = {
+        ...withoutFormat,
+        ...(format === 'prose' ? {} : { format }),
+        updatedAt: new Date().toISOString(),
+      };
+      setNotes((prev) =>
+        sortByCreated(prev.map((n) => (n.id === id ? nextNote : n)))
+      );
+      scheduleWrite(nextNote);
+    },
+    [scheduleWrite]
+  );
 
   const updateNote = useCallback(
     (id: string, patch: { title?: string; body?: string }) => {
@@ -429,6 +473,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     storeKind: store.kind,
     createNote,
     updateNote,
+    setNoteFormat,
     deleteNote,
     hasSampleNotes,
     deleteSampleNotes,

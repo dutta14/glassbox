@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDismissable } from "../hooks/useDismissable";
+import type { NoteFormat } from "../types";
 import { createPortal } from "react-dom";
 import "../styles/NoteRowMenu.css";
 
@@ -10,6 +11,12 @@ interface NoteRowMenuProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRequestDelete: () => void;
+  /**
+   * Both optional because this menu serves conversation rows too, and a chat
+   * has no shape to change. Passing neither leaves the menu exactly as it was.
+   */
+  format?: NoteFormat;
+  onToggleFormat?: () => void;
 }
 
 interface MenuPosition {
@@ -29,6 +36,8 @@ export const NoteRowMenu = ({
   open,
   onOpenChange,
   onRequestDelete,
+  format,
+  onToggleFormat,
 }: NoteRowMenuProps) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -80,6 +89,10 @@ export const NoteRowMenu = ({
 
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
 
+  /* A chat row passes neither, and gets the menu it has always had. */
+  const showFormat = format !== undefined && onToggleFormat !== undefined;
+  const toVerse = format === "prose";
+
   useDismissable({
     open,
     onClose: close,
@@ -116,8 +129,43 @@ export const NoteRowMenu = ({
             role="menu"
             style={{ top: position.top, left: position.left }}
           >
+            {showFormat && (
+              <button
+                ref={firstItemRef}
+                type="button"
+                role="menuitem"
+                className="note-row__menu-item"
+                onClick={() => {
+                  onOpenChange(false);
+                  onToggleFormat?.();
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  {/* Three ragged lines against one long one: the shape of the
+                      change, rather than a letterform that would need reading. */}
+                  <path
+                    d={
+                      toVerse
+                        ? "M2.5 4h11M2.5 8h7M2.5 12h9"
+                        : "M2.5 4h7M2.5 8h11M2.5 12h11"
+                    }
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                {toVerse ? "Turn into verse" : "Turn into prose"}
+              </button>
+            )}
+
             <button
-              ref={firstItemRef}
+              ref={showFormat ? undefined : firstItemRef}
               type="button"
               role="menuitem"
               className="note-row__menu-item note-row__menu-item--danger"

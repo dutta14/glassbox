@@ -31,6 +31,7 @@ const renderItem = (note: Note = mkNote(), isSelected = false) => {
       onSelect={onSelect}
       onMenuOpenChange={onMenuOpenChange}
       onRequestDelete={onRequestDelete}
+      onToggleFormat={vi.fn()}
     />,
     { wrapper: ({ children }) => <ul>{children}</ul> },
   );

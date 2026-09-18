@@ -10,6 +10,7 @@ interface NoteListItemProps {
   onSelect: () => void;
   onMenuOpenChange: (open: boolean) => void;
   onRequestDelete: () => void;
+  onToggleFormat: () => void;
 }
 
 export const NoteListItem = ({
@@ -19,6 +20,7 @@ export const NoteListItem = ({
   onSelect,
   onMenuOpenChange,
   onRequestDelete,
+  onToggleFormat,
 }: NoteListItemProps) => {
   const title = note.title.trim() || COPY.untitled;
 
@@ -39,6 +41,8 @@ export const NoteListItem = ({
         open={menuOpen}
         onOpenChange={onMenuOpenChange}
         onRequestDelete={onRequestDelete}
+        format={note.format ?? "prose"}
+        onToggleFormat={onToggleFormat}
       />
     </li>
   );

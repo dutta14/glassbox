@@ -50,6 +50,7 @@ const renderRail = (overrides: { notes?: Note[] } = {}) => {
       onDeleteConversation={vi.fn()}
       chatActive={false}
       onDeleteNote={vi.fn()}
+      onToggleNoteFormat={vi.fn()}
       onDeleteSamples={vi.fn()}
       onConnectFolder={vi.fn()}
       onReconnectFolder={vi.fn()}

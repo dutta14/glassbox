@@ -139,3 +139,125 @@ describe("NoteRowMenu", () => {
     expect(trigger()).toHaveAttribute("aria-haspopup", "menu");
   });
 });
+
+/**
+ * Verse conversion spec ACs 21, 27, 28. The menu is shared with conversation
+ * rows, which have no shape to change, so the format action is opt-in: a row
+ * that passes neither prop gets exactly the menu it always had.
+ */
+const FormatHarness = ({
+  format,
+  onToggleFormat = vi.fn(),
+}: {
+  format: "prose" | "verse";
+  onToggleFormat?: () => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <NoteRowMenu
+      itemId="n1"
+      itemLabel="Dream Again"
+      open={open}
+      onOpenChange={setOpen}
+      onRequestDelete={vi.fn()}
+      format={format}
+      onToggleFormat={onToggleFormat}
+    />
+  );
+};
+
+describe("the format action in a note's menu", () => {
+  it("offers to turn a prose note into verse", async () => {
+    const user = userEvent.setup();
+    render(<FormatHarness format="prose" />);
+
+    await user.click(trigger());
+
+    expect(
+      screen.getByRole("menuitem", { name: "Turn into verse" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers to turn a verse note back into prose", async () => {
+    const user = userEvent.setup();
+    render(<FormatHarness format="verse" />);
+
+    await user.click(trigger());
+
+    expect(
+      screen.getByRole("menuitem", { name: "Turn into prose" }),
+    ).toBeInTheDocument();
+  });
+
+  it("names what it will do rather than what the note currently is", async () => {
+    const user = userEvent.setup();
+    render(<FormatHarness format="prose" />);
+
+    await user.click(trigger());
+
+    expect(
+      screen.queryByRole("menuitem", { name: "Turn into prose" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("asks for the change when chosen", async () => {
+    const user = userEvent.setup();
+    const onToggleFormat = vi.fn();
+    render(<FormatHarness format="prose" onToggleFormat={onToggleFormat} />);
+
+    await user.click(trigger());
+    await user.click(screen.getByRole("menuitem", { name: "Turn into verse" }));
+
+    expect(onToggleFormat).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes the menu after the change is chosen", async () => {
+    const user = userEvent.setup();
+    render(<FormatHarness format="prose" />);
+
+    await user.click(trigger());
+    await user.click(screen.getByRole("menuitem", { name: "Turn into verse" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("menuitem", { name: "Turn into verse" }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  /* AC 28. Opening the menu puts focus on its first item, and the format
+     action is now that item. */
+  it("takes focus when the menu opens, being the first item", async () => {
+    const user = userEvent.setup();
+    render(<FormatHarness format="prose" />);
+
+    await user.click(trigger());
+
+    await waitFor(() =>
+      expect(screen.getByRole("menuitem", { name: "Turn into verse" })).toHaveFocus(),
+    );
+  });
+
+  it("keeps Delete reachable below it", async () => {
+    const user = userEvent.setup();
+    render(<FormatHarness format="prose" />);
+
+    await user.click(trigger());
+
+    const items = screen.getAllByRole("menuitem").map((el) => el.textContent);
+    expect(items).toEqual(["Turn into verse", "Delete"]);
+  });
+
+  /* AC 27. A chat row passes neither prop. */
+  it("shows no format action on a row that has no format, such as a chat", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(trigger());
+
+    expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual(
+      ["Delete"],
+    );
+    expect(deleteItem()).toHaveFocus();
+  });
+});

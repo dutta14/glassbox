@@ -111,6 +111,7 @@ interface NotesRailProps {
   onDeleteConversation: (id: string) => void;
   chatActive: boolean;
   onDeleteNote: (id: string) => void;
+  onToggleNoteFormat: (id: string) => void;
   onDeleteSamples: () => void;
   onConnectFolder: () => void;
   onReconnectFolder: () => void;
@@ -135,6 +136,7 @@ export const NotesRail = ({
   onDeleteConversation,
   chatActive,
   onDeleteNote,
+  onToggleNoteFormat,
   onDeleteSamples,
   onConnectFolder,
   onReconnectFolder,
@@ -461,6 +463,7 @@ export const NotesRail = ({
                         setOpenMenuId(open ? note.id : null)
                       }
                       onRequestDelete={() => setPendingDelete(note)}
+                      onToggleFormat={() => onToggleNoteFormat(note.id)}
                     />
                   ))}
                 </ul>
@@ -623,6 +626,7 @@ export const NotesRail = ({
                     setOpenMenuId(open ? note.id : null)
                   }
                   onRequestDelete={() => setPendingDelete(note)}
+                  onToggleFormat={() => onToggleNoteFormat(note.id)}
                 />
               ))}
             </ul>
