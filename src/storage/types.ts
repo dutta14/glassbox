@@ -29,6 +29,18 @@ export interface NotesStore {
 
   /** Remove a single note by id. Safe to call for an unknown id. */
   remove(id: string): Promise<void>;
+
+  /**
+   * Read a file a note refers to, such as an image, resolved relative to the
+   * notes folder. Returns null when it cannot be read, which callers must
+   * treat as ordinary: the file may be missing, renamed, or on a backend that
+   * has no folder to look in.
+   *
+   * Optional because only a real folder has anything to resolve. A browser
+   * storage library holds Markdown and nothing else, so it does not implement
+   * this rather than pretending to and always failing.
+   */
+  readAsset?(path: string): Promise<Blob | null>;
 }
 
 

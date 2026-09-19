@@ -16,6 +16,7 @@ const mkNote = (overrides: Partial<Note> = {}): Note => ({
 const renderEditor = (note: Note = mkNote()) =>
   render(
     <NoteEditor
+        readAsset={async () => null}
       note={note}
       scrollToOffset={null}
       onChangeTitle={vi.fn()}

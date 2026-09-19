@@ -32,6 +32,7 @@ const renderEditor = (note: Note = makeNote()) => {
   const onChangeBody = vi.fn();
   render(
     <NoteEditor
+      readAsset={async () => null}
       note={note}
       scrollToOffset={null}
       previousNote={null}

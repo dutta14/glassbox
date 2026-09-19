@@ -170,6 +170,34 @@ export const createFileSystemStore = (
     filenamesById.delete(id);
   };
 
+  /**
+   * Resolve a path written inside a note, relative to the notes folder, and
+   * hand back its bytes. Image paths in the archive look like
+   * `images/handdrawn-001.jpg`, sitting in a subfolder beside the notes.
+   *
+   * A note is a text file the user, or anything else on their disk, can edit
+   * by hand, so the path is untrusted input. A segment of `..` would climb out
+   * of the notes folder and read anything else the granted directory can
+   * reach, so it is refused rather than normalised: there is no legitimate
+   * note that needs to escape upwards.
+   */
+  const readAsset = async (path: string): Promise<Blob | null> => {
+    const segments = path.split('/').filter(part => part !== '' && part !== '.');
+    if (segments.length === 0 || segments.includes('..')) return null;
+
+    try {
+      let folder = await dir();
+      for (const part of segments.slice(0, -1)) {
+        folder = await folder.getDirectoryHandle(part);
+      }
+      const fileHandle = await folder.getFileHandle(segments[segments.length - 1]);
+      return await fileHandle.getFile();
+    } catch {
+      // Missing, renamed, or permission withdrawn. All the same to the caller.
+      return null;
+    }
+  };
+
   return {
     kind: 'folder',
     /* The folder the user picked, not the notes/ subfolder inside it. This is
@@ -179,5 +207,6 @@ export const createFileSystemStore = (
     list,
     put,
     remove,
+    readAsset,
   };
 };

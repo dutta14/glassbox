@@ -323,3 +323,60 @@ it('labels the store with the folder the user picked rather than the notes subfo
 
   expect(s.label).toBe('my-brain');
 });
+
+/* Images sit in a subfolder beside the notes, written into the Markdown as a
+   relative path. The browser cannot open a path on disk, so the store is the
+   only thing that can hand those bytes back. */
+it('reads a file a note points at, resolved inside the notes folder', async () => {
+  const d = new FakeDir();
+  const images = await d.getDirectoryHandle('images', { create: true });
+  images.files.set('handdrawn-002.jpg', new FakeFile('handdrawn-002.jpg', 'JPEGBYTES'));
+  const s = store(d);
+
+  const file = (await s.readAsset!('images/handdrawn-002.jpg')) as unknown as {
+    name: string;
+  } | null;
+
+  expect(file?.name).toBe('handdrawn-002.jpg');
+});
+
+it('returns null for a picture that is not there, rather than throwing', async () => {
+  const s = store(new FakeDir());
+
+  await expect(s.readAsset!('images/never-existed.jpg')).resolves.toBeNull();
+});
+
+it('refuses a path that climbs out of the notes folder', async () => {
+  /* This fake resolves '..' to the parent, which the stand-in above does not.
+     Without it the assertion passes whether or not the store guards anything,
+     because the lookup fails for the unrelated reason that no directory is
+     literally named '..'. The point is to prove the refusal, not to watch a
+     fake decline to implement a feature. */
+  class TraversingDir extends FakeDir {
+    parent: FakeDir | null = null;
+    async getDirectoryHandle(name: string, opts?: { create?: boolean }) {
+      if (name === '..' && this.parent) return this.parent;
+      return super.getDirectoryHandle(name, opts);
+    }
+  }
+
+  const notes = new TraversingDir();
+  const root = new FakeDir();
+  root.name = 'picked-folder';
+  root.dirs.set('notes', notes);
+  notes.parent = root;
+  root.files.set('secrets.md', new FakeFile('secrets.md', 'PRIVATE'));
+  const s = createFileSystemStore(root as unknown as FileSystemDirectoryHandle);
+
+  // A note is a text file anything on the machine can write, so its image
+  // path is untrusted. Climbing would read whatever the granted folder holds.
+  await expect(s.readAsset!('../secrets.md')).resolves.toBeNull();
+  await expect(s.readAsset!('images/../../secrets.md')).resolves.toBeNull();
+});
+
+it('refuses an empty path', async () => {
+  const s = store(new FakeDir());
+
+  await expect(s.readAsset!('')).resolves.toBeNull();
+  await expect(s.readAsset!('/')).resolves.toBeNull();
+});

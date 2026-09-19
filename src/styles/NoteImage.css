@@ -1,0 +1,31 @@
+/* Held to the measure the prose is set to, so a sketch sits inside the column
+   rather than breaking out of it. Height follows the picture's own proportions
+   and is never cropped: these are drawings, and a drawing with its edges cut
+   off is a different drawing. */
+.note-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: var(--space-5) auto var(--space-6);
+  border-radius: var(--radius);
+}
+
+/* A quiet reservation while the file is read off disk, so the prose does not
+   arrive at the top of the column and then get pushed down. It cannot be the
+   picture's real height, which is unknown until it is decoded, so it is only
+   enough to stop the note settling twice. */
+.note-image__pending {
+  min-height: 120px;
+  margin: var(--space-5) 0 var(--space-6);
+}
+
+/* The name of a picture that could not be read. Set apart from the prose it
+   sits above, because it is a label, not the opening line of the note. */
+.note-image__missing {
+  margin: var(--space-5) 0 var(--space-6);
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  font-style: italic;
+  text-align: center;
+}

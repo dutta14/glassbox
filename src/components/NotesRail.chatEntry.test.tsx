@@ -245,6 +245,7 @@ describe("panels left without their tabs", () => {
   it("names the editor panel without leaning on the removed editor tab", () => {
     render(
       <NoteEditor
+        readAsset={async () => null}
         note={mkNote("n1", "A title", "body")}
         scrollToOffset={null}
         onChangeTitle={vi.fn()}

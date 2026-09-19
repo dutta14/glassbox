@@ -11,6 +11,8 @@ import type { Note } from "../types";
 import { COPY } from "../engine/copy";
 import { readingTime } from "../utils/readingTime";
 import { dropCapDepth } from "../utils/dropCap";
+import { leadingImage } from "../utils/noteImage";
+import { NoteImage } from "./NoteImage";
 import { NoteNav } from "./NoteNav";
 import "../styles/NoteEditor.css";
 
@@ -23,6 +25,7 @@ interface NoteEditorProps {
   onChangeBody: (body: string) => void;
   onScrollHandled: () => void;
   onSelectNote: (id: string) => void;
+  readAsset: (path: string) => Promise<Blob | null>;
 }
 
 /**
@@ -127,6 +130,7 @@ export const NoteEditor = ({
   onChangeBody,
   onScrollHandled,
   onSelectNote,
+  readAsset,
 }: NoteEditorProps) => {
   const scrollRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -319,9 +323,20 @@ export const NoteEditor = ({
   }, [scrollToOffset, note.body, onScrollHandled]);
 
   const isEmpty = note.body === "";
+
+  /* A picture that opens the note is shown as a picture and held out of the
+     reading view, so the note does not also print its own source line. The
+     field underneath is untouched and still holds the whole note, Markdown
+     and all, because the file is the thing being edited. */
+  const image = leadingImage(note.body);
+  const readOffset = image ? image.bodyOffset : 0;
+  const readBody = note.body.slice(readOffset);
+
   // 0 when the note is too short to carry one; otherwise the number of lines
   // the capital sinks, which is also the value the stylesheet keys on.
-  const cap = verse ? 0 : dropCapDepth(note.body);
+  // Measured on what is actually shown: a sketch note's first words are its
+  // prose, not the image line that no longer appears above them.
+  const cap = verse ? 0 : dropCapDepth(readBody);
 
   /**
    * Puts the caret where the reader actually pointed. Without this, moving from
@@ -337,11 +352,16 @@ export const NoteEditor = ({
       const field = bodyRef.current;
       if (!root || !field) return;
       e.preventDefault();
+      /* Offsets come back relative to the text on screen, which starts after
+         any picture lifted off the top. Adding that back is what keeps a
+         click landing on the word it was aimed at rather than that many
+         characters earlier in the note. */
+      const at = caretOffsetFromPoint(e.clientX, e.clientY, root);
       pendingCaretRef.current =
-        caretOffsetFromPoint(e.clientX, e.clientY, root) ?? note.body.length;
+        at === null ? note.body.length : at + readOffset;
       field.focus();
     },
-    [note.body.length]
+    [note.body.length, readOffset]
   );
 
   return (
@@ -368,6 +388,9 @@ export const NoteEditor = ({
         <div className="editor__ornament" aria-hidden="true">
           <span className="editor__ornament-mark" />
         </div>
+        {image && (
+          <NoteImage src={image.src} alt={image.alt} readAsset={readAsset} />
+        )}
         <div
           className={`editor__bodywrap${verse ? " editor__bodywrap--verse" : ""}`}
           /* Moves the reading view and the field together, so the poem is
@@ -393,7 +416,7 @@ export const NoteEditor = ({
               data-dropcap={cap === 0 ? undefined : String(cap)}
               onMouseDown={handleReadMouseDown}
             >
-              {isEmpty ? COPY.placeholderBody : note.body}
+              {isEmpty ? COPY.placeholderBody : readBody}
             </div>
           )}
           <textarea

@@ -119,6 +119,7 @@ interface NoteStageProps {
   onUpdateNote: (id: string, patch: { title?: string; body?: string }) => void;
   onScrollHandled: () => void;
   onSelectNote: (id: string) => void;
+  readAsset: (path: string) => Promise<Blob | null>;
 }
 
 /* The stage for /note/:id. This route only mounts once notes have loaded, since
@@ -132,6 +133,7 @@ const NoteStage = ({
   onUpdateNote,
   onScrollHandled,
   onSelectNote,
+  readAsset,
 }: NoteStageProps) => {
   const { id } = useParams();
   const note = notes.find((n) => n.id === id) ?? null;
@@ -154,6 +156,7 @@ const NoteStage = ({
       previousNote={previousNote}
       nextNote={nextNote}
       onSelectNote={onSelectNote}
+      readAsset={readAsset}
     />
   );
 };
@@ -210,6 +213,7 @@ export const AppReady = ({
     deleteNote,
     hasSampleNotes,
     deleteSampleNotes,
+    readAsset,
     externalConflicts,
     dismissConflict,
   } = useNotes(store);
@@ -634,6 +638,7 @@ export const AppReady = ({
                       onUpdateNote={updateNote}
                       onScrollHandled={() => setPendingScrollOffset(null)}
                       onSelectNote={handleSelectNote}
+                      readAsset={readAsset}
                     />
                   }
                 />

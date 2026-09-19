@@ -36,6 +36,7 @@ describe('NoteEditor — AC 1 focus behaviour for a freshly created note', () =>
   it('moves keyboard focus to the note title input when mounted with a note whose title and body are both empty', () => {
     render(
       <NoteEditor
+        readAsset={async () => null}
         note={mkEmpty('n1')}
         scrollToOffset={null}
         onChangeTitle={vi.fn()}
@@ -54,6 +55,7 @@ describe('NoteEditor — AC 1 focus behaviour for a freshly created note', () =>
   it('does not steal focus to the title input when mounted with a note that already has a title or body', () => {
     render(
       <NoteEditor
+        readAsset={async () => null}
         note={mkFilled('n1')}
         scrollToOffset={null}
         onChangeTitle={vi.fn()}
@@ -74,6 +76,7 @@ describe('NoteEditor — AC 1 focus behaviour for a freshly created note', () =>
     // every render and yanks focus off wherever the user is currently typing.
     const { rerender } = render(
       <NoteEditor
+        readAsset={async () => null}
         note={mkEmpty('n1')}
         scrollToOffset={null}
         onChangeTitle={vi.fn()}
@@ -94,6 +97,7 @@ describe('NoteEditor — AC 1 focus behaviour for a freshly created note', () =>
 
     rerender(
       <NoteEditor
+        readAsset={async () => null}
         note={{ ...mkEmpty('n1'), title: 'a' }}
         scrollToOffset={null}
         onChangeTitle={vi.fn()}

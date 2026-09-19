@@ -104,6 +104,7 @@ describe("scroll fade wiring", () => {
   it("leaves the note body unfaded, since it grows instead of scrolling", () => {
     render(
       <NoteEditor
+        readAsset={async () => null}
         note={mkNote("n1", "A title", "a long body")}
         scrollToOffset={null}
         onChangeTitle={vi.fn()}
@@ -133,6 +134,7 @@ describe("scroll fade wiring", () => {
   it("fades the editor section, now the single scroller for the whole note", () => {
     render(
       <NoteEditor
+        readAsset={async () => null}
         note={mkNote("n1", "A title", "a long body")}
         scrollToOffset={null}
         onChangeTitle={vi.fn()}

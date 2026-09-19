@@ -83,6 +83,12 @@ export interface UseNotesResult {
   deleteNote: (id: string) => void;
   hasSampleNotes: boolean;
   deleteSampleNotes: () => void;
+  /**
+   * Read a file a note points at, such as an image. Resolves to null on any
+   * backend that has no folder to look in, so callers must handle absence as
+   * a normal outcome rather than an error.
+   */
+  readAsset: (path: string) => Promise<Blob | null>;
   /** Notes whose on-disk copy changed while a local edit was in flight. */
   externalConflicts: ExternalConflict[];
   dismissConflict: (id: string) => void;
@@ -112,6 +118,16 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
   storeRef.current = store;
   const notesRef = useRef<Note[]>(notes);
   notesRef.current = notes;
+
+  /* Reads through the ref rather than closing over the store, so the identity
+     is stable for the whole session. An effect that fetches an image depends
+     on this: a new function on every render would revoke and refetch the same
+     picture on every keystroke in the note it sits in. */
+  const readAsset = useCallback(
+    (path: string): Promise<Blob | null> =>
+      storeRef.current.readAsset?.(path) ?? Promise.resolve(null),
+    [],
+  );
 
   const isDirty = useCallback((id: string): boolean => {
     const state = writeStates.current.get(id);
@@ -469,6 +485,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     notes,
     status,
     error,
+    readAsset,
     storeLabel: store.label,
     storeKind: store.kind,
     createNote,
