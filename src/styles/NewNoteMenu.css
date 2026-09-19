@@ -1,0 +1,99 @@
+/* The split control sits above the rail's scroll area, so the menu can be
+   positioned in normal flow rather than portalled and measured like the row
+   menu. Relative, so the panel hangs off this wrapper. */
+.new-note {
+  position: relative;
+  width: 100%;
+  /* The primary drops its own margin below, so the spacing that separated
+     New note from the list moves up here to cover both halves. */
+  margin-bottom: var(--space-2);
+}
+
+.new-note__row {
+  display: flex;
+  align-items: center;
+}
+
+/* The primary keeps .notes-rail__entry, so it stays the same row as New chat
+   above it. Only its own bottom margin is dropped, because the wrapper now
+   owns the spacing for both halves. */
+.new-note__primary {
+  flex: 1 1 auto;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.new-note__disclosure {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.new-note__disclosure:hover,
+.new-note__disclosure[aria-expanded="true"] {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+/* The caret is small, and a 24px target is under the 44px minimum. The hit
+   area is grown past the painted box with insets rather than the box being
+   grown, so the control stays visually quiet while being easy to hit. */
+.new-note__disclosure::after {
+  content: "";
+  position: absolute;
+  inset: -10px -8px;
+}
+
+/* Aligned to the right edge under the caret it belongs to. Above the app
+   chrome at 100, below the modal layer at 200, matching the row menu. */
+.new-note__list {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 150;
+  min-width: 160px;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.new-note__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+.new-note__item:hover {
+  background: var(--color-surface-raised);
+}
+
+.new-note__item svg {
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}

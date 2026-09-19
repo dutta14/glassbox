@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
-import type { Conversation, Note } from "../types";
+import type { Conversation, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
+import { NewNoteMenu } from "./NewNoteMenu";
 import { ConversationItem } from "./ConversationItem";
 import { NoteSearchModal } from "./NoteSearchModal";
 import { RailFlyout } from "./RailFlyout";
@@ -105,7 +106,7 @@ interface NotesRailProps {
   folderName: string | null;
   connectError: string | null;
   onSelect: (id: string) => void;
-  onCreate: () => void;
+  onCreate: (format: NoteFormat) => void;
   onNewChat: () => void;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
@@ -333,29 +334,7 @@ export const NotesRail = ({
             New chat
           </button>
 
-          {/* Visible text, so the control names itself instead of leaning on
-              an aria-label that only assistive tech ever sees. */}
-          <button
-            type="button"
-            className="notes-rail__entry notes-rail__new"
-            onClick={onCreate}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M8 3v10M3 8h10"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            New note
-          </button>
+          <NewNoteMenu onCreate={onCreate} />
 
           {/* One scroll area for both lists, so the rail scrolls as a single
               column instead of two boxes that run out of room independently.
@@ -512,7 +491,10 @@ export const NotesRail = ({
           <button
             type="button"
             className="rail-flyout__trigger rail-tip-host"
-            onClick={onCreate}
+            /* The collapsed strip stays a single plus. A caret at 56px wide
+               would be a corner target barely bigger than the glyph, and
+               verse is still one step away through a row's own menu. */
+            onClick={() => onCreate("prose")}
             aria-label="New note"
           >
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">

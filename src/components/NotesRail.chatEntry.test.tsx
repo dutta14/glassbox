@@ -82,7 +82,10 @@ describe("rail chat entry", () => {
     const position = chatEntry().compareDocumentPosition(newNote());
 
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(chatEntry().nextElementSibling).toBe(newNote());
+    // New note is wrapped now, because it shares a row with the caret that
+    // opens Note/Verse. Adjacency is asserted through that wrapper rather
+    // than being dropped, so the two entries still cannot drift apart.
+    expect(chatEntry().nextElementSibling).toContainElement(newNote());
   });
 
   it("starts a new chat when the entry is pressed", async () => {

@@ -8,7 +8,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import type { Answer, Conversation, Note } from "./types";
+import type { Answer, Conversation, Note, NoteFormat } from "./types";
 import { useNotes } from "./hooks/useNotes";
 import { useConversations } from "./hooks/useConversations";
 import { useStorageBackend } from "./hooks/useStorageBackend";
@@ -347,10 +347,13 @@ export const AppReady = ({
     [chatRouteId, navigate],
   );
 
-  const handleCreateNote = useCallback(() => {
-    const note = createNote();
-    navigate(notePath(note.id));
-  }, [createNote, navigate]);
+  const handleCreateNote = useCallback(
+    (format: NoteFormat = "prose") => {
+      const note = createNote(format);
+      navigate(notePath(note.id));
+    },
+    [createNote, navigate],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

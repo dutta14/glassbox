@@ -72,7 +72,14 @@ here because they are part of the same piece of work:
 
 29. The rail's "New note" control offers "Note" and "Verse"; "Note" remains the
     one-click default and verse takes one deliberate extra step.
-30. The collapsed rail offers the same two choices.
+30. ~~The collapsed rail offers the same two choices.~~ **Dropped.** The
+    collapsed rail is a 56px strip holding a single 18px glyph. A caret there
+    would be a corner target barely larger than the icon it hangs off, and
+    splitting the control would crowd the one state whose whole purpose is to
+    be out of the way. The strip keeps its plus, which still makes a prose
+    note in one click. Verse stays two steps away in that state, through the
+    row's own menu, which is acceptable because a poem can be started as a
+    note and turned.
 31. The menu is keyboard reachable and dismissible with Escape without creating
     anything.
 

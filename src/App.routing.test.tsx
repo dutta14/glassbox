@@ -297,6 +297,33 @@ describe("creating a note navigates to it (AC 6)", () => {
     const editor = await screen.findByRole("region", { name: "Note editor" });
     expect(within(editor).getByLabelText("Note title")).toHaveValue("");
   });
+
+  it("New note still opens a prose note, so the default did not move", async () => {
+    renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Ask your notes anything" });
+
+    await user.click(screen.getByRole("button", { name: "New note" }));
+
+    const editor = await screen.findByRole("region", { name: "Note editor" });
+    expect(editor.querySelector(".editor__bodywrap--verse")).toBeNull();
+  });
+
+  it("New note options then Verse opens a note that is laid out as verse (AC 5)", async () => {
+    // The end-to-end proof, and the only test that would catch the format
+    // being dropped somewhere between the menu and the created note. The
+    // component test can only show the right argument leaving the menu.
+    renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Ask your notes anything" });
+
+    await user.click(screen.getByRole("button", { name: "New note options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Verse" }));
+
+    await waitFor(() => expect(pathname()).toMatch(/^\/note\/.+/));
+    const editor = await screen.findByRole("region", { name: "Note editor" });
+    expect(editor.querySelector(".editor__bodywrap--verse")).not.toBeNull();
+  });
 });
 
 describe("the first message in a draft replaces / with /chat/<id> (AC 7)", () => {

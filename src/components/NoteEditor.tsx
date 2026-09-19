@@ -42,6 +42,11 @@ interface NoteEditorProps {
 const verseOpticalShift = (read: HTMLElement, columnWidth: number): number => {
   const node = read.firstChild;
   if (node === null || node.nodeType !== Node.TEXT_NODE) return 0;
+  // Range measurement is not universal; jsdom has no getClientRects at all.
+  // The shift is a refinement on top of an already correct layout, so when it
+  // cannot be measured the honest answer is to leave the poem where it is
+  // rather than to guess or to throw and take the editor down with it.
+  if (typeof document.createRange().getClientRects !== "function") return 0;
   const text = node.textContent ?? "";
 
   const widths: number[] = [];
