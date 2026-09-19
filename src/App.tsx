@@ -89,6 +89,17 @@ const ChatStage = ({
   children,
 }: ChatStageProps) => {
   const { id } = useParams();
+  // The draft route '/' has no id and is always valid, so it renders the panel
+  // straight through. Crucially both '/' and '/chat/:id' resolve to this same
+  // ChatStage component, which is what lets react-router keep one ChatPanel
+  // instance mounted as the route flips between them. If the two routes
+  // rendered different element types, the outlet would swap them, React would
+  // remount the composer, and any prompt typed during that flip, exactly what
+  // happens when a user hits "New chat" and immediately types, would be lost
+  // to an emptied input. Keeping the type stable keeps the composer alive.
+  if (!id) {
+    return <>{children}</>;
+  }
   if (!conversationsLoaded) {
     return (
       <div className="app__loading" role="status" aria-live="polite">
@@ -96,7 +107,7 @@ const ChatStage = ({
       </div>
     );
   }
-  if (!id || !conversations.some((c) => c.id === id)) {
+  if (!conversations.some((c) => c.id === id)) {
     return <NotFound what="chat" />;
   }
   return <>{children}</>;
@@ -589,7 +600,17 @@ export const AppReady = ({
 
             <div className="stage__panels" data-active-tab={activeTab}>
               <Routes>
-                <Route path="/" element={chatPanel} />
+                <Route
+                  path="/"
+                  element={
+                    <ChatStage
+                      conversationsLoaded={conversationsLoaded}
+                      conversations={conversations}
+                    >
+                      {chatPanel}
+                    </ChatStage>
+                  }
+                />
                 <Route
                   path="/chat/:id"
                   element={

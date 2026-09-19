@@ -356,6 +356,34 @@ describe("the first message in a draft replaces / with /chat/<id> (AC 7)", () =>
   });
 });
 
+describe("the composer survives the draft/chat transition (remount regression)", () => {
+  it("keeps text typed into the composer when New chat flips the route from a chat to the draft", async () => {
+    // The '/' and '/chat/:id' routes must render the same component type so the
+    // outlet preserves one ChatPanel instance across the flip. When they did
+    // not, "New chat" remounted the composer and dropped whatever the user was
+    // mid-typing, so the very next Enter submitted an empty prompt and started
+    // no new conversation. This types, navigates, and asserts the draft is
+    // reached with the text intact, which can only hold if the input was never
+    // torn down.
+    renderApp(["/chat/c1"], {
+      notes: [makeNote("n1", ISO, "Alpha note")],
+      conversations: [makeConversation("c1", "Bread", "hello there")],
+    });
+    const user = userEvent.setup();
+    await screen.findByText("hello there");
+
+    const input = screen.getByRole("textbox", { name: "Ask a question" });
+    await user.type(input, "six hours");
+
+    await user.click(screen.getByRole("button", { name: "New chat" }));
+
+    await waitFor(() => expect(pathname()).toBe("/"));
+    expect(
+      screen.getByRole("textbox", { name: "Ask a question" }),
+    ).toHaveValue("six hours");
+  });
+});
+
 describe("deleting the open thread replaces the URL (AC 8)", () => {
   it("deleting the open conversation replaces the URL with the neighbour", async () => {
     renderApp(["/chat/c1"], {
