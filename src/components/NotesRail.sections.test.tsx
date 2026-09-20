@@ -57,6 +57,8 @@ const renderRail = (
       onDisconnectFolder={vi.fn()}
       theme="dark"
       onToggleTheme={vi.fn()}
+      organizeMode="list"
+      onOrganizeChange={vi.fn()}
       {...overrides}
     />,
   );

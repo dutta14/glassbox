@@ -74,6 +74,8 @@ const renderRail = (
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
+      organizeMode="list"
+      onOrganizeChange={vi.fn()}
     />,
   );
   return { onNewChat, onCreate };

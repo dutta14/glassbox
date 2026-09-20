@@ -65,6 +65,8 @@ const renderRail = (
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
+      organizeMode="list"
+      onOrganizeChange={vi.fn()}
     />,
   );
   return { onCreate, onSelect };
@@ -98,12 +100,15 @@ describe("NotesRail search wiring", () => {
 
     expect(section).not.toBeNull();
     expect(section!.textContent).toContain("Notes");
-    // The heading does own a button now, the accordion toggle. Naming it here
-    // rather than asserting "no buttons" keeps the claim about search.
-    const buttons = Array.from(section!.querySelectorAll("button"));
-    expect(buttons).toHaveLength(1);
-    expect(buttons[0]).toHaveAttribute("aria-expanded");
-    expect(buttons[0].textContent).toContain("Notes");
+    // The heading owns two buttons now: the accordion toggle and the organize
+    // menu. Naming both, rather than counting them, keeps the claim about
+    // search while leaving room for controls that are not search.
+    const toggle = section!.querySelector("button[aria-expanded]");
+    expect(toggle).not.toBeNull();
+    expect(toggle!.textContent).toContain("Notes");
+    expect(
+      section!.querySelector('[aria-label="Organize notes"]'),
+    ).not.toBeNull();
     expect(
       section!.querySelector('[aria-label="Search notes"]'),
     ).toBeNull();

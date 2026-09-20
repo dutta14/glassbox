@@ -32,6 +32,30 @@ export const COPY = {
   emptyBooksSidebar: 'Add a note to a book to start one.',
 
   emptyNotesSidebar: 'Use New note to start one.',
+  /* The rail in book mode lists only notes that are in no book. Saying "Use
+     New note to start one." to someone whose 566 notes are all shelved would
+     be a lie, so this states the fact instead. */
+  emptyNotesAllBooked: 'Every note is in a book.',
+
+  /* One string for the button's accessible name and the menu's own heading,
+     so what is heard and what is seen can never drift apart. */
+  organizeMenu: 'Organize notes',
+  organizeOptionList: 'In one list',
+  organizeOptionBook: 'By book',
+
+  booksRow: 'Books',
+  booksPageTitle: 'Books',
+  /* Placeholder and label share their words: a placeholder is not a label, but
+     there is no reason for the two to say different things. */
+  booksSearch: 'Search books',
+  /* Names what was searched, so the reader knows the app heard them and the
+     shelf is genuinely empty for that word. */
+  booksSearchEmpty: (query: string) => `No books match "${query}".`,
+  newBook: 'New book',
+  /* Points at the button on this page rather than teaching the add-a-note
+     gesture, which would send the reader past a control in front of them. */
+  booksPageEmpty: 'No books yet. Use New book to start one.',
+  emptyBookChapters: 'No chapters yet.',
   emptyNotesChat: 'Add a note to ask questions about it.',
   emptyChat: 'Ask a question about your notes.',
 

@@ -65,6 +65,8 @@ describe("scroll fade wiring", () => {
         onDeleteBook={vi.fn()}
         onAddNoteToBook={vi.fn()}
         onToggleTheme={vi.fn()}
+        organizeMode="list"
+        onOrganizeChange={vi.fn()}
       />,
     );
 

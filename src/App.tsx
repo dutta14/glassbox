@@ -22,6 +22,7 @@ import { useBooks } from "./hooks/useBooks";
 import { useReadingPosition } from "./hooks/useReadingPosition";
 import { useStorageBackend } from "./hooks/useStorageBackend";
 import { useTheme } from "./hooks/useTheme";
+import { useNoteOrganize } from "./hooks/useNoteOrganize";
 import { createIndex, route } from "./engine/router";
 import { notePath, chatPath, bookPath } from "./engine/routes";
 import { COPY } from "./engine/copy";
@@ -278,6 +279,7 @@ export const AppReady = ({
   onDisconnect,
 }: AppReadyProps) => {
   const { theme, toggleTheme } = useTheme();
+  const [organizeMode, setOrganizeMode] = useNoteOrganize();
   const navigate = useNavigate();
 
   // useMatch is react-router's own way to ask, from above <Routes>, "is this the
@@ -737,6 +739,8 @@ export const AppReady = ({
       {status === "ready" && (
         <>
           <NotesRail
+            organizeMode={organizeMode}
+            onOrganizeChange={setOrganizeMode}
             notes={notes}
             selectedNoteId={selectedNoteId}
             hasSampleNotes={hasSampleNotes}

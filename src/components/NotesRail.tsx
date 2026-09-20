@@ -3,6 +3,7 @@ import type { Book, Conversation, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { BookListItem } from "./BookListItem";
 import { NewNoteMenu } from "./NewNoteMenu";
+import { OrganizeMenu } from "./OrganizeMenu";
 import { ConversationItem } from "./ConversationItem";
 import { NoteSearchModal } from "./NoteSearchModal";
 import { RailFlyout } from "./RailFlyout";
@@ -12,12 +13,18 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { StorageControl } from "./StorageControl";
 import { ThemeToggle } from "./ThemeToggle";
 import type { Theme } from "../hooks/useTheme";
+import type { OrganizeMode } from "../hooks/useNoteOrganize";
 import type { FolderState } from "../hooks/useStorageBackend";
 import { COPY } from "../engine/copy";
 import "../styles/NotesRail.css";
 
 const COLLAPSE_KEY = "glassbox.rail.v1";
 const SECTIONS_KEY = "glassbox.railSections.v1";
+
+/* Shares openMenuId with the row menus so that opening this one closes any row
+   menu and the other way round. No note or book can collide with it: ids are
+   generated and this is not. */
+const ORGANIZE_MENU_ID = "organize-notes";
 
 type SectionName = "chats" | "books" | "notes";
 type SectionState = Record<SectionName, boolean>;
@@ -136,6 +143,8 @@ interface NotesRailProps {
   onDisconnectFolder: () => void;
   theme: Theme;
   onToggleTheme: () => void;
+  organizeMode: OrganizeMode;
+  onOrganizeChange: (mode: OrganizeMode) => void;
 }
 
 export const NotesRail = ({
@@ -167,6 +176,8 @@ export const NotesRail = ({
   onDisconnectFolder,
   theme,
   onToggleTheme,
+  organizeMode,
+  onOrganizeChange,
 }: NotesRailProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
@@ -475,6 +486,14 @@ export const NotesRail = ({
                   <Chevron open={notesOpen} />
                 </button>
               </h2>
+              <OrganizeMenu
+                mode={organizeMode}
+                open={openMenuId === ORGANIZE_MENU_ID}
+                onOpenChange={(open) =>
+                  setOpenMenuId(open ? ORGANIZE_MENU_ID : null)
+                }
+                onChoose={onOrganizeChange}
+              />
             </div>
 
             {hasSampleNotes && notesOpen && (

@@ -59,6 +59,8 @@ const renderRail = (overrides: Partial<ComponentProps<typeof NotesRail>> = {}) =
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
+      organizeMode="list"
+      onOrganizeChange={vi.fn()}
       {...overrides}
     />,
   );
