@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NotesRail } from "./NotesRail";
-import type { Note } from "../types";
+import type { Book, Conversation, Note } from "../types";
 
 /**
  * Wiring between the rail's search glyph and NoteSearchModal only. The modal's
@@ -30,7 +30,9 @@ const notes = [
   mkNote("n2", "Sourdough", "the starter was underfed"),
 ];
 
-const renderRail = (overrides: { notes?: Note[] } = {}) => {
+const renderRail = (
+  overrides: { notes?: Note[]; conversations?: Conversation[]; books?: Book[] } = {},
+) => {
   const onCreate = vi.fn();
   const onSelect = vi.fn();
   render(
@@ -43,7 +45,7 @@ const renderRail = (overrides: { notes?: Note[] } = {}) => {
       connectError={null}
       onSelect={onSelect}
       onCreate={onCreate}
-      conversations={[]}
+      conversations={overrides.conversations ?? []}
       activeConversationId={null}
       onNewChat={vi.fn()}
       onSelectConversation={vi.fn()}
@@ -56,6 +58,12 @@ const renderRail = (overrides: { notes?: Note[] } = {}) => {
       onReconnectFolder={vi.fn()}
       onDisconnectFolder={vi.fn()}
       theme="dark"
+      books={overrides.books ?? []}
+      selectedBookId={null}
+      bookNameByNoteId={new Map<string, string>()}
+      onSelectBook={vi.fn()}
+      onDeleteBook={vi.fn()}
+      onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
     />,
   );
@@ -215,34 +223,39 @@ describe("NotesRail search wiring", () => {
   });
 
   /**
-   * The body copy repeated the heading word for word, so the panel read
-   * "No notes yet" twice in a row.
+   * Three sections share one rail, so an empty list has to say which list it
+   * is by its copy alone. The headings that used to do that were removed
+   * because an empty section was taller than a full one; the wording now
+   * carries the whole job, and identical wording in two sections would leave
+   * the reader unable to tell chats from books from notes.
    */
-  it("does not repeat the empty-state heading in its body copy", () => {
-    renderRail({ notes: [] });
+  it("gives each empty section wording that no other section repeats", () => {
+    renderRail({ notes: [], conversations: [], books: [] });
 
-    // Both lists are empty here, so this has to pick the notes one by name
-    // rather than by position.
-    const title = screen.getByText("No notes yet");
-    const body = title.parentElement?.querySelector(".notes-rail__empty-body");
+    const bodyOf = (listId: string): string => {
+      const list = document.getElementById(listId);
+      if (!list) throw new Error(`no list ${listId}`);
+      const body = list.querySelector(".notes-rail__empty-body");
+      if (!body) throw new Error(`no empty state in ${listId}`);
+      return body.textContent?.trim() ?? "";
+    };
 
-    expect(title).toHaveClass("notes-rail__empty-title");
-    expect(body?.textContent).not.toContain("No notes yet");
-    expect(body?.textContent?.trim()).toBeTruthy();
+    const chats = bodyOf("rail-chats-list");
+    const books = bodyOf("rail-books-list");
+    const notes = bodyOf("rail-notes-list");
+
+    expect(chats).toBeTruthy();
+    expect(books).toBeTruthy();
+    expect(notes).toBeTruthy();
+    expect(new Set([chats, books, notes]).size).toBe(3);
   });
 
-  it("gives the chats list its own empty state, distinct from the notes one", () => {
-    renderRail({ notes: [] });
+  /* The heading was a second, larger copy of the same message stacked above
+     the body, which is what made an empty section outgrow a full one. */
+  it("renders an empty section as body copy alone, with no heading above it", () => {
+    renderRail({ notes: [], conversations: [], books: [] });
 
-    const chatsTitle = screen.getByText("No chats yet");
-    const chatsBody =
-      chatsTitle.parentElement?.querySelector(".notes-rail__empty-body");
-
-    expect(chatsBody?.textContent).not.toContain("No chats yet");
-    expect(chatsBody?.textContent).not.toBe(
-      screen
-        .getByText("No notes yet")
-        .parentElement?.querySelector(".notes-rail__empty-body")?.textContent,
-    );
+    expect(document.querySelector(".notes-rail__empty-title")).toBeNull();
+    expect(screen.queryByText("No notes yet")).toBeNull();
   });
 });

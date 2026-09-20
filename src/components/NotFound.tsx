@@ -3,7 +3,7 @@ import "../styles/NotFound.css";
 
 interface NotFoundProps {
   /** What the URL asked for, shown so the message is specific rather than blank. */
-  what: "note" | "chat" | "page";
+  what: "note" | "chat" | "book" | "page";
 }
 
 /**
@@ -21,7 +21,9 @@ export const NotFound = ({ what }: NotFoundProps) => {
       ? "That note doesn’t exist. It may have been deleted."
       : what === "chat"
         ? "That chat doesn’t exist. It may have been deleted."
-        : "There’s nothing at this address.";
+        : what === "book"
+          ? "That book doesn’t exist. It may have been deleted."
+          : "There’s nothing at this address.";
 
   return (
     <div className="not-found" role="status">

@@ -17,6 +17,11 @@ interface NoteRowMenuProps {
    */
   format?: NoteFormat;
   onToggleFormat?: () => void;
+  /**
+   * Optional for the same reason as the format action: a chat cannot be a
+   * chapter, so a conversation row passes nothing and no book item renders.
+   */
+  onAddToBook?: () => void;
 }
 
 interface MenuPosition {
@@ -38,6 +43,7 @@ export const NoteRowMenu = ({
   onRequestDelete,
   format,
   onToggleFormat,
+  onAddToBook,
 }: NoteRowMenuProps) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -91,6 +97,7 @@ export const NoteRowMenu = ({
 
   /* A chat row passes neither, and gets the menu it has always had. */
   const showFormat = format !== undefined && onToggleFormat !== undefined;
+  const showAddToBook = onAddToBook !== undefined;
   const toVerse = format === "prose";
 
   useDismissable({
@@ -164,8 +171,41 @@ export const NoteRowMenu = ({
               </button>
             )}
 
+            {showAddToBook && (
+              <button
+                // First only when no format action sits above it.
+                ref={!showFormat ? firstItemRef : undefined}
+                type="button"
+                role="menuitem"
+                className="note-row__menu-item"
+                onClick={() => {
+                  onOpenChange(false);
+                  onAddToBook?.();
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  {/* A bookmark: an ordered sequence marked, rather than a
+                      letterform that would need reading. */}
+                  <path
+                    d="M4 2.5h8v11l-4-2.6-4 2.6z"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Add to book
+              </button>
+            )}
+
             <button
-              ref={showFormat ? undefined : firstItemRef}
+              ref={!showFormat && !showAddToBook ? firstItemRef : undefined}
               type="button"
               role="menuitem"
               className="note-row__menu-item note-row__menu-item--danger"

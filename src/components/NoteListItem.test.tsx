@@ -19,7 +19,11 @@ const mkNote = (overrides: Partial<Note> = {}): Note => ({
   ...overrides,
 });
 
-const renderItem = (note: Note = mkNote(), isSelected = false) => {
+const renderItem = (
+  note: Note = mkNote(),
+  isSelected = false,
+  extra: { bookName?: string | null } = {},
+) => {
   const onSelect = vi.fn();
   const onMenuOpenChange = vi.fn();
   const onRequestDelete = vi.fn();
@@ -28,6 +32,7 @@ const renderItem = (note: Note = mkNote(), isSelected = false) => {
       note={note}
       isSelected={isSelected}
       menuOpen={false}
+      bookName={extra.bookName}
       onSelect={onSelect}
       onMenuOpenChange={onMenuOpenChange}
       onRequestDelete={onRequestDelete}
@@ -118,5 +123,47 @@ describe("NoteListItem", () => {
     renderItem(mkNote({ id: "abc-123" }));
 
     expect(row()).toHaveAttribute("data-note-id", "abc-123");
+  });
+
+  describe("the book named on the row", () => {
+    it("shows the book's name beside the note's own", () => {
+      renderItem(mkNote({ title: "Chapter one" }), false, {
+        bookName: "Autumn",
+      });
+
+      expect(screen.getByText("Autumn")).toBeInTheDocument();
+    });
+
+    /* The row is one button, so its accessible name is these spans joined.
+       Without the hidden preposition a reader hears "Chapter oneAutumn". */
+    it("reads the row as the note, then the book it is in", () => {
+      renderItem(mkNote({ title: "Chapter one" }), false, {
+        bookName: "Autumn",
+      });
+
+      expect(row()).toHaveAccessibleName("Chapter one, in Autumn");
+    });
+
+    /* Not merely blank: the element itself must be gone. It carries left
+       padding and is pushed to the right edge, so an empty one still takes
+       width on every row in the library, and a blank string reads the same in
+       every assertion the accessible name can make. */
+    it("renders no label element at all on a note that is in no book", () => {
+      renderItem(mkNote({ title: "Chapter one" }), false, { bookName: null });
+
+      expect(row().querySelector(".note-item__book")).toBeNull();
+    });
+
+    it("names no book on a note that is in none", () => {
+      renderItem(mkNote({ title: "Chapter one" }), false, { bookName: null });
+
+      expect(row()).toHaveAccessibleName("Chapter one");
+    });
+
+    it("defaults to naming no book when membership is not passed", () => {
+      renderItem(mkNote({ title: "Chapter one" }));
+
+      expect(row()).toHaveAccessibleName("Chapter one");
+    });
   });
 });

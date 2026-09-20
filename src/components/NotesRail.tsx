@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
-import type { Conversation, Note, NoteFormat } from "../types";
+import type { Book, Conversation, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
+import { BookListItem } from "./BookListItem";
 import { NewNoteMenu } from "./NewNoteMenu";
 import { ConversationItem } from "./ConversationItem";
 import { NoteSearchModal } from "./NoteSearchModal";
@@ -18,12 +19,12 @@ import "../styles/NotesRail.css";
 const COLLAPSE_KEY = "glassbox.rail.v1";
 const SECTIONS_KEY = "glassbox.railSections.v1";
 
-type SectionName = "chats" | "notes";
+type SectionName = "chats" | "books" | "notes";
 type SectionState = Record<SectionName, boolean>;
 
-/** Both open is the state the rail has always had, so a first-time reader
+/** All open is the state the rail has always had, so a first-time reader
     sees no change. */
-const DEFAULT_SECTIONS: SectionState = { chats: true, notes: true };
+const DEFAULT_SECTIONS: SectionState = { chats: true, books: true, notes: true };
 
 const readSections = (): SectionState => {
   try {
@@ -39,6 +40,13 @@ const readSections = (): SectionState => {
         typeof record.chats === "boolean"
           ? record.chats
           : DEFAULT_SECTIONS.chats,
+      // A reader who saved their sections before books existed has no `books`
+      // key. Falling back to the default opens it, which is what someone
+      // meeting a new section should get.
+      books:
+        typeof record.books === "boolean"
+          ? record.books
+          : DEFAULT_SECTIONS.books,
       notes:
         typeof record.notes === "boolean"
           ? record.notes
@@ -98,10 +106,16 @@ const writeCollapsed = (collapsed: boolean): void => {
 interface NotesRailProps {
   notes: Note[];
   conversations: Conversation[];
+  books: Book[];
   /** Null while a draft chat is open, which is its own kind of current. */
   activeConversationId: string | null;
   selectedNoteId: string | null;
+  /** Null unless a book is the thing currently open. */
+  selectedBookId: string | null;
   hasSampleNotes: boolean;
+  /** Note ids that belong to at least one book, so a row can show it. */
+  /* Note id to the name of the first book holding it. Absent means no book. */
+  bookNameByNoteId: ReadonlyMap<string, string>;
   folderState: FolderState;
   folderName: string | null;
   connectError: string | null;
@@ -110,6 +124,9 @@ interface NotesRailProps {
   onNewChat: () => void;
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
+  onSelectBook: (id: string) => void;
+  onDeleteBook: (id: string) => void;
+  onAddNoteToBook: (id: string) => void;
   chatActive: boolean;
   onDeleteNote: (id: string) => void;
   onToggleNoteFormat: (id: string) => void;
@@ -124,9 +141,12 @@ interface NotesRailProps {
 export const NotesRail = ({
   notes,
   conversations,
+  books,
   activeConversationId,
   selectedNoteId,
+  selectedBookId,
   hasSampleNotes,
+  bookNameByNoteId,
   folderState,
   folderName,
   connectError,
@@ -135,6 +155,9 @@ export const NotesRail = ({
   onNewChat,
   onSelectConversation,
   onDeleteConversation,
+  onSelectBook,
+  onDeleteBook,
+  onAddNoteToBook,
   chatActive,
   onDeleteNote,
   onToggleNoteFormat,
@@ -152,6 +175,7 @@ export const NotesRail = ({
       would overlap each other. */
   const [openFlyout, setOpenFlyout] = useState<SectionName | null>(null);
   const chatsOpen = sections.chats;
+  const booksOpen = sections.books;
   const notesOpen = sections.notes;
 
   const toggleSection = useCallback((name: SectionName) => {
@@ -167,6 +191,7 @@ export const NotesRail = ({
   const [pendingChatDelete, setPendingChatDelete] = useState<Conversation | null>(
     null,
   );
+  const [pendingBookDelete, setPendingBookDelete] = useState<Book | null>(null);
   /* Nothing reads as open while the chat is showing. Otherwise the rail marks
      two rows current at once, the chat entry and whichever note was last
      opened, and aria-current stops meaning anything. */
@@ -367,7 +392,6 @@ export const NotesRail = ({
             >
               {conversations.length === 0 ? (
                 <div className="notes-rail__empty">
-                  <p className="notes-rail__empty-title">No chats yet</p>
                   <p className="notes-rail__empty-body">
                     {COPY.emptyChatsSidebar}
                   </p>
@@ -387,6 +411,51 @@ export const NotesRail = ({
                         setOpenMenuId(open ? conversation.id : null)
                       }
                       onRequestDelete={() => setPendingChatDelete(conversation)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </nav>
+
+            <div className="notes-rail__section notes-rail__section--sticky">
+              <h2 className="notes-rail__title" id="rail-books-heading">
+                <button
+                  type="button"
+                  className="notes-rail__title-toggle"
+                  onClick={() => toggleSection("books")}
+                  aria-expanded={booksOpen}
+                  aria-controls="rail-books-list"
+                >
+                  Books
+                  <Chevron open={booksOpen} />
+                </button>
+              </h2>
+            </div>
+
+            <nav
+              id="rail-books-list"
+              aria-labelledby="rail-books-heading"
+              hidden={!booksOpen}
+            >
+              {books.length === 0 ? (
+                <div className="notes-rail__empty">
+                  <p className="notes-rail__empty-body">
+                    {COPY.emptyBooksSidebar}
+                  </p>
+                </div>
+              ) : (
+                <ul>
+                  {books.map((book) => (
+                    <BookListItem
+                      key={book.id}
+                      book={book}
+                      isSelected={book.id === selectedBookId}
+                      menuOpen={openMenuId === book.id}
+                      onSelect={() => onSelectBook(book.id)}
+                      onMenuOpenChange={(open) =>
+                        setOpenMenuId(open ? book.id : null)
+                      }
+                      onRequestDelete={() => setPendingBookDelete(book)}
                     />
                   ))}
                 </ul>
@@ -424,7 +493,6 @@ export const NotesRail = ({
             <nav id="rail-notes-list" aria-label="Note list" hidden={!notesOpen}>
               {notes.length === 0 ? (
                 <div className="notes-rail__empty">
-                  <p className="notes-rail__empty-title">No notes yet</p>
                   <p className="notes-rail__empty-body">
                     {COPY.emptyNotesSidebar}
                   </p>
@@ -443,6 +511,8 @@ export const NotesRail = ({
                       }
                       onRequestDelete={() => setPendingDelete(note)}
                       onToggleFormat={() => onToggleNoteFormat(note.id)}
+                      bookName={bookNameByNoteId.get(note.id)}
+                      onAddToBook={() => onAddNoteToBook(note.id)}
                     />
                   ))}
                 </ul>
@@ -570,6 +640,47 @@ export const NotesRail = ({
           </RailFlyout>
 
           <RailFlyout
+            label="Books"
+            heading="Books"
+            open={openFlyout === "books"}
+            onOpenChange={(next) => setOpenFlyout(next ? "books" : null)}
+            isEmpty={books.length === 0}
+            emptyText={COPY.emptyBooksSidebar}
+            icon={
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                {/* A spine that folds back on itself, so it reads as a book at
+                    18px rather than as the page the notes icon already uses. */}
+                <path
+                  d="M4.5 2.75h7.75v10.5H4.5a1.25 1.25 0 0 1 0-2.5h7.75"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              </svg>
+            }
+          >
+            <ul>
+              {books.map((book) => (
+                <BookListItem
+                  key={book.id}
+                  book={book}
+                  isSelected={book.id === selectedBookId}
+                  menuOpen={openMenuId === book.id}
+                  onSelect={() => {
+                    onSelectBook(book.id);
+                    setOpenFlyout(null);
+                  }}
+                  onMenuOpenChange={(open) =>
+                    setOpenMenuId(open ? book.id : null)
+                  }
+                  onRequestDelete={() => setPendingBookDelete(book)}
+                />
+              ))}
+            </ul>
+          </RailFlyout>
+
+          <RailFlyout
             label="Notes"
             heading="Notes"
             open={openFlyout === "notes"}
@@ -609,12 +720,30 @@ export const NotesRail = ({
                   }
                   onRequestDelete={() => setPendingDelete(note)}
                   onToggleFormat={() => onToggleNoteFormat(note.id)}
+                  bookName={bookNameByNoteId.get(note.id)}
+                  onAddToBook={() => onAddNoteToBook(note.id)}
                 />
               ))}
             </ul>
           </RailFlyout>
         </div>
       )}
+
+      {/* A book is a running order, not a container. Deleting it must leave
+          every chapter in the library, and the description has to say so
+          outright: the word "book" implies the pages go with it, and a reader
+          who believes that will not press the button. */}
+      <ConfirmDialog
+        open={pendingBookDelete !== null}
+        title={`Delete "${pendingBookDelete?.title.trim() || COPY.untitledBook}"?`}
+        description="This deletes the book and its running order. Every note in it stays in your library."
+        confirmLabel="Delete book"
+        onConfirm={() => {
+          if (pendingBookDelete) onDeleteBook(pendingBookDelete.id);
+          setPendingBookDelete(null);
+        }}
+        onCancel={() => setPendingBookDelete(null)}
+      />
 
       {/* Names the conversation so the two dialogs in this rail are never
           confusable, and says plainly that notes are unaffected. Deleting a

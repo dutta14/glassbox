@@ -88,3 +88,36 @@ export interface Conversation {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * An ordered sequence of existing notes, read as chapters.
+ *
+ * The book holds note ids and the notes hold nothing about the book. Order is
+ * a relationship between chapters, not a property of any one chapter. Storing a
+ * position in each note's front matter would make reordering fifteen chapters a
+ * fifteen file write that can fail halfway and leave the library in a state
+ * nobody can reason about. One book is one file and one atomic write, so adding
+ * or reordering a book never rewrites any of the archive notes.
+ *
+ * The accepted cost is that a chapterId can point at a note deleted by hand
+ * outside the app. A dangling id is rendered as a missing chapter, never a
+ * crash.
+ */
+export interface Book {
+  id: string;
+  title: string;
+  /** Note ids, in reading order. The order IS the book. */
+  chapterIds: string[];
+  /**
+   * Chapters that take no number: a prologue, an interlude, an epilogue.
+   * Numbering counts only the chapters outside this set, so front matter
+   * cannot consume chapter one and an epilogue costs nothing at the end.
+   *
+   * Held on the book rather than the note, for the same reason the order is:
+   * the same note can be a prologue in one book and chapter three in another.
+   * Optional, because books written before numbering existed do not have it.
+   */
+  unnumberedIds?: string[];
+  createdAt: string;
+  updatedAt: string;
+}

@@ -1,0 +1,338 @@
+.book-stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--color-bg);
+}
+
+/* The running header. Sticky against the scrolling stage rather than fixed to
+   the window, so it stays inside the pane and never rides over the rail.
+
+   It is always present, even on the first screen where the book's real title
+   is still visible, because it carries the only way to open the contents once
+   reading has started. The title inside it is what waits. */
+.book-stage__bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--space-10);
+  padding-inline: var(--space-5);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* A hairline laid exactly over the bar's bottom border, so the read part of
+   the book simply darkens the rule already there. Anchored left and scaled
+   from 0 to 1, so the browser animates a transform rather than a width and
+   never reflows the bar while scrolling. */
+.book-stage__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  transform-origin: left center;
+  background: var(--color-text-secondary);
+}
+
+.book-stage__running {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  /* Hidden rather than absent so the Contents button does not slide sideways
+     when the title arrives. */
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.book-stage__running--shown {
+  opacity: 1;
+}
+
+/* Set as type rather than as a bordered control. It sits on a page that is
+   otherwise nothing but typography, and a pill with a border was the only
+   thing on screen that looked like a form. The underline on hover carries the
+   affordance the border used to; tokens.css supplies the focus ring. */
+.book-stage__contents-button {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: var(--space-1) 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+  background: none;
+  border: none;
+  text-underline-offset: 0.35em;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.book-stage__contents-button:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+/* Borders are how a control is recognised when colour is taken away. */
+@media (forced-colors: active) {
+  .book-stage__contents-button {
+    border: 1px solid ButtonBorder;
+    padding-inline: var(--space-2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-stage__running,
+  .book-stage__contents-button {
+    transition: none;
+  }
+}
+
+.book-stage__inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  /* The same measure the editor reads at, so a chapter here holds the same
+     comfortable line length as the note it came from. */
+  max-width: calc(var(--editor-measure) + var(--space-6) * 2);
+  margin-inline: auto;
+  padding-block: var(--space-8);
+  padding-inline: var(--space-6);
+}
+
+.book-stage__front {
+  text-align: center;
+  padding-top: var(--space-8);
+}
+
+/* A field, not a heading, because the title is editable in place. It is given
+   no border or fill so it reads as the title it is, and shows its edges only
+   when hovered or focused so that it is discoverable as a control at all. */
+.book-stage__title {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: 2.5rem;
+  font-weight: var(--fw-normal);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.book-stage__title:hover {
+  border-color: var(--color-border);
+}
+
+.book-stage__title::placeholder {
+  color: var(--color-text-muted);
+}
+
+@media (hover: none) {
+  .book-stage__title {
+    border-color: var(--color-border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-stage__title {
+    transition: none;
+  }
+}
+
+.book-stage__meta {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+/* Parted from the chapters below by more space than anything else on the page,
+   so the contents reads as its own leaf before the book proper begins. */
+.book-stage__contents-page {
+  padding-block: var(--space-6) var(--space-10);
+}
+
+.book-stage__empty {
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--fs-md);
+}
+
+.book-stage__chapters {
+  display: flex;
+  flex-direction: column;
+}
+
+.book-chapter {
+  /* Deep space above each chapter, so one reads as ending before the next
+     begins even in a single continuous column. */
+  padding-block: var(--space-12) var(--space-8);
+}
+
+.book-chapter:first-child {
+  padding-top: 0;
+}
+
+/* The same mark the note editor sets under a title, so a chapter break here
+   and a chapter break there are visibly the same gesture. Duplicated rather
+   than shared because each component owns its own stylesheet in this project;
+   if a third place needs it, it should move to a shared rule. */
+.book-chapter__ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-12);
+}
+
+.book-chapter__ornament::before,
+.book-chapter__ornament::after {
+  content: "";
+  width: 44px;
+  height: 1px;
+  background: var(--color-text-muted);
+}
+
+.book-chapter__ornament-mark {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--color-text-muted);
+  transform: rotate(45deg);
+}
+
+.book-chapter__heading {
+  margin: 0 0 var(--space-6);
+  text-align: center;
+  font-family: var(--font-serif);
+  font-weight: var(--fw-normal);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+}
+
+.book-chapter__number {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+}
+
+/* When the grey line is the whole heading, it is also the only way into the
+   note, so it takes the title's hover rule. It keeps its own size: promoting
+   it to display type would make a prologue shout louder than chapter one. */
+.book-chapter__number--sole {
+  text-decoration: none;
+  color: var(--color-text-secondary);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.book-chapter__number--sole:hover,
+.book-chapter__number--sole:focus-visible {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.book-chapter__title {
+  display: inline-block;
+  font-size: 2rem;
+  color: var(--color-text);
+  /* Undecorated at rest. A chapter title that arrived underlined would read as
+     a web page rather than a book; the rule appears on hover and focus, where
+     it is needed to say the title can be followed. */
+  text-decoration: none;
+}
+
+.book-chapter__title:hover,
+.book-chapter__title:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1px;
+}
+
+.book-chapter__title--missing {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Mirrors .editor__body's reading type: Garamond at 19px, generous leading,
+   and a hair of word-spacing to part an old-style serif's tight spaces. 19px
+   has no token; it is the exact size the editor sets so a chapter reads
+   identically to its note. */
+.book-chapter__body {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.75;
+  word-spacing: 0.05em;
+  color: var(--color-text);
+}
+
+.book-chapter__paragraph {
+  margin: 0 0 var(--space-5);
+}
+
+.book-chapter__paragraph:last-child {
+  margin-bottom: 0;
+}
+
+/* Verse is set as it was written: the line breaks preserved and the block
+   centred while its lines stay left aligned to each other, matching the
+   editor's --verse leading. */
+.book-chapter__body--verse {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  line-height: 2.1;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.book-chapter__missing {
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--fs-md);
+}
+
+@media (max-width: 479px) {
+  .book-stage__inner {
+    padding-inline: var(--space-4);
+  }
+
+  .book-stage__title {
+    font-size: 1.875rem;
+  }
+
+  .book-stage__bar {
+    padding-inline: var(--space-4);
+  }
+
+  .book-chapter__title {
+    font-size: 1.5rem;
+  }
+}

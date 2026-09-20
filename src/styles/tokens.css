@@ -42,6 +42,11 @@
   --color-text: #181715;
   --color-text-secondary: #52514f;
   --color-text-muted: #62615f;
+  /* One step below muted, for a label that must stay subordinate to the text
+     it annotates. Only ever used on --color-surface and --color-surface-alt,
+     where it measures 4.55:1, so it is still body-text legible under 1.4.3.
+     This is as light as those two surfaces allow; anything lighter fails. */
+  --color-text-faint: #72716f;
   --color-text-on-accent: #ffffff;
   --color-text-quote: #282725;
 
@@ -182,6 +187,10 @@ body.dark {
   --color-text: #ebebeb;
   --color-text-secondary: #b0b0b0;
   --color-text-muted: #9a9a9a;
+  /* 4.62:1 on --color-surface and --color-surface-alt. Dark mode has far less
+     room here than light: muted itself is only 5.38:1 on these surfaces, so
+     this token separates from it by less than its light-mode counterpart. */
+  --color-text-faint: #8e8e8e;
   --color-text-on-accent: #161616;
   --color-text-quote: #dcdcdc;
 

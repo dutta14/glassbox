@@ -1,0 +1,77 @@
+/* The contents sheet, opened from the sticky header while reading. */
+
+.book-contents__backdrop {
+  position: fixed;
+  inset: 0;
+  /* The same layer the add-to-book modal sits on, so the two cannot be open
+     and fighting over which is on top. */
+  z-index: 200;
+  display: flex;
+  /* Anchored to the right, where the sheet slides from. */
+  justify-content: flex-end;
+  background: var(--color-search-backdrop-fallback);
+}
+
+/* Matches the other overlays: the blur does most of the separating, so the
+   tinted layer under it is lighter. Only the unprefixed property is authored;
+   the build adds the -webkit- twin. */
+@supports (backdrop-filter: blur(1px)) {
+  .book-contents__backdrop {
+    background: var(--color-search-backdrop);
+    backdrop-filter: var(--backdrop-search-filter);
+  }
+}
+
+.book-contents {
+  display: flex;
+  flex-direction: column;
+  width: min(380px, 100vw);
+  height: 100%;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+}
+
+.book-contents__close {
+  align-self: flex-end;
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+}
+
+.book-contents__close:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+/* The list scrolls, not the sheet, so the close control stays put in a book
+   with sixty chapters. */
+.book-contents__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-4) var(--space-8);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .book-contents {
+    animation: book-contents-in var(--duration-base) var(--ease-out);
+  }
+
+  @keyframes book-contents-in {
+    from {
+      transform: translateX(1rem);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+}

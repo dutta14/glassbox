@@ -7,12 +7,14 @@ import { AppReady } from "./App";
 import { markSeeded } from "./storage/notes";
 import type {
   Answer,
+  Book,
   Conversation,
   Note,
   ScoredChunk,
   Trace,
 } from "./types";
 import type {
+  BookStore,
   ConversationListResult,
   ConversationStore,
   NotesStore,
@@ -98,6 +100,23 @@ interface DeferredConversationStore extends ConversationStore {
   resolveList: (result: ConversationListResult) => void;
 }
 
+/* In memory rather than the real localStorage store: this file never clears
+   localStorage between tests, so a book written by one test would still be
+   there for the next one and the failure would look like a routing bug. */
+const makeBookStore = (): BookStore => {
+  let books: Book[] = [];
+  return {
+    kind: "local",
+    list: async () => ({ books, skipped: 0 }),
+    put: async (book: Book) => {
+      books = [...books.filter((b) => b.id !== book.id), book];
+    },
+    remove: async (id: string) => {
+      books = books.filter((b) => b.id !== id);
+    },
+  };
+};
+
 const makeConversationStore = (initial: Conversation[]): ConversationStore => {
   const disk = new Map(initial.map((c) => [c.id, c]));
   return {
@@ -169,6 +188,7 @@ const renderApp = (initialEntries: string[], options: RenderOptions = {}) => {
       <AppReady
         store={notesStore}
         conversationStore={conversationStore}
+        bookStore={makeBookStore()}
         folderState="disconnected"
         folderName={null}
         connectError={null}

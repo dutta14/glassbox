@@ -8,15 +8,19 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import type { Answer, Conversation, Note, NoteFormat } from "./types";
+import type { Answer, Book, Conversation, Note, NoteFormat } from "./types";
 import { useNotes } from "./hooks/useNotes";
 import { useConversations } from "./hooks/useConversations";
+import { useBooks } from "./hooks/useBooks";
+import { useReadingPosition } from "./hooks/useReadingPosition";
 import { useStorageBackend } from "./hooks/useStorageBackend";
 import { useTheme } from "./hooks/useTheme";
 import { createIndex, route } from "./engine/router";
-import { notePath, chatPath } from "./engine/routes";
+import { notePath, chatPath, bookPath } from "./engine/routes";
 import { COPY } from "./engine/copy";
 import { NotesRail } from "./components/NotesRail";
+import { AddToBookModal } from "./components/AddToBookModal";
+import { BookStage } from "./components/BookStage";
 import { useNoteNeighbours } from "./hooks/useNoteNeighbours";
 import { NoteEditor } from "./components/NoteEditor";
 import { ChatPanel } from "./components/ChatPanel";
@@ -36,6 +40,7 @@ const App = () => {
   const {
     store,
     conversationStore,
+    bookStore,
     folderState,
     folderName,
     connectError,
@@ -59,6 +64,7 @@ const App = () => {
     <AppReady
       store={store}
       conversationStore={conversationStore}
+      bookStore={bookStore}
       folderState={folderState}
       folderName={folderName}
       connectError={connectError}
@@ -120,6 +126,9 @@ interface NoteStageProps {
   onScrollHandled: () => void;
   onSelectNote: (id: string) => void;
   readAsset: (path: string) => Promise<Blob | null>;
+  /* The whole index rather than this note's books, because the stage reads the
+     id from the URL and so cannot be handed its own slice from outside. */
+  booksByNoteId: Map<string, Book[]>;
 }
 
 /* The stage for /note/:id. This route only mounts once notes have loaded, since
@@ -134,6 +143,7 @@ const NoteStage = ({
   onScrollHandled,
   onSelectNote,
   readAsset,
+  booksByNoteId,
 }: NoteStageProps) => {
   const { id } = useParams();
   const note = notes.find((n) => n.id === id) ?? null;
@@ -157,6 +167,76 @@ const NoteStage = ({
       nextNote={nextNote}
       onSelectNote={onSelectNote}
       readAsset={readAsset}
+      books={booksByNoteId.get(note.id) ?? []}
+    />
+  );
+};
+
+interface BookStageRouteProps {
+  books: Book[];
+  notes: Note[];
+  booksLoaded: boolean;
+  onReorder: (bookId: string, chapterIds: string[]) => void;
+  onRemoveChapter: (bookId: string, noteId: string) => void;
+  onSetNumbered: (bookId: string, noteId: string, numbered: boolean) => void;
+  onRename: (bookId: string, title: string) => void;
+  /** Where reading stopped in each book, so a book reopens where it was left. */
+  positionFor: (bookId: string) => string | null;
+  onReadChapter: (bookId: string, chapterId: string) => void;
+}
+
+const BookStageRoute = ({
+  books,
+  notes,
+  booksLoaded,
+  onReorder,
+  onRemoveChapter,
+  onSetNumbered,
+  onRename,
+  positionFor,
+  onReadChapter,
+}: BookStageRouteProps) => {
+  const { id } = useParams();
+  const book = books.find((b) => b.id === id) ?? null;
+
+  /* Bound to the book id rather than rebuilt on every render, because
+     BookStage watches this callback in the effect that installs its chapter
+     observer. A fresh function each render would tear that observer down and
+     rebuild it on every scroll-driven state change. */
+  const handleReadChapter = useCallback(
+    (chapterId: string) => {
+      if (book) onReadChapter(book.id, chapterId);
+    },
+    [book, onReadChapter],
+  );
+
+  /* Books arrive from storage a moment after the first render. Deciding "not
+     found" before that load settles would flash a dead-link message at anyone
+     who opened a book's URL directly or reloaded on one. */
+  if (!book) {
+    return booksLoaded ? <NotFound what="book" /> : null;
+  }
+
+  /* Positional, not filtered: BookStage pairs chapters[i] with
+     book.chapterIds[i], so a note deleted outside the app has to stay in the
+     array as a null and be reported in its place. Compacting it here would
+     shift every later chapter onto the wrong id. */
+  const chapters = book.chapterIds.map(
+    (noteId) => notes.find((n) => n.id === noteId) ?? null,
+  );
+
+  return (
+    <BookStage
+      book={book}
+      chapters={chapters}
+      onReorder={(chapterIds) => onReorder(book.id, chapterIds)}
+      onRemoveChapter={(noteId) => onRemoveChapter(book.id, noteId)}
+      onSetNumbered={(noteId, numbered) =>
+        onSetNumbered(book.id, noteId, numbered)
+      }
+      onRename={(title) => onRename(book.id, title)}
+      resumeChapterId={positionFor(book.id)}
+      onReadChapter={handleReadChapter}
     />
   );
 };
@@ -164,6 +244,7 @@ const NoteStage = ({
 interface AppReadyProps {
   store: NonNullable<ReturnType<typeof useStorageBackend>["store"]>;
   conversationStore: ReturnType<typeof useStorageBackend>["conversationStore"];
+  bookStore: ReturnType<typeof useStorageBackend>["bookStore"];
   folderState: ReturnType<typeof useStorageBackend>["folderState"];
   folderName: string | null;
   connectError: string | null;
@@ -175,6 +256,7 @@ interface AppReadyProps {
 export const AppReady = ({
   store,
   conversationStore,
+  bookStore,
   folderState,
   folderName,
   connectError,
@@ -195,7 +277,9 @@ export const AppReady = ({
   // note instead.
   const noteMatch = useMatch("/note/:id");
   const chatMatch = useMatch("/chat/:id");
+  const bookMatch = useMatch("/book/:id");
   const selectedNoteId = noteMatch?.params.id ?? null;
+  const selectedBookId = bookMatch?.params.id ?? null;
   const chatRouteId = chatMatch?.params.id ?? null;
   // Draft is the absence of both matches, which is the index path and, for the
   // blink before the catch-all redirect lands, any unrecognised path too.
@@ -232,6 +316,40 @@ export const AppReady = ({
     isFirstAssistantMessage,
     skippedCount: skippedChatCount,
   } = useConversations(conversationStore);
+
+  const {
+    books,
+    loaded: booksLoaded,
+    createBook,
+    addChapter,
+    removeChapter,
+    setChapterNumbered,
+    reorderChapters,
+    deleteBook,
+    renameBook,
+    booksByNoteId,
+    removeNoteFromAllBooks,
+  } = useBooks(bookStore);
+
+  /* Per-device UI state, so it lives in localStorage and never enters the
+     notes folder. A reading position is not something anyone would want
+     syncing between machines or showing up as a file in their archive. */
+  const {
+    positionFor: readingPositionFor,
+    remember: rememberReadingPosition,
+    forget: forgetReadingPosition,
+  } = useReadingPosition();
+
+  /* Flattened to one name per note, because that is all a rail row shows. A
+     note in two books names the first; the note's own view lists them all. */
+  const bookNameByNoteId = useMemo(() => {
+    const byNote = new Map<string, string>();
+    for (const [noteId, holding] of booksByNoteId) {
+      const first = holding[0];
+      if (first) byNote.set(noteId, first.title.trim() || COPY.untitledBook);
+    }
+    return byNote;
+  }, [booksByNoteId]);
 
   const [pendingScrollOffset, setPendingScrollOffset] = useState<number | null>(
     null,
@@ -405,12 +523,86 @@ export const AppReady = ({
     [notes, setNoteFormat],
   );
 
+  /* The note whose "Add to book" was chosen. Held as an id rather than the
+     note itself so a rename or edit while the modal is open cannot show a
+     stale title. */
+  const [addToBookNoteId, setAddToBookNoteId] = useState<string | null>(null);
+
+  const handleRequestAddToBook = useCallback((id: string) => {
+    setAddToBookNoteId(id);
+  }, []);
+
+  /* Null when the id names a note that no longer exists, which closes the
+     modal through `open`. */
+  const addToBookNote = useMemo(
+    () =>
+      addToBookNoteId === null
+        ? null
+        : (notes.find((n) => n.id === addToBookNoteId) ?? null),
+    [addToBookNoteId, notes],
+  );
+
+  const handleAddToBook = useCallback(
+    (bookId: string) => {
+      if (addToBookNoteId === null) return;
+      // The title goes along so the book can tell a prologue from a chapter
+      // and suggest whether it takes a number.
+      void addChapter(bookId, addToBookNoteId, addToBookNote?.title ?? "");
+      setAddToBookNoteId(null);
+    },
+    [addChapter, addToBookNote, addToBookNoteId],
+  );
+
+  /* Creating the book and adding the note are one action to the user, so a
+     failure to add must not leave a named but empty book behind as though it
+     had worked. Awaiting the create is what makes the new id available to add
+     into. */
+  const handleCreateBookWithNote = useCallback(
+    (title: string) => {
+      const noteId = addToBookNoteId;
+      if (noteId === null) return;
+      const noteTitle = addToBookNote?.title ?? "";
+      setAddToBookNoteId(null);
+      void (async () => {
+        const book = await createBook(title);
+        await addChapter(book.id, noteId, noteTitle);
+      })();
+    },
+    [addChapter, addToBookNote, createBook, addToBookNoteId],
+  );
+
+  const handleSelectBook = useCallback(
+    (id: string) => {
+      navigate(bookPath(id));
+    },
+    [navigate],
+  );
+
+  /* Leaving the book's own URL behind matters here. Once the record is gone
+     the address points at nothing, so staying put would leave a dead route in
+     history for the back button to land on. Only the open book moves the URL;
+     deleting some other book from the rail leaves the address bar alone. */
+  const handleDeleteBook = useCallback(
+    (id: string) => {
+      void deleteBook(id);
+      // The record would otherwise outlive the book and be handed to a new
+      // book that happened to reuse the id.
+      forgetReadingPosition(id);
+      if (selectedBookId === id) navigate("/", { replace: true });
+    },
+    [deleteBook, forgetReadingPosition, navigate, selectedBookId],
+  );
+
   const handleDeleteNote = useCallback(
     (id: string) => {
       const idx = notes.findIndex((n) => n.id === id);
       const neighbour =
         idx >= 0 ? (notes[idx + 1] ?? notes[idx - 1] ?? null) : null;
       deleteNote(id);
+      /* A book holding a deleted note would render a missing chapter forever.
+         The book view tolerates that for a file deleted outside the app, but
+         a deletion we performed ourselves should not leave the wreckage. */
+      void removeNoteFromAllBooks(id);
       // Only the note actually on screen moves the URL. Deleting some other
       // note from the rail leaves the address bar alone, because the URL is the
       // truth about what is open and nothing open changed. The old code always
@@ -423,7 +615,7 @@ export const AppReady = ({
       }
       setPendingFocus("note-list");
     },
-    [deleteNote, navigate, notes, selectedNoteId],
+    [deleteNote, removeNoteFromAllBooks, navigate, notes, selectedNoteId],
   );
 
   const handleDeleteConversation = useCallback(
@@ -538,6 +730,12 @@ export const AppReady = ({
             onCreate={handleCreateNote}
             conversations={conversations}
             activeConversationId={activeConversationId}
+            books={books}
+            selectedBookId={selectedBookId}
+            bookNameByNoteId={bookNameByNoteId}
+            onSelectBook={handleSelectBook}
+            onDeleteBook={handleDeleteBook}
+            onAddNoteToBook={handleRequestAddToBook}
             onNewChat={handleNewChat}
             onSelectConversation={handleSelectConversation}
             onDeleteConversation={handleDeleteConversation}
@@ -550,6 +748,24 @@ export const AppReady = ({
             onDisconnectFolder={onDisconnect}
             theme={theme}
             onToggleTheme={toggleTheme}
+          />
+
+          {/* Resolved from the id every render rather than captured when the
+              menu was clicked, so an edit to the title while the modal is open
+              shows the note's real name. A note deleted underneath it resolves
+              to null and the modal closes rather than naming something gone. */}
+          <AddToBookModal
+            open={addToBookNote !== null}
+            noteTitle={addToBookNote?.title.trim() || COPY.untitled}
+            books={books}
+            containingBookIds={
+              addToBookNote
+                ? (booksByNoteId.get(addToBookNote.id) ?? []).map((b) => b.id)
+                : []
+            }
+            onClose={() => setAddToBookNoteId(null)}
+            onAddToBook={handleAddToBook}
+            onCreateBook={handleCreateBookWithNote}
           />
 
           <main
@@ -639,6 +855,7 @@ export const AppReady = ({
                       onScrollHandled={() => setPendingScrollOffset(null)}
                       onSelectNote={handleSelectNote}
                       readAsset={readAsset}
+                      booksByNoteId={booksByNoteId}
                     />
                   }
                 />
@@ -647,6 +864,24 @@ export const AppReady = ({
                     app's catch-all. A dead /chat/<id> or /note/<id> still
                     resolves to a calm "not found" inside its own route, because
                     those paths match above and never reach this line. */}
+                <Route
+                  path="/book/:id"
+                  element={
+                    <BookStageRoute
+                      books={books}
+                      notes={notes}
+                      booksLoaded={booksLoaded}
+                      onReorder={reorderChapters}
+                      onRemoveChapter={removeChapter}
+                      onSetNumbered={setChapterNumbered}
+                      onRename={(bookId, title) => {
+                        void renameBook(bookId, title);
+                      }}
+                      positionFor={readingPositionFor}
+                      onReadChapter={rememberReadingPosition}
+                    />
+                  }
+                />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>

@@ -307,3 +307,29 @@ textarea.editor__body:not([data-editing]) {
 .editor__bodywrap--verse > .editor__body {
   line-height: 2.1;
 }
+
+/* Sits between the title and the chapter rule, in the gap the title's own
+   bottom padding already opens, so nothing below it moves. Muted and small:
+   it is a label on the note, and it must not compete with the title above it
+   or the first line below. */
+.editor__from-book {
+  margin: calc(var(--space-2) * -1) 0 var(--space-5);
+  text-align: center;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.editor__from-book-link {
+  color: var(--color-text-muted);
+  /* Underlined at rest. The surrounding line is the same colour and weight, so
+     without it there is nothing to say which words can be clicked. */
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.editor__from-book-link:hover,
+.editor__from-book-link:focus-visible {
+  color: var(--color-text);
+}

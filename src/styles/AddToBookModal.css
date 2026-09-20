@@ -1,0 +1,214 @@
+/* Centred rather than top anchored like the search modal: this surface has a
+   fixed height and does not grow as you type, so there is no shifting input to
+   keep still near the top edge. */
+.add-book__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--color-search-backdrop-fallback);
+}
+
+/* The blurred overlay is lighter than the fallback because the blur does most
+   of the separating. Only the unprefixed property is authored; the build adds
+   the -webkit- twin, and hand-writing it made the minifier drop the standard
+   one. */
+@supports (backdrop-filter: blur(1px)) {
+  .add-book__backdrop {
+    background: var(--color-search-backdrop);
+    backdrop-filter: var(--backdrop-search-filter);
+  }
+}
+
+.add-book {
+  --color-focus-spacer: var(--color-surface);
+  width: 100%;
+  max-width: 30rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-height: min(32rem, 85vh);
+  padding: var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.add-book__title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--leading-tight);
+  color: var(--color-text);
+}
+
+.add-book__desc {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.add-book__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.add-book__label {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.add-book__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  overflow-y: auto;
+}
+
+.add-book__book {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--color-text);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.add-book__book:hover:not(:disabled) {
+  background: var(--color-surface-alt);
+}
+
+/* Kept visible rather than hidden so the reader can see where the note already
+   lives. Dimmed and not-allowed to read as unavailable, not merely inactive. */
+.add-book__book:disabled {
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+}
+
+.add-book__book-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  line-height: var(--leading-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Never squeezes the title: the count is what the row can afford to lose when
+   space runs out, the name is not. */
+.add-book__book-meta {
+  flex-shrink: 0;
+  font-size: var(--fs-xs);
+  line-height: var(--leading-tight);
+  color: var(--color-text-muted);
+}
+
+.add-book__create-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.add-book__input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  caret-color: var(--accent);
+  font-size: var(--fs-sm);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.add-book__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.add-book__input:focus-within,
+.add-book__input:focus {
+  border-color: var(--color-border-strong);
+}
+
+.add-book__create {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.add-book__create:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.add-book__create:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .add-book__backdrop {
+    animation: add-book-backdrop-in var(--duration-fast) var(--ease-out);
+  }
+
+  .add-book {
+    animation: add-book-in var(--duration-base) var(--ease-out);
+  }
+}
+
+@keyframes add-book-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes add-book-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-2) * -1)) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .add-book {
+    max-width: 100%;
+  }
+}

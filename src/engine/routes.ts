@@ -15,3 +15,6 @@ export const notePath = (id: string): string => `/note/${encodeURIComponent(id)}
 
 /** Percent-encoded id path, matching notePath so both round-trip through react-router. */
 export const chatPath = (id: string): string => `/chat/${encodeURIComponent(id)}`;
+
+/** Percent-encoded id path, on the same contract as the other two. */
+export const bookPath = (id: string): string => `/book/${encodeURIComponent(id)}`;

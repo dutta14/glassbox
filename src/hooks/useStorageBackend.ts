@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ConversationStore, NotesStore } from '../storage/types';
+import type { BookStore, ConversationStore, NotesStore } from '../storage/types';
 import {
   createFolderConversationStore,
   createLocalConversationStore,
 } from '../storage/conversationStore';
+import {
+  createFolderBookStore,
+  createLocalBookStore,
+} from '../storage/bookStore';
 import { createLocalStorageStore } from '../storage/localStorageStore';
 import {
   createFileSystemStore,
@@ -42,6 +46,8 @@ export interface UseStorageBackendResult {
   store: NotesStore | null;
   /** Always points at the same folder as `store`. Derived, never set. */
   conversationStore: ConversationStore | null;
+  /** Always points at the same folder as `store`. Derived, never set. */
+  bookStore: BookStore | null;
   folderState: FolderState;
   folderName: string | null;
   connectError: string | null;
@@ -270,10 +276,22 @@ export const useStorageBackend = (): UseStorageBackendResult => {
       : createLocalConversationStore();
   }, [store]);
 
+  /* Derived from `store` for the same reason as conversationStore: books,
+     chats, and notes must always read the same folder, and deriving here means
+     there is no parallel setState to forget at one of the eight store sites. */
+  const bookStore = useMemo<BookStore | null>(() => {
+    if (store === null) return null;
+    const handle = handleRef.current;
+    return store.kind === 'folder' && handle !== null
+      ? createFolderBookStore(handle)
+      : createLocalBookStore();
+  }, [store]);
+
   return useMemo<UseStorageBackendResult>(
     () => ({
       store,
       conversationStore,
+      bookStore,
       folderState,
       folderName,
       connectError,
@@ -284,6 +302,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     [
       store,
       conversationStore,
+      bookStore,
       folderState,
       folderName,
       connectError,

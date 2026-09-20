@@ -262,28 +262,20 @@
   gap: 2px;
 }
 
+/* Sized and aligned like a row, because it stands in for rows. Three sections
+   share the rail now, so a centred block with its own heading gave an empty
+   list more presence than a full one and pushed the other two lists off the
+   screen. The padding matches .note-item so the text starts on the same left
+   edge the titles would have. */
 .notes-rail__empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-8) var(--space-4);
-  text-align: center;
-}
-
-.notes-rail__empty-title {
-  margin: 0;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold);
-  color: var(--color-text);
+  padding: var(--space-2) var(--space-3);
 }
 
 .notes-rail__empty-body {
   margin: 0;
   font-size: var(--fs-xs);
-  color: var(--color-text-secondary);
-  max-width: 32ch;
+  line-height: var(--leading-tight);
+  color: var(--color-text-muted);
 }
 
 .notes-rail__footer {

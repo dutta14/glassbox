@@ -58,6 +58,12 @@ describe("scroll fade wiring", () => {
         onReconnectFolder={vi.fn()}
         onDisconnectFolder={vi.fn()}
         theme="dark"
+        books={[]}
+        selectedBookId={null}
+        bookNameByNoteId={new Map<string, string>()}
+        onSelectBook={vi.fn()}
+        onDeleteBook={vi.fn()}
+        onAddNoteToBook={vi.fn()}
         onToggleTheme={vi.fn()}
       />,
     );

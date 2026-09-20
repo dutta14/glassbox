@@ -5,6 +5,7 @@ import { ChatPanel } from "./ChatPanel";
 import { NoteEditor } from "./NoteEditor";
 import { NotesRail } from "./NotesRail";
 import type { Conversation, Note } from "../types";
+import { COPY } from "../engine/copy";
 
 /**
  * The Chat/Editor tablist above the stage is gone and the rail is now the only
@@ -66,6 +67,12 @@ const renderRail = (
       onReconnectFolder={vi.fn()}
       onDisconnectFolder={vi.fn()}
       theme="dark"
+      books={[]}
+      selectedBookId={null}
+      bookNameByNoteId={new Map<string, string>()}
+      onSelectBook={vi.fn()}
+      onDeleteBook={vi.fn()}
+      onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
     />,
   );
@@ -184,7 +191,11 @@ describe("rail chat entry", () => {
   it("shows the chats empty state when there are no conversations", () => {
     renderRail();
 
-    expect(screen.getByText("No chats yet")).toBeInTheDocument();
+    expect(
+      document
+        .getElementById("rail-chats-list")
+        ?.querySelector(".notes-rail__empty-body")?.textContent,
+    ).toBe(COPY.emptyChatsSidebar);
   });
 
   it("lists the chats section above the notes section", () => {

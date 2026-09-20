@@ -1,0 +1,180 @@
+/* The book's table of contents. It appears twice: once as a page at the front
+   of the book, and once inside the panel the sticky header opens. Both want the
+   same thing, a quiet list of chapters, so there is no variant here. */
+.book-index {
+  /* No card, no border, no fill. This used to be a bordered panel and it read
+     as a settings widget sitting on top of a book rather than as part of one. */
+  padding: 0;
+}
+
+.book-index__heading {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.book-index__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.book-index__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.book-index__jump {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.book-index__jump:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+/* The chapter under the reader's eye. Weight as well as colour, so the mark
+   survives a forced-colors palette that flattens the greys together. */
+.book-index__jump[aria-current="true"] {
+  color: var(--color-text);
+  font-weight: var(--fw-medium);
+}
+
+.book-index__number {
+  flex-shrink: 0;
+  /* Tabular so chapter 9 and chapter 10 start their titles at the same x. */
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs);
+  color: var(--color-text-faint);
+}
+
+/* Front matter shows a dash where its number would be, so that a prologue and
+   chapter one still begin their titles on the same left edge. Without it the
+   column ragged itself every time a book had an introduction. */
+.book-index__number--none {
+  color: var(--color-text-muted);
+}
+
+.book-index__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-index__title--missing {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Recessed until wanted. A contents page is for reading the shape of a book,
+   and three controls on every row turned it into a management console.
+
+   Hidden with opacity and not with display or visibility, on purpose: those
+   two take the buttons out of the tab order, which would leave a keyboard user
+   unable to reorder a book at all. At zero opacity they are still focusable,
+   and :focus-within brings them into view the moment one is reached. */
+.book-index__controls {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.book-index__row:hover .book-index__controls,
+.book-index__row:focus-within .book-index__controls {
+  opacity: 1;
+}
+
+/* A touch screen has no hover, so there would be no way to reveal these at
+   all. They stay visible there instead. */
+@media (hover: none) {
+  .book-index__controls {
+    opacity: 1;
+  }
+}
+
+/* A forced-colors palette may not render opacity as the author intends, and a
+   control that is invisible but focusable is worse than one always shown. */
+@media (forced-colors: active) {
+  .book-index__controls {
+    opacity: 1;
+  }
+}
+
+.book-index__move {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 32px. Below the 44px of WCAG 2.5.5 AAA, but these sit in a dense list and
+     2.5.8 AA asks for 24px, which this clears with room to spare. */
+  width: var(--space-8);
+  height: var(--space-8);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.book-index__move:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.book-index__move:disabled {
+  color: var(--color-text-muted);
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Pressed means the chapter is counted. Filling it is the plainest way to say
+   so without a second glyph to learn. */
+.book-index__numbering[aria-pressed="true"] {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+.book-index__numbering[aria-pressed="false"] {
+  color: var(--color-text-muted);
+}
+
+/* The multiplication sign is drawn small for its point size beside the arrow
+   glyphs, so it is set larger to match their optical weight. */
+.book-index__remove span {
+  font-size: var(--fs-md);
+  line-height: 1;
+}
+
+.book-index__remove:hover {
+  border-color: var(--color-negative);
+  color: var(--color-negative);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .book-index__controls,
+  .book-index__jump,
+  .book-index__move {
+    transition: none;
+  }
+}

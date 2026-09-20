@@ -261,3 +261,111 @@ describe("the format action in a note's menu", () => {
     expect(deleteItem()).toHaveFocus();
   });
 });
+
+/**
+ * The book action is opt-in exactly like the format action: only a note row
+ * passes onAddToBook, and it must slot between the format action and Delete
+ * without ever stealing the opening focus from the genuinely first item.
+ */
+const BookHarness = ({
+  withFormat = false,
+  onAddToBook = vi.fn(),
+}: {
+  withFormat?: boolean;
+  onAddToBook?: () => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <NoteRowMenu
+      itemId="n1"
+      itemLabel="Chapter one"
+      open={open}
+      onOpenChange={setOpen}
+      onRequestDelete={vi.fn()}
+      format={withFormat ? "prose" : undefined}
+      onToggleFormat={withFormat ? vi.fn() : undefined}
+      onAddToBook={onAddToBook}
+    />
+  );
+};
+
+const addToBookItem = () =>
+  screen.queryByRole("menuitem", { name: "Add to book" });
+
+describe("the add-to-book action in a note's menu", () => {
+  it("offers to add the note to a book", async () => {
+    const user = userEvent.setup();
+    render(<BookHarness />);
+
+    await user.click(trigger());
+
+    expect(addToBookItem()).toBeInTheDocument();
+  });
+
+  it("sits between the format action and Delete", async () => {
+    const user = userEvent.setup();
+    render(<BookHarness withFormat />);
+
+    await user.click(trigger());
+
+    expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual(
+      ["Turn into verse", "Add to book", "Delete"],
+    );
+  });
+
+  it("asks to add when chosen, then closes the menu", async () => {
+    const user = userEvent.setup();
+    const onAddToBook = vi.fn();
+    render(<BookHarness onAddToBook={onAddToBook} />);
+
+    await user.click(trigger());
+    await user.click(addToBookItem()!);
+
+    expect(onAddToBook).toHaveBeenCalledTimes(1);
+    expect(addToBookItem()).not.toBeInTheDocument();
+  });
+
+  it("is absent on a chat row, which passes no book handler", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(trigger());
+
+    expect(addToBookItem()).not.toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
+      "Delete",
+    ]);
+  });
+
+  it("takes opening focus when it is the first item, with no format above it", async () => {
+    const user = userEvent.setup();
+    render(<BookHarness />);
+
+    await user.click(trigger());
+
+    await waitFor(() => expect(addToBookItem()).toHaveFocus());
+  });
+
+  it("yields opening focus to the format action when one sits above it", async () => {
+    const user = userEvent.setup();
+    render(<BookHarness withFormat />);
+
+    await user.click(trigger());
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("menuitem", { name: "Turn into verse" }),
+      ).toHaveFocus(),
+    );
+    expect(addToBookItem()).not.toHaveFocus();
+  });
+
+  it("leaves opening focus on Delete when neither format nor book renders", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(trigger());
+
+    await waitFor(() => expect(deleteItem()).toHaveFocus());
+  });
+});

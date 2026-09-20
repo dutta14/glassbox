@@ -25,6 +25,12 @@ export const COPY = {
   untitledChat: 'Untitled chat',
   emptyChatsSidebar: 'Ask a question to start a chat.',
 
+  /* Distinct from the other two for the same reason they are distinct from
+     each other: three lists share the rail, and an unnamed row in one must
+     never be mistaken for an unnamed row in another. */
+  untitledBook: 'Untitled book',
+  emptyBooksSidebar: 'Add a note to a book to start one.',
+
   emptyNotesSidebar: 'Use New note to start one.',
   emptyNotesChat: 'Add a note to ask questions about it.',
   emptyChat: 'Ask a question about your notes.',

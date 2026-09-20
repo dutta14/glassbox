@@ -60,3 +60,47 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Sits after the title and never squeezes it: the count is the thing you can
+   afford to lose when the row runs out of room, the name is not. flex-shrink 0
+   keeps it whole, and the title's own min-width 0 lets the title ellipsis
+   instead. */
+.note-item__meta {
+  flex-shrink: 0;
+  margin-left: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--fs-xs);
+  line-height: var(--leading-tight);
+}
+
+/* The book a note belongs to, named at the right edge of its row.
+
+   Set in small caps with tracking rather than in the row's own face, so it
+   reads as a label on the note instead of a second title competing with it.
+   Caps carry a little more optical weight than lowercase at the same size,
+   which is why the colour drops a step as well.
+
+   It is allowed to shrink and then truncate before the title does, and capped
+   at a share of the row: which note this is always matters more than which
+   book it is in. */
+.note-item__book {
+  /* Pushed to the right edge so the book names line up down the rail and the
+     eye can run past them without reading each one. */
+  margin-left: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+  /* Guarantees a gap from the title even once both are truncating. */
+  padding-left: var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  line-height: var(--leading-tight);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  /* Tracking is applied after the last letter too, which would leave the text
+     visibly short of the right edge it is aligned to. This takes that back. */
+  margin-right: -0.08em;
+  color: var(--color-text-faint);
+}

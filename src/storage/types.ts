@@ -1,4 +1,4 @@
-import type { Conversation, Note } from '../types';
+import type { Book, Conversation, Note } from '../types';
 
 /**
  * NotesStore abstracts how notes are persisted. The engine and UI never see a
@@ -75,5 +75,41 @@ export interface ConversationStore {
   put(conversation: Conversation): Promise<void>;
 
   /** Remove a single conversation by id. Safe to call for an unknown id. */
+  remove(id: string): Promise<void>;
+}
+
+/**
+ * What a load found. `skipped` counts records that were present but could not
+ * be read as a book, so the app can say some books are unreadable instead of
+ * quietly showing a shorter list than the folder contains. A book whose
+ * chapterIds is corrupt would render nothing, so it is skipped here rather than
+ * returned half-valid.
+ */
+export interface BookListResult {
+  books: Book[];
+  skipped: number;
+}
+
+/**
+ * BookStore is the same shape as ConversationStore, over the book record. A
+ * book is a whole-record write: reordering, renaming, or changing its chapters
+ * rewrites the one book file and nothing else, which is the point of storing
+ * order in the book rather than across the notes.
+ *
+ * Books live in `books/`. They must never share a directory with notes or
+ * chats, for the same reason those two are kept apart: the folder note store
+ * reads every `.md` file it scans as a note, and the app must not index a book
+ * record as prose.
+ */
+export interface BookStore {
+  readonly kind: 'local' | 'folder';
+
+  /** Load every book. Malformed records are skipped, never thrown. */
+  list(): Promise<BookListResult>;
+
+  /** Create or update a single book. One file / one record touched. */
+  put(book: Book): Promise<void>;
+
+  /** Remove a single book by id. Safe to call for an unknown id. */
   remove(id: string): Promise<void>;
 }

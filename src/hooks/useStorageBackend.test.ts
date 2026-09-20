@@ -217,6 +217,7 @@ describe('useStorageBackend — the conversation store follows the notes store',
 
     expect(result.current.store?.kind).toBe('local');
     expect(result.current.conversationStore?.kind).toBe('local');
+    expect(result.current.bookStore?.kind).toBe('local');
   });
 
   it('gives a folder conversation store once a folder is connected', async () => {
@@ -230,6 +231,7 @@ describe('useStorageBackend — the conversation store follows the notes store',
     await waitFor(() => expect(result.current.store?.kind).toBe('folder'));
 
     expect(result.current.conversationStore?.kind).toBe('folder');
+    expect(result.current.bookStore?.kind).toBe('folder');
   });
 
   it('never leaves the two stores on different backends', async () => {
@@ -242,6 +244,7 @@ describe('useStorageBackend — the conversation store follows the notes store',
 
     await waitFor(() => expect(result.current.store).not.toBeNull());
     expect(result.current.conversationStore?.kind).toBe(result.current.store?.kind);
+    expect(result.current.bookStore?.kind).toBe(result.current.store?.kind);
 
     await act(async () => {
       await result.current.disconnectFolder();
@@ -249,5 +252,6 @@ describe('useStorageBackend — the conversation store follows the notes store',
 
     expect(result.current.store?.kind).toBe('local');
     expect(result.current.conversationStore?.kind).toBe(result.current.store?.kind);
+    expect(result.current.bookStore?.kind).toBe(result.current.store?.kind);
   });
 });
