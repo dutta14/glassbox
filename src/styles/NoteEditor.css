@@ -238,7 +238,6 @@ textarea.editor__body:not([data-editing]) {
   }
 }
 
-
 @media (max-width: 479px) {
   .editor__title {
     font-size: 1.875rem;

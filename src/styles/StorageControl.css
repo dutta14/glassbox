@@ -138,12 +138,12 @@
 
 /* Settings row at the foot of the notes rail. The menu opens upward because
    a downward menu at the bottom of the rail is clipped by the viewport. */
-.storage-control[data-variant='settings'] {
+.storage-control[data-variant="settings"] {
   display: flex;
   width: 100%;
 }
 
-.storage-control[data-variant='settings'] .storage-control__trigger {
+.storage-control[data-variant="settings"] .storage-control__trigger {
   width: 100%;
   max-width: none;
   justify-content: flex-start;
@@ -153,11 +153,11 @@
   font-size: var(--fs-sm);
 }
 
-.storage-control[data-variant='settings'] .storage-control__trigger:hover {
+.storage-control[data-variant="settings"] .storage-control__trigger:hover {
   background: var(--color-surface-alt);
 }
 
-.storage-control[data-variant='settings'] .storage-control__menu {
+.storage-control[data-variant="settings"] .storage-control__menu {
   top: auto;
   bottom: calc(100% + var(--space-2));
   left: 0;

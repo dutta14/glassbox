@@ -52,15 +52,15 @@
   flex: 0 0 auto;
 }
 
-.candidate[data-tier='high'] .candidate__score {
+.candidate[data-tier="high"] .candidate__score {
   color: var(--color-positive);
 }
 
-.candidate[data-tier='medium'] .candidate__score {
+.candidate[data-tier="medium"] .candidate__score {
   color: var(--color-warning);
 }
 
-.candidate[data-tier='low'] .candidate__score {
+.candidate[data-tier="low"] .candidate__score {
   color: var(--color-negative);
 }
 
@@ -90,15 +90,15 @@
   border-radius: 2px;
 }
 
-.candidate[data-tier='high'] .candidate__bar-fill {
+.candidate[data-tier="high"] .candidate__bar-fill {
   background: var(--color-positive);
 }
 
-.candidate[data-tier='medium'] .candidate__bar-fill {
+.candidate[data-tier="medium"] .candidate__bar-fill {
   background: var(--color-warning);
 }
 
-.candidate[data-tier='low'] .candidate__bar-fill {
+.candidate[data-tier="low"] .candidate__bar-fill {
   background: var(--color-negative);
 }
 

@@ -114,39 +114,6 @@
   align-items: center;
 }
 
-/* The chapter list spans both columns so it starts under the expander rather
-   than being indented twice, once by the grid and again by its own guide. */
-.note-row--expandable > .book-chapters,
-.note-row--expandable > .book-chapters__empty {
-  grid-column: 1 / -1;
-}
-
-/* The row menu is centred on its row with top: 50%, which on an expanded book
-   means the centre of the book row *and* its chapters: the dots floated down
-   into the middle of the chapter list.
-
-   Putting it in the same grid cell as the title instead pins it to the book
-   row itself. Grid items in one cell overlap, so it still sits over the title
-   rather than taking a column of its own, which is what kept the hover-reveal
-   from shifting the row. No magic number for the row height, because the grid
-   row is already exactly that tall. */
-.note-row--expandable > .note-item {
-  grid-row: 1;
-  grid-column: 2;
-}
-
-.note-row--expandable > .note-row__menu {
-  position: relative;
-  grid-row: 1;
-  grid-column: 2;
-  justify-self: end;
-  align-self: center;
-  top: auto;
-  right: auto;
-  margin-right: var(--space-1);
-  transform: none;
-}
-
 .book-row__expander {
   display: flex;
   align-items: center;

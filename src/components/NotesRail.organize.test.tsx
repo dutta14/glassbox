@@ -58,7 +58,7 @@ const renderRail = (
   } = {},
 ) => {
   const onSelect = vi.fn();
-  render(
+  const props = (mode: "list" | "book") => (
     <NotesRail
       notes={overrides.notes ?? notes}
       selectedNoteId={overrides.selectedNoteId ?? null}
@@ -88,11 +88,16 @@ const renderRail = (
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
-      organizeMode={overrides.organizeMode ?? "book"}
+      organizeMode={mode}
       onOrganizeChange={vi.fn()}
-    />,
+    />
   );
-  return { onSelect };
+  const mode = overrides.organizeMode ?? "book";
+  const { rerender } = render(props(mode));
+  return {
+    onSelect,
+    setMode: (next: "list" | "book") => rerender(props(next)),
+  };
 };
 
 /** Scoped to the Notes nav, so a chapter row under a book cannot be mistaken
@@ -228,10 +233,11 @@ describe("NotesRail organize modes", () => {
     const chapters = within(
       screen.getByRole("list", { name: "Chapters in Autumn" }),
     );
-    expect(chapters.getAllByRole("button")).toHaveLength(1);
+    expect(chapters.getAllByRole("listitem")).toHaveLength(1);
     expect(
       chapters.getByRole("button", { name: "#1 \u2013 The Drizzle" }),
     ).toBeTruthy();
+    expect(chapters.queryByRole("button", { name: /Abdul/ })).toBeNull();
   });
 
   it("says every note is shelved when book mode empties the Notes list", () => {
@@ -274,6 +280,41 @@ describe("NotesRail organize modes", () => {
     expect(
       screen.queryByRole("button", { name: /^#1 \u2013 The Drizzle/ }),
     ).toBeNull();
+  });
+
+  /* Which books are open outlives the mode, so the mode has to be checked
+     where the chapters are rendered and not only where the expander is. A
+     book expanded in book mode was still showing its chapters after a switch
+     back to one list, under a book row that no longer had a control to shut
+     it with. */
+  it("puts a book's chapters away when the mode switches back to one list", async () => {
+    const { setMode } = renderRail({ organizeMode: "book" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Expand Autumn" }),
+    );
+    expect(
+      screen.getByRole("list", { name: "Chapters in Autumn" }),
+    ).toBeTruthy();
+
+    setMode("list");
+
+    expect(
+      screen.queryByRole("list", { name: "Chapters in Autumn" }),
+    ).toBeNull();
+  });
+
+  /* The expander and the list it opens sit in different rows now, so nothing
+     but aria-controls connects them. */
+  it("points the expander at the chapter list it opens", async () => {
+    renderRail({ organizeMode: "book" });
+    const expander = screen.getByRole("button", { name: "Expand Autumn" });
+    await userEvent.click(expander);
+
+    const listId = expander.getAttribute("aria-controls");
+    expect(listId).toBeTruthy();
+    expect(document.getElementById(listId!)).toBe(
+      screen.getByRole("list", { name: "Chapters in Autumn" }),
+    );
   });
 
   it("marks the open note as current in the chapter list", async () => {

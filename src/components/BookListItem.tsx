@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import type { Book } from "../types";
 import { COPY } from "../engine/copy";
 import { NoteRowMenu } from "./NoteRowMenu";
@@ -16,7 +15,6 @@ interface BookListItemProps {
   book: Book;
   /** Absent in list mode, where a book row does not open. */
   expansion?: BookExpansion;
-  children?: ReactNode;
   isSelected: boolean;
   menuOpen: boolean;
   onSelect: () => void;
@@ -33,7 +31,6 @@ interface BookListItemProps {
 export const BookListItem = ({
   book,
   expansion,
-  children,
   isSelected,
   menuOpen,
   onSelect,
@@ -52,6 +49,7 @@ export const BookListItem = ({
           type="button"
           className="book-row__expander"
           aria-expanded={expansion.open}
+          aria-controls={`book-chapters-${book.id}`}
           // Twenty "Expand" buttons are unusable in a screen reader's element
           // list, so each names its own book.
           aria-label={`${expansion.open ? "Collapse" : "Expand"} ${title}`}
@@ -93,7 +91,6 @@ export const BookListItem = ({
         onOpenChange={onMenuOpenChange}
         onRequestDelete={onRequestDelete}
       />
-      {expansion?.open && children}
     </li>
   );
 };

@@ -67,7 +67,6 @@
   box-shadow: none;
 }
 
-
 .composer__input::placeholder {
   color: var(--color-text-muted);
 }

@@ -17,10 +17,7 @@
      padding, which keeps messages on the same column. */
   width: 100%;
   padding-block: var(--space-6);
-  padding-inline: max(
-    var(--chat-gutter),
-    (100% - var(--chat-column)) / 2
-  );
+  padding-inline: max(var(--chat-gutter), (100% - var(--chat-column)) / 2);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -88,7 +85,8 @@
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border-light);
   border-radius: var(--radius);
-  transition: background-color var(--duration-fast) var(--ease-out),
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);
 }
 

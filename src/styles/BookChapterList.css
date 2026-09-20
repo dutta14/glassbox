@@ -16,10 +16,11 @@
   font-size: var(--fs-sm);
   line-height: var(--leading-tight);
 
-  /* Fallback first, for engines without lh. 5 rows of 1lh plus the vertical
-     padding of five rows, which is --space-1 top and bottom on each. */
-  max-height: 8.4rem;
-  max-height: calc(5lh + var(--space-1) * 10);
+  /* Fallback first, for engines without lh. Five rows of 1lh plus the
+     vertical padding of five note rows, which is --space-2 top and bottom on
+     each. Rows are a single line now, so five rows really is five chapters. */
+  max-height: 10.9rem;
+  max-height: calc(5lh + var(--space-2) * 10);
 
   overflow-y: auto;
   /* Reaching the end of this list must not start scrolling the rail behind
@@ -30,13 +31,24 @@
      with no dead space under them. */
 }
 
-/* One step of indent and a hairline, so the chapters read as belonging to the
-   book above them. Indent alone would have to be deep enough to notice, and
-   the titles cannot spare the width. */
-.book-chapters,
+/* Its own row in the books list rather than part of the book's row, so a
+   chapter and its book never hover or highlight as one thing. */
+.book-chapters-row {
+  /* Indented by exactly the width of the expander, so a chapter title starts
+     where its book's title starts. That alignment is the whole signal: the
+     chapters sit under the book, one column in, the way a file list sits
+     under its folder. */
+  padding-left: var(--space-5);
+}
+
+/* Rows come from NoteListItem, which already truncates a title to one line.
+   Chapter titles in this library run long and many share a prefix ("Thrice
+   Upon a Time - Chapter 1"), so wrapping turned every row into two lines and
+   the five-row box held two and a half chapters. One line each scans far
+   better, and the full title is a hover away. */
+
 .book-chapters__empty {
   margin-left: var(--space-5);
-  border-left: 1px solid var(--color-border);
 }
 
 .book-chapters__item {

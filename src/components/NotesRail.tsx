@@ -1,9 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { Fragment, useCallback, useRef, useState } from "react";
 import type { Book, Conversation, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { BookListItem } from "./BookListItem";
 import { BookChapterList } from "./BookChapterList";
-import type { RailChapter } from "./BookChapterList";
 import { NewNoteMenu } from "./NewNoteMenu";
 import { OrganizeMenu } from "./OrganizeMenu";
 import { ConversationItem } from "./ConversationItem";
@@ -235,23 +234,20 @@ export const NotesRail = ({
     ? notes.filter((note) => !bookNameByNoteId.has(note.id))
     : notes;
 
-  /* Titles come from the full set, not the filtered one: in book mode every
-     chapter has been taken out of listedNotes by definition. */
-  const titleById = new Map(notes.map((note) => [note.id, note.title]));
+  /* Resolved from the full set, not the filtered one: in book mode every
+     chapter has been taken out of listedNotes by definition.
 
-  /* The rail calls a note what the Notes list calls it, which is whatever is
-     written at the top of the note. The contents inside a book renames
-     chapters to read as a table of contents, lifting the number out of the
-     title and handing it back as a column. That is right in a contents and
-     wrong here: this is a list of notes, and a note should not answer to two
-     different names in the same sidebar.
+     The rows are the notes themselves rather than labels made from them. A
+     chapter row is the same note the Notes list shows, cosmetically moved
+     under its book, so it is rendered by the same component and answers to
+     the same name. Chapters whose note has been deleted are dropped rather
+     than shown as a dead row. */
+  const noteById = new Map(notes.map((note) => [note.id, note]));
 
-     Chapters whose note has been deleted are dropped rather than shown as a
-     dead row. */
-  const chaptersOf = (book: Book): RailChapter[] =>
+  const chaptersOf = (book: Book): Note[] =>
     book.chapterIds
-      .filter((id) => titleById.has(id))
-      .map((id) => ({ id, label: titleById.get(id)?.trim() || COPY.untitled }));
+      .map((id) => noteById.get(id))
+      .filter((note): note is Note => note !== undefined);
   /* A draft is current only when the chat is showing and no saved thread is
      open. Without this the New chat row and a conversation row would both
      claim aria-current. */
@@ -502,32 +498,49 @@ export const NotesRail = ({
               ) : (
                 <ul>
                   {books.map((book) => (
-                    <BookListItem
-                      key={book.id}
-                      book={book}
-                      expansion={
-                        byBook
-                          ? {
-                              open: expandedBooks.has(book.id),
-                              onToggle: () => toggleBook(book.id),
-                            }
-                          : undefined
-                      }
-                      isSelected={book.id === selectedBookId}
-                      menuOpen={openMenuId === book.id}
-                      onSelect={() => onSelectBook(book.id)}
-                      onMenuOpenChange={(open) =>
-                        setOpenMenuId(open ? book.id : null)
-                      }
-                      onRequestDelete={() => setPendingBookDelete(book)}
-                    >
-                      <BookChapterList
-                        bookTitle={book.title.trim() || COPY.untitledBook}
-                        chapters={chaptersOf(book)}
-                        currentNoteId={currentNoteId}
-                        onOpen={onSelect}
+                    /* The chapters are a sibling row, not a child of the book
+                       row. Nesting one .note-row inside another made the two
+                       hover as one: the rail's rules reach descendants, so
+                       pointing at a chapter lit its book up and held every
+                       chapter's menu open at once. */
+                    <Fragment key={book.id}>
+                      <BookListItem
+                        book={book}
+                        expansion={
+                          byBook
+                            ? {
+                                open: expandedBooks.has(book.id),
+                                onToggle: () => toggleBook(book.id),
+                              }
+                            : undefined
+                        }
+                        isSelected={book.id === selectedBookId}
+                        menuOpen={openMenuId === book.id}
+                        onSelect={() => onSelectBook(book.id)}
+                        onMenuOpenChange={(open) =>
+                          setOpenMenuId(open ? book.id : null)
+                        }
+                        onRequestDelete={() => setPendingBookDelete(book)}
                       />
-                    </BookListItem>
+                      {byBook && expandedBooks.has(book.id) && (
+                        <li className="book-chapters-row">
+                          <BookChapterList
+                            listId={`book-chapters-${book.id}`}
+                            bookTitle={book.title.trim() || COPY.untitledBook}
+                            chapters={chaptersOf(book)}
+                            currentNoteId={currentNoteId}
+                            openMenuId={openMenuId}
+                            onSelect={onSelect}
+                            onMenuOpenChange={(noteId, open) =>
+                              setOpenMenuId(open ? noteId : null)
+                            }
+                            onRequestDelete={setPendingDelete}
+                            onToggleFormat={onToggleNoteFormat}
+                            onAddToBook={onAddNoteToBook}
+                          />
+                        </li>
+                      )}
+                    </Fragment>
                   ))}
                 </ul>
               )}
