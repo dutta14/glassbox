@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from "react";
 import type { Book, Conversation, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { BookListItem } from "./BookListItem";
+import { BookChapterList } from "./BookChapterList";
+import type { RailChapter } from "./BookChapterList";
 import { NewNoteMenu } from "./NewNoteMenu";
 import { OrganizeMenu } from "./OrganizeMenu";
 import { ConversationItem } from "./ConversationItem";
@@ -31,7 +33,11 @@ type SectionState = Record<SectionName, boolean>;
 
 /** All open is the state the rail has always had, so a first-time reader
     sees no change. */
-const DEFAULT_SECTIONS: SectionState = { chats: true, books: true, notes: true };
+const DEFAULT_SECTIONS: SectionState = {
+  chats: true,
+  books: true,
+  notes: true,
+};
 
 const readSections = (): SectionState => {
   try {
@@ -199,14 +205,53 @@ export const NotesRail = ({
   /** Held here rather than per row, so opening one menu closes any other. */
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
-  const [pendingChatDelete, setPendingChatDelete] = useState<Conversation | null>(
-    null,
-  );
+  const [pendingChatDelete, setPendingChatDelete] =
+    useState<Conversation | null>(null);
   const [pendingBookDelete, setPendingBookDelete] = useState<Book | null>(null);
+  /* A set rather than a single id: every book costs a fixed five rows when
+     open, so there is no reason to shut one to look at another. Per session,
+     because which books you had open is not worth remembering. */
+  const [expandedBooks, setExpandedBooks] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
+  const toggleBook = useCallback((id: string) => {
+    setExpandedBooks((current) => {
+      const next = new Set(current);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  }, []);
   /* Nothing reads as open while the chat is showing. Otherwise the rail marks
      two rows current at once, the chat entry and whichever note was last
      opened, and aria-current stops meaning anything. */
   const currentNoteId = chatActive ? null : selectedNoteId;
+
+  const byBook = organizeMode === "book";
+
+  /* Derived from the same map the rows use to name a note's book, so the list
+     and the badge can never disagree about what is shelved. */
+  const listedNotes = byBook
+    ? notes.filter((note) => !bookNameByNoteId.has(note.id))
+    : notes;
+
+  /* Titles come from the full set, not the filtered one: in book mode every
+     chapter has been taken out of listedNotes by definition. */
+  const titleById = new Map(notes.map((note) => [note.id, note.title]));
+
+  /* The rail calls a note what the Notes list calls it, which is whatever is
+     written at the top of the note. The contents inside a book renames
+     chapters to read as a table of contents, lifting the number out of the
+     title and handing it back as a column. That is right in a contents and
+     wrong here: this is a list of notes, and a note should not answer to two
+     different names in the same sidebar.
+
+     Chapters whose note has been deleted are dropped rather than shown as a
+     dead row. */
+  const chaptersOf = (book: Book): RailChapter[] =>
+    book.chapterIds
+      .filter((id) => titleById.has(id))
+      .map((id) => ({ id, label: titleById.get(id)?.trim() || COPY.untitled }));
   /* A draft is current only when the chat is showing and no saved thread is
      open. Without this the New chat row and a conversation row would both
      claim aria-current. */
@@ -460,6 +505,14 @@ export const NotesRail = ({
                     <BookListItem
                       key={book.id}
                       book={book}
+                      expansion={
+                        byBook
+                          ? {
+                              open: expandedBooks.has(book.id),
+                              onToggle: () => toggleBook(book.id),
+                            }
+                          : undefined
+                      }
                       isSelected={book.id === selectedBookId}
                       menuOpen={openMenuId === book.id}
                       onSelect={() => onSelectBook(book.id)}
@@ -467,7 +520,14 @@ export const NotesRail = ({
                         setOpenMenuId(open ? book.id : null)
                       }
                       onRequestDelete={() => setPendingBookDelete(book)}
-                    />
+                    >
+                      <BookChapterList
+                        bookTitle={book.title.trim() || COPY.untitledBook}
+                        chapters={chaptersOf(book)}
+                        currentNoteId={currentNoteId}
+                        onOpen={onSelect}
+                      />
+                    </BookListItem>
                   ))}
                 </ul>
               )}
@@ -509,16 +569,25 @@ export const NotesRail = ({
               </div>
             )}
 
-            <nav id="rail-notes-list" aria-label="Note list" hidden={!notesOpen}>
-              {notes.length === 0 ? (
+            <nav
+              id="rail-notes-list"
+              aria-label="Note list"
+              hidden={!notesOpen}
+            >
+              {listedNotes.length === 0 ? (
                 <div className="notes-rail__empty">
                   <p className="notes-rail__empty-body">
-                    {COPY.emptyNotesSidebar}
+                    {/* Telling someone with 566 notes to write their first
+                        one would be a lie. In book mode an empty list means
+                        everything is shelved, which is its own good news. */}
+                    {byBook && notes.length > 0
+                      ? COPY.emptyNotesAllBooked
+                      : COPY.emptyNotesSidebar}
                   </p>
                 </div>
               ) : (
                 <ul>
-                  {notes.map((note) => (
+                  {listedNotes.map((note) => (
                     <NoteListItem
                       key={note.id}
                       note={note}
@@ -566,7 +635,13 @@ export const NotesRail = ({
             aria-label="New chat"
             aria-current={draftActive ? "true" : undefined}
           >
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
               <path
                 d="M4 2.75h8A1.25 1.25 0 0 1 13.25 4v5A1.25 1.25 0 0 1 12 10.25H6.6L3.75 12.6V10.2A1.25 1.25 0 0 1 2.75 9V4A1.25 1.25 0 0 1 4 2.75Z"
                 stroke="currentColor"
@@ -586,7 +661,13 @@ export const NotesRail = ({
             onClick={() => onCreate("prose")}
             aria-label="New note"
           >
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
               <path
                 d="M8 3v10M3 8h10"
                 stroke="currentColor"
@@ -606,8 +687,20 @@ export const NotesRail = ({
             aria-expanded={searchOpen}
             aria-label="Search notes"
           >
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="7.2" cy="7.2" r="4.2" stroke="currentColor" strokeWidth="1.5" />
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="7.2"
+                cy="7.2"
+                r="4.2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
               <path
                 d="M10.4 10.4 13.5 13.5"
                 stroke="currentColor"
@@ -628,7 +721,13 @@ export const NotesRail = ({
             isEmpty={conversations.length === 0}
             emptyText={COPY.emptyChatsSidebar}
             icon={
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
                 <path
                   d="M4 2.75h8A1.25 1.25 0 0 1 13.25 4v5A1.25 1.25 0 0 1 12 10.25H6.6L3.75 12.6V10.2A1.25 1.25 0 0 1 2.75 9V4A1.25 1.25 0 0 1 4 2.75Z"
                   stroke="currentColor"
@@ -666,7 +765,13 @@ export const NotesRail = ({
             isEmpty={books.length === 0}
             emptyText={COPY.emptyBooksSidebar}
             icon={
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
                 {/* A spine that folds back on itself, so it reads as a book at
                     18px rather than as the page the notes icon already uses. */}
                 <path
@@ -704,10 +809,23 @@ export const NotesRail = ({
             heading="Notes"
             open={openFlyout === "notes"}
             onOpenChange={(next) => setOpenFlyout(next ? "notes" : null)}
-            isEmpty={notes.length === 0}
-            emptyText={COPY.emptyNotesSidebar}
+            /* The collapsed rail is the same rail. If it listed notes the
+               expanded one hides, widening the sidebar would make notes
+               disappear. */
+            isEmpty={listedNotes.length === 0}
+            emptyText={
+              byBook && notes.length > 0
+                ? COPY.emptyNotesAllBooked
+                : COPY.emptyNotesSidebar
+            }
             icon={
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
                 <path
                   d="M4.75 2.75h4.5l2 2v8.5h-6.5z"
                   stroke="currentColor"
@@ -724,7 +842,7 @@ export const NotesRail = ({
             }
           >
             <ul>
-              {notes.map((note) => (
+              {listedNotes.map((note) => (
                 <NoteListItem
                   key={note.id}
                   note={note}

@@ -130,6 +130,12 @@
 }
 
 .notes-rail__section {
+  display: flex;
+  align-items: center;
+  /* The heading takes the room it needs and any control sits at the far edge,
+     rather than stacking underneath the label. */
+  justify-content: space-between;
+  gap: var(--space-2);
   width: 100%;
   padding: 0 var(--space-3);
   margin-bottom: var(--space-2);

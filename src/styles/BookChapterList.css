@@ -1,0 +1,86 @@
+/* The chapters of one expanded book in the rail.
+
+   Sized to five rows and no taller. One book in a real library here holds 131
+   chapters, and a list that grew to fit would push every other book out of the
+   rail, so expanding it would be something you did once and regretted. A fixed
+   budget means every book costs the same to open and several can be open at
+   once. */
+
+.book-chapters {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  /* Set here so 1lh below resolves against the row's own type rather than
+     whatever the rail's is. */
+  font-size: var(--fs-sm);
+  line-height: var(--leading-tight);
+
+  /* Fallback first, for engines without lh. 5 rows of 1lh plus the vertical
+     padding of five rows, which is --space-1 top and bottom on each. */
+  max-height: 8.4rem;
+  max-height: calc(5lh + var(--space-1) * 10);
+
+  overflow-y: auto;
+  /* Reaching the end of this list must not start scrolling the rail behind
+     it. */
+  overscroll-behavior: contain;
+
+  /* max-height, never height: a book with three chapters is three rows tall
+     with no dead space under them. */
+}
+
+/* One step of indent and a hairline, so the chapters read as belonging to the
+   book above them. Indent alone would have to be deep enough to notice, and
+   the titles cannot spare the width. */
+.book-chapters,
+.book-chapters__empty {
+  margin-left: var(--space-5);
+  border-left: 1px solid var(--color-border);
+}
+
+.book-chapters__item {
+  display: block;
+  width: 100%;
+  padding: var(--space-1) var(--space-3);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+
+  /* Wrapped, never cut. Chapter titles in this library are long, and a rail
+     that hides the end of every one of them is a rail you cannot read. */
+  overflow-wrap: anywhere;
+
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+
+/* Keeps the focus ring off the clipped edge of the scroll area when the
+   keyboard moves to a row that is out of view. */
+.book-chapters__item:focus-visible {
+  scroll-margin-block: var(--space-2);
+}
+
+.book-chapters__item:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
+
+.book-chapters__item--current {
+  color: var(--color-text);
+  font-weight: var(--fw-medium);
+  background: var(--color-surface-raised);
+}
+
+.book-chapters__empty {
+  padding: var(--space-1) var(--space-3);
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}

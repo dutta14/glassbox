@@ -1,10 +1,22 @@
+import type { ReactNode } from "react";
 import type { Book } from "../types";
 import { COPY } from "../engine/copy";
 import { NoteRowMenu } from "./NoteRowMenu";
 import "../styles/RailRow.css";
 
+/** Grouped rather than three optional props, so the type cannot describe a
+    row that renders an expander whose toggle does nothing. Either the row
+    expands and every part works, or there is no expander. */
+export interface BookExpansion {
+  open: boolean;
+  onToggle: () => void;
+}
+
 interface BookListItemProps {
   book: Book;
+  /** Absent in list mode, where a book row does not open. */
+  expansion?: BookExpansion;
+  children?: ReactNode;
   isSelected: boolean;
   menuOpen: boolean;
   onSelect: () => void;
@@ -20,6 +32,8 @@ interface BookListItemProps {
  */
 export const BookListItem = ({
   book,
+  expansion,
+  children,
   isSelected,
   menuOpen,
   onSelect,
@@ -32,7 +46,33 @@ export const BookListItem = ({
     count === 0 ? "Empty" : count === 1 ? "1 chapter" : `${count} chapters`;
 
   return (
-    <li className="note-row">
+    <li className={expansion ? "note-row note-row--expandable" : "note-row"}>
+      {expansion && (
+        <button
+          type="button"
+          className="book-row__expander"
+          aria-expanded={expansion.open}
+          // Twenty "Expand" buttons are unusable in a screen reader's element
+          // list, so each names its own book.
+          aria-label={`${expansion.open ? "Collapse" : "Expand"} ${title}`}
+          onClick={expansion.onToggle}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <path
+              d={
+                expansion.open
+                  ? "M2.5 4.5L6 8l3.5-3.5"
+                  : "M4.5 2.5L8 6l-3.5 3.5"
+              }
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
       <button
         type="button"
         className={`note-item${isSelected ? " note-item--selected" : ""}`}
@@ -53,6 +93,7 @@ export const BookListItem = ({
         onOpenChange={onMenuOpenChange}
         onRequestDelete={onRequestDelete}
       />
+      {expansion?.open && children}
     </li>
   );
 };

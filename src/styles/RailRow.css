@@ -104,3 +104,67 @@
   margin-right: -0.08em;
   color: var(--color-text-faint);
 }
+
+/* A book row in book mode carries an expander ahead of its title. The row
+   becomes a wrapper for the chapters too, so the list below sits inside the
+   same list item as the book it belongs to. */
+.note-row--expandable {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+/* The chapter list spans both columns so it starts under the expander rather
+   than being indented twice, once by the grid and again by its own guide. */
+.note-row--expandable > .book-chapters,
+.note-row--expandable > .book-chapters__empty {
+  grid-column: 1 / -1;
+}
+
+/* The row menu is centred on its row with top: 50%, which on an expanded book
+   means the centre of the book row *and* its chapters: the dots floated down
+   into the middle of the chapter list.
+
+   Putting it in the same grid cell as the title instead pins it to the book
+   row itself. Grid items in one cell overlap, so it still sits over the title
+   rather than taking a column of its own, which is what kept the hover-reveal
+   from shifting the row. No magic number for the row height, because the grid
+   row is already exactly that tall. */
+.note-row--expandable > .note-item {
+  grid-row: 1;
+  grid-column: 2;
+}
+
+.note-row--expandable > .note-row__menu {
+  position: relative;
+  grid-row: 1;
+  grid-column: 2;
+  justify-self: end;
+  align-self: center;
+  top: auto;
+  right: auto;
+  margin-right: var(--space-1);
+  transform: none;
+}
+
+.book-row__expander {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.book-row__expander:hover {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+}
