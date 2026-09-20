@@ -434,23 +434,27 @@ export const NotesRail = ({
                 fill="none"
                 aria-hidden="true"
               >
-                {/* An open book: two pages meeting at a fold, each one
-                    lifting off a cover that sits a little proud at the
-                    bottom. Wider than tall, so it reads as a book and not as
-                    a card or a door, which is what two earlier attempts at a
-                    closed book looked like at this size. Same 16px grid and
-                    1.4 stroke as the chat bubble. */}
+                {/* A closed book seen head on: the cover, the page block
+                    banded across the foot, and a title rule near the top.
+                    Same 16px grid and 1.4 stroke as the chat bubble beside
+                    it. */}
                 <path
-                  d="M2.5 3.25h3.25A2.25 2.25 0 0 1 8 5.5v7.25a1.75 1.75 0 0 0-1.75-1.75H2.5V3.25Z"
+                  d="M4.75 2.25h7.5a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-7.5a2 2 0 0 1-2-2v-7.5a2 2 0 0 1 2-2Z"
                   stroke="currentColor"
                   strokeWidth="1.4"
                   strokeLinejoin="round"
                 />
                 <path
-                  d="M13.5 3.25h-3.25A2.25 2.25 0 0 0 8 5.5v7.25a1.75 1.75 0 0 1 1.75-1.75h3.75V3.25Z"
+                  d="M4.75 11.25h8.5"
                   stroke="currentColor"
                   strokeWidth="1.4"
-                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M6.5 5.25h4.25"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
                 />
               </svg>
               {COPY.booksRow}
