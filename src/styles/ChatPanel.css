@@ -53,6 +53,17 @@
   line-height: var(--leading-tight);
 }
 
+/* The archive's own numbers, so they read as a fact rather than a tagline.
+   Tabular figures keep the count and the years on a common width, which is
+   what stops a line made mostly of digits from looking typeset by accident. */
+.chat__empty-archive {
+  margin: 0;
+  font-size: var(--fs-lg);
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
 .chat__empty-body {
   margin: 0;
   font-size: var(--fs-md);

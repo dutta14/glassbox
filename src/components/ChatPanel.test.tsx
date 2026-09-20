@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChatPanel } from "./ChatPanel";
+import { COPY } from "../engine/copy";
 import type {
   Answer,
   ChatMessage as ChatMessageType,
@@ -65,13 +66,13 @@ const mkAssistant = (
   createdAt: iso,
 });
 
-const mkNote = (id: string, title: string): Note => ({
+const mkNote = (id: string, title: string, createdAt = iso): Note => ({
   id,
   title,
   body: "",
   tags: [],
-  createdAt: iso,
-  updatedAt: iso,
+  createdAt,
+  updatedAt: createdAt,
 });
 
 interface HarnessProps {
@@ -106,7 +107,7 @@ describe("ChatPanel — empty state", () => {
   it("renders the empty-state heading when there are no messages", () => {
     renderChatPanel({ messages: [], notes: [mkNote("n1", "Postgres tuning")] });
     expect(
-      screen.getByRole("heading", { name: "Ask your notes anything" }),
+      screen.getByRole("heading", { name: COPY.askTitle }),
     ).toBeInTheDocument();
   });
 
@@ -119,7 +120,7 @@ describe("ChatPanel — empty state", () => {
       screen.getByRole("button", { name: "Show me #work notes" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "How many notes do I have?" }),
+      screen.getByRole("button", { name: "What did I write about postgres?" }),
     ).toBeInTheDocument();
   });
 
@@ -245,5 +246,107 @@ describe("ChatPanel — welcome layout", () => {
 
     expect(document.activeElement).toBe(input);
     expect(input).toBeInTheDocument();
+  });
+});
+
+/**
+ * The empty state is where the app says what it is. It claims to be an
+ * archive, and it backs the claim with the reader's own numbers, so those
+ * numbers have to be right for a library that spans years, one that does
+ * not, and one whose notes never got a usable date.
+ */
+describe("ChatPanel — the archive line", () => {
+  /* Midday, not midnight. The year is read in local time, which is right:
+     createdAt is stamped from the writer's own clock, so a note made at
+     16:00 in California on New Year's Eve belongs to the year they were
+     living in, not the one UTC had already turned over to. Midnight UTC
+     fixtures would therefore land in different years depending on where the
+     suite runs, and pass in London while failing in Los Angeles. */
+  it("names how many notes there are and the years they span", () => {
+    renderChatPanel({
+      messages: [],
+      notes: [
+        mkNote("n1", "Oldest", "2010-04-02T12:00:00.000Z"),
+        mkNote("n2", "Middle", "2018-07-09T12:00:00.000Z"),
+        mkNote("n3", "Newest", "2026-01-01T12:00:00.000Z"),
+      ],
+    });
+
+    expect(screen.getByText("3 notes, 2010 to 2026.")).toBeInTheDocument();
+  });
+
+  it("gives a single year once rather than as a span of itself", () => {
+    renderChatPanel({
+      messages: [],
+      notes: [
+        mkNote("n1", "One", "2014-03-01T12:00:00.000Z"),
+        mkNote("n2", "Two", "2014-11-01T12:00:00.000Z"),
+      ],
+    });
+
+    expect(screen.getByText("2 notes, 2014.")).toBeInTheDocument();
+    expect(screen.queryByText(/2014 to 2014/)).not.toBeInTheDocument();
+  });
+
+  it("counts a lone note in the singular", () => {
+    renderChatPanel({
+      messages: [],
+      notes: [mkNote("n1", "Only", "2014-03-01T12:00:00.000Z")],
+    });
+
+    expect(screen.getByText("1 note, 2014.")).toBeInTheDocument();
+  });
+
+  it("ignores notes with an unreadable date instead of dating the archive to NaN", () => {
+    renderChatPanel({
+      messages: [],
+      notes: [
+        mkNote("n1", "Dated", "2011-05-01T12:00:00.000Z"),
+        mkNote("n2", "Undated", "not a date"),
+        mkNote("n3", "Dated", "2020-05-01T12:00:00.000Z"),
+      ],
+    });
+
+    /* All three are still counted; only the broken date is kept out of the
+       span, because a note that exists is part of the archive even when we
+       cannot say when it was written. */
+    expect(screen.getByText("3 notes, 2011 to 2020.")).toBeInTheDocument();
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
+  });
+
+  it("says nothing about a span when no note has a readable date", () => {
+    renderChatPanel({
+      messages: [],
+      notes: [mkNote("n1", "Undated", "not a date")],
+    });
+
+    expect(screen.queryByText(/note,/)).not.toBeInTheDocument();
+    /* The promise still stands even when the span cannot be drawn. */
+    expect(screen.getByText(COPY.archiveContract)).toBeInTheDocument();
+
+    /* An absent line has to be absent rather than blank. The empty state is
+       a flex column with a gap, so a paragraph holding nothing still opens a
+       band of space in the middle of it and reads as a layout fault. */
+    const blanks = [...screen.getByLabelText("Chat").querySelectorAll("p")].filter(
+      (p) => p.textContent?.trim() === "",
+    );
+    expect(blanks).toHaveLength(0);
+  });
+
+  it("offers the add-a-note prompt instead of an archive line when there are no notes", () => {
+    renderChatPanel({ messages: [], notes: [] });
+
+    expect(screen.getByText(COPY.emptyNotesChat)).toBeInTheDocument();
+    expect(screen.queryByText(/notes, /)).not.toBeInTheDocument();
+    expect(screen.queryByText(COPY.archiveContract)).not.toBeInTheDocument();
+  });
+
+  it("drops the archive line once the conversation has started", () => {
+    renderChatPanel({
+      messages: [mkUser("u1", "what did I write about postgres")],
+      notes: [mkNote("n1", "Postgres tuning", "2010-04-02T12:00:00.000Z")],
+    });
+
+    expect(screen.queryByText("1 note, 2010.")).not.toBeInTheDocument();
   });
 });

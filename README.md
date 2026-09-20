@@ -1,6 +1,8 @@
 # Glassbox
 
-A note-taking app with a chat interface over your own notes. It answers questions by quoting passages you wrote, and it shows you exactly how it arrived at every answer.
+A personal archive that answers in your own words. Ask it a question and it quotes the passage you wrote, names the note it came from, and shows exactly how it got there.
+
+The value is in the depth of the archive, not the cleverness of the answer. The library this was built against runs to 566 notes going back to 2010, and the questions worth asking it are the ones you cannot answer from memory: what you thought about something years ago, and how often you have come back to it since.
 
 There is no LLM anywhere in this project. No API keys, no model weights, no network calls.
 

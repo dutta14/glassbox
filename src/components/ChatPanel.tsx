@@ -15,10 +15,15 @@ interface ChatPanelProps {
   isFirstAssistantMessage: (id: string) => boolean;
 }
 
+/* Time leads, because reaching back across years is the one question a
+   general-purpose assistant cannot answer about your life. The others show
+   the two remaining ways in: by tag and by topic. "How many notes do I have"
+   was dropped; it asks the app about itself rather than asking the archive
+   about its contents, which teaches the wrong first move. */
 const EXAMPLE_PROMPTS = [
-  'What did I write about postgres?',
+  'What did I write last week?',
   'Show me #work notes',
-  'How many notes do I have?',
+  'What did I write about postgres?',
 ];
 
 export const ChatPanel = ({
@@ -31,6 +36,18 @@ export const ChatPanel = ({
 }: ChatPanelProps) => {
   const logRef = useRef<HTMLOListElement>(null);
   const hasNotes = notes.length > 0;
+
+  /* Years come from the notes themselves rather than a stored "since", so a
+     library that is imported, pruned or restored always describes its real
+     span. Undated notes would parse to NaN and poison the min/max, so they
+     are dropped before comparing. */
+  const archiveLine = useMemo(() => {
+    const years = notes
+      .map((note) => new Date(note.createdAt).getFullYear())
+      .filter((year) => Number.isFinite(year));
+    if (years.length === 0) return null;
+    return COPY.archiveLine(notes.length, Math.min(...years), Math.max(...years));
+  }, [notes]);
   const isEmpty = messages.length === 0;
 
   useEffect(() => {
@@ -78,11 +95,12 @@ export const ChatPanel = ({
     >
       {isEmpty ? (
         <div className="chat__empty">
-          <h2 className="chat__empty-title">Ask your notes anything</h2>
+          <h2 className="chat__empty-title">{COPY.askTitle}</h2>
+          {/* No second check for notes existing: an empty library yields no
+              years, and archiveLine is already null in that case. */}
+          {archiveLine && <p className="chat__empty-archive">{archiveLine}</p>}
           <p className="chat__empty-body">
-            {hasNotes
-              ? 'Every answer is a quote from something you wrote.'
-              : COPY.emptyNotesChat}
+            {hasNotes ? COPY.archiveContract : COPY.emptyNotesChat}
           </p>
           {hasNotes && (
             <div className="chat__examples">

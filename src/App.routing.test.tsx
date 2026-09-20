@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { AppReady } from "./App";
 import { markSeeded } from "./storage/notes";
+import { COPY } from "./engine/copy";
 import type {
   Answer,
   Book,
@@ -230,7 +231,7 @@ describe("deep links open the right thing (AC 1)", () => {
   it("opens a new chat draft at / with nothing selected", async () => {
     renderApp(["/"], { notes: [makeNote("n1", ISO, "First note")] });
     expect(
-      await screen.findByRole("heading", { name: "Ask your notes anything" }),
+      await screen.findByRole("heading", { name: COPY.askTitle }),
     ).toBeInTheDocument();
   });
 });
@@ -241,7 +242,7 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
       notes: [makeNote("n1", ISO, "Alpha note")],
     });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Ask your notes anything" });
+    await screen.findByRole("heading", { name: COPY.askTitle });
 
     await user.click(screen.getByRole("button", { name: "Alpha note" }));
     await waitFor(() => expect(pathname()).toBe("/note/n1"));
@@ -258,7 +259,7 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
       conversations: [makeConversation("c1", "Chat one", "question one")],
     });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Ask your notes anything" });
+    await screen.findByRole("heading", { name: COPY.askTitle });
 
     await user.click(screen.getByRole("button", { name: "Chat one" }));
     await waitFor(() => expect(pathname()).toBe("/chat/c1"));
@@ -309,7 +310,7 @@ describe("creating a note navigates to it (AC 6)", () => {
   it("New note pushes /note/<new-id> and shows an empty editor", async () => {
     renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Ask your notes anything" });
+    await screen.findByRole("heading", { name: COPY.askTitle });
 
     await user.click(screen.getByRole("button", { name: "New note" }));
 
@@ -321,7 +322,7 @@ describe("creating a note navigates to it (AC 6)", () => {
   it("New note still opens a prose note, so the default did not move", async () => {
     renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Ask your notes anything" });
+    await screen.findByRole("heading", { name: COPY.askTitle });
 
     await user.click(screen.getByRole("button", { name: "New note" }));
 
@@ -335,7 +336,7 @@ describe("creating a note navigates to it (AC 6)", () => {
     // component test can only show the right argument leaving the menu.
     renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Ask your notes anything" });
+    await screen.findByRole("heading", { name: COPY.askTitle });
 
     await user.click(screen.getByRole("button", { name: "New note options" }));
     await user.click(screen.getByRole("menuitem", { name: "Verse" }));
@@ -350,7 +351,7 @@ describe("the first message in a draft replaces / with /chat/<id> (AC 7)", () =>
   it("submitting a prompt on the draft swaps the URL and keeps the thread when going back", async () => {
     renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Ask your notes anything" });
+    await screen.findByRole("heading", { name: COPY.askTitle });
 
     const input = screen.getByRole("textbox", { name: "Ask a question" });
     await user.type(input, "what did I write about bread");
@@ -387,7 +388,7 @@ describe("the first message in a draft replaces / with /chat/<id> (AC 7)", () =>
     // in the sync effect is intact.
     renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Ask your notes anything" });
+    await screen.findByRole("heading", { name: COPY.askTitle });
 
     const input = screen.getByRole("textbox", { name: "Ask a question" });
     await user.type(input, "what did I write about bread");
@@ -509,7 +510,7 @@ describe("dead links show a calm not-found (AC 9)", () => {
     // land here.
     await waitFor(() => expect(pathname()).toBe("/"));
     expect(
-      await screen.findByRole("heading", { name: "Ask your notes anything" }),
+      await screen.findByRole("heading", { name: COPY.askTitle }),
     ).toBeInTheDocument();
   });
 });
@@ -546,7 +547,7 @@ describe("editing a note does not touch history (AC 12)", () => {
       notes: [makeNote("n1", ISO, "Alpha note", "")],
     });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: "Ask your notes anything" });
+    await screen.findByRole("heading", { name: COPY.askTitle });
 
     await user.click(screen.getByRole("button", { name: "Alpha note" }));
     await waitFor(() => expect(pathname()).toBe("/note/n1"));

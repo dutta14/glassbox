@@ -65,6 +65,24 @@ export const COPY = {
   emptyNotesChat: 'Add a note to ask questions about it.',
   emptyChat: 'Ask a question about your notes.',
 
+  /* The pitch, in the reader's own numbers. Any note app can claim to be an
+     archive; one that says how many notes it holds and how far back they go
+     is making a claim the reader can check against their own memory. The
+     span is the part no general-purpose assistant can answer for, because it
+     never read your 2010. */
+  askTitle: "Ask what you've written",
+  archiveLine: (count: number, firstYear: number, lastYear: number) => {
+    const notes = count === 1 ? '1 note' : `${count} notes`;
+    /* A library written entirely within one year would otherwise read
+       "2026 to 2026", which looks like a bug rather than a fact. */
+    return firstYear === lastYear
+      ? `${notes}, ${firstYear}.`
+      : `${notes}, ${firstYear} to ${lastYear}.`;
+  },
+  /* Stated as a limit, not a boast. It is the reason to trust the answer and
+     the reason it will sometimes refuse, and both come from the same fact. */
+  archiveContract: 'Every answer is a passage you wrote, quoted exactly.',
+
   storageUnavailable:
     'Your browser is not saving data. Notes and chat will disappear when you close this tab.',
 
@@ -73,7 +91,10 @@ export const COPY = {
 
   placeholderTitle: 'Title',
   placeholderBody: 'Write your note. Use #tags to group related notes.',
-  placeholderChat: 'Ask about your notes',
+  /* Deliberately not the same words as askTitle above it. The heading states
+     the promise; the field has to invite a question, and an input echoing the
+     heading it sits under reads like a stutter. */
+  placeholderChat: 'Ask about something you wrote',
   placeholderChatEmpty: 'Add a note first',
 
   tooltipConfidence: 'How closely the passage matched your question. 1.00 is a perfect match.',
