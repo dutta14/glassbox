@@ -55,6 +55,7 @@ const renderRail = (
     organizeMode?: "list" | "book";
     bookNameByNoteId?: Map<string, string>;
     selectedNoteId?: string | null;
+    onOpenBooks?: () => void;
   } = {},
 ) => {
   const onSelect = vi.fn();
@@ -85,6 +86,7 @@ const renderRail = (
       selectedBookId={null}
       bookNameByNoteId={overrides.bookNameByNoteId ?? bookNames}
       onSelectBook={vi.fn()}
+      onOpenBooks={overrides.onOpenBooks ?? vi.fn()}
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
@@ -127,6 +129,48 @@ describe("NotesRail organize modes", () => {
       list.queryByRole("button", { name: /^#1 \u2013 The Drizzle/ }),
     ).toBeNull();
     expect(list.getByRole("button", { name: /^Not in the book/ })).toBeTruthy();
+  });
+
+  /* In one list, the shelf is one row that opens a page, the way a folder is
+     one row. Listing every book here as well would put the same books in two
+     places. */
+  it("shows the books as a single row in list mode", () => {
+    renderRail({ organizeMode: "list" });
+    const nav = within(document.getElementById("rail-books-list")!);
+
+    expect(nav.getByRole("button", { name: /^Books/ })).toBeTruthy();
+    expect(nav.queryByRole("button", { name: /^Autumn/ })).toBeNull();
+  });
+
+  it("opens the Books page from that row", async () => {
+    const onOpenBooks = vi.fn();
+    renderRail({ organizeMode: "list", onOpenBooks });
+    await userEvent.click(
+      within(document.getElementById("rail-books-list")!).getByRole("button", {
+        name: /^Books/,
+      }),
+    );
+
+    expect(onOpenBooks).toHaveBeenCalled();
+  });
+
+  /* The row is the way to make a first book, so it cannot wait for one to
+     exist. */
+  it("keeps the Books row with no books at all", () => {
+    renderRail({ organizeMode: "list", books: [] });
+
+    expect(
+      within(document.getElementById("rail-books-list")!).getByRole("button", {
+        name: /^Books/,
+      }),
+    ).toBeTruthy();
+  });
+
+  it("lists the books themselves in book mode, not a single row", () => {
+    renderRail({ organizeMode: "book" });
+    const nav = within(document.getElementById("rail-books-list")!);
+
+    expect(nav.getByRole("button", { name: /^Autumn/ })).toBeTruthy();
   });
 
   it("gives book rows no expander in list mode, where a book only opens", () => {

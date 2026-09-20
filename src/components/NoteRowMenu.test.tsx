@@ -234,7 +234,9 @@ describe("the format action in a note's menu", () => {
     await user.click(trigger());
 
     await waitFor(() =>
-      expect(screen.getByRole("menuitem", { name: "Turn into verse" })).toHaveFocus(),
+      expect(
+        screen.getByRole("menuitem", { name: "Turn into verse" }),
+      ).toHaveFocus(),
     );
   });
 
@@ -332,9 +334,9 @@ describe("the add-to-book action in a note's menu", () => {
     await user.click(trigger());
 
     expect(addToBookItem()).not.toBeInTheDocument();
-    expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual([
-      "Delete",
-    ]);
+    expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual(
+      ["Delete"],
+    );
   });
 
   it("takes opening focus when it is the first item, with no format above it", async () => {

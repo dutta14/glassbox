@@ -137,6 +137,9 @@ interface NotesRailProps {
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onSelectBook: (id: string) => void;
+  /** Opens the Books page, the only way into a book while the rail keeps
+      notes in one list. */
+  onOpenBooks: () => void;
   onDeleteBook: (id: string) => void;
   onAddNoteToBook: (id: string) => void;
   chatActive: boolean;
@@ -170,6 +173,7 @@ export const NotesRail = ({
   onSelectConversation,
   onDeleteConversation,
   onSelectBook,
+  onOpenBooks,
   onDeleteBook,
   onAddNoteToBook,
   chatActive,
@@ -489,7 +493,23 @@ export const NotesRail = ({
               aria-labelledby="rail-books-heading"
               hidden={!booksOpen}
             >
-              {books.length === 0 ? (
+              {/* One row standing for the whole shelf, the way a folder does.
+                  It shows even with no books, because the page behind it is
+                  where a first book gets made. */}
+              {!byBook ? (
+                <ul>
+                  <li className="note-row">
+                    <button
+                      type="button"
+                      className="note-item"
+                      onClick={onOpenBooks}
+                    >
+                      <span className="note-item__title">{COPY.booksRow}</span>
+                      <span className="note-item__meta">{books.length}</span>
+                    </button>
+                  </li>
+                </ul>
+              ) : books.length === 0 ? (
                 <div className="notes-rail__empty">
                   <p className="notes-rail__empty-body">
                     {COPY.emptyBooksSidebar}

@@ -73,7 +73,11 @@ describe("NoteNav", () => {
 
   it("falls back to Untitled so an unnamed note is still identifiable", () => {
     render(
-      <NoteNav previous={note("blank", "   ")} next={null} onSelect={vi.fn()} />,
+      <NoteNav
+        previous={note("blank", "   ")}
+        next={null}
+        onSelect={vi.fn()}
+      />,
     );
 
     expect(

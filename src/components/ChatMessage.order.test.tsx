@@ -1,12 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { ChatMessage } from './ChatMessage';
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { ChatMessage } from "./ChatMessage";
 import type {
   Answer,
   ChatMessage as ChatMessageType,
   Note,
   ScoredChunk,
-} from '../types';
+} from "../types";
 
 /**
  * The reasoning disclosure leads the assistant message, above the answer.
@@ -19,15 +19,15 @@ import type {
  * answer is appended to the log.
  */
 
-const iso = '2026-01-01T00:00:00.000Z';
+const iso = "2026-01-01T00:00:00.000Z";
 
 const mkChunk = (): ScoredChunk => ({
-  noteId: 'n1',
-  noteTitle: 'Postgres tuning',
+  noteId: "n1",
+  noteTitle: "Postgres tuning",
   position: 0,
-  text: 'shared_buffers should be 25% of RAM.',
+  text: "shared_buffers should be 25% of RAM.",
   score: 0.42,
-  matchedTerms: ['postgres'],
+  matchedTerms: ["postgres"],
   coverage: 0.75,
 });
 
@@ -37,21 +37,21 @@ const mkAnswer = (): Answer => {
     text: source.text,
     sources: [source],
     trace: {
-      intent: 'search',
+      intent: "search",
       confidence: 0.42,
-      queryTerms: ['postgres'],
+      queryTerms: ["postgres"],
       candidatesConsidered: 3,
       results: [source],
-      reason: 'quoted the highest scoring passage',
+      reason: "quoted the highest scoring passage",
     },
   };
 };
 
 const notes: Note[] = [
   {
-    id: 'n1',
-    title: 'Postgres tuning',
-    body: 'shared_buffers should be 25% of RAM.',
+    id: "n1",
+    title: "Postgres tuning",
+    body: "shared_buffers should be 25% of RAM.",
     tags: [],
     createdAt: iso,
     updatedAt: iso,
@@ -60,8 +60,8 @@ const notes: Note[] = [
 
 const renderMessage = () => {
   const message: ChatMessageType = {
-    id: 'm1',
-    role: 'assistant',
+    id: "m1",
+    role: "assistant",
     text: mkAnswer().text,
     answer: mkAnswer(),
     createdAt: iso,
@@ -76,12 +76,12 @@ const renderMessage = () => {
   );
 };
 
-describe('assistant message layout order', () => {
-  it('renders the reasoning disclosure before the quoted answer in the DOM', () => {
+describe("assistant message layout order", () => {
+  it("renders the reasoning disclosure before the quoted answer in the DOM", () => {
     renderMessage();
 
-    const summary = screen.getByRole('button', { expanded: false });
-    const quote = screen.getByRole('blockquote');
+    const summary = screen.getByRole("button", { expanded: false });
+    const quote = screen.getByRole("blockquote");
 
     const position = summary.compareDocumentPosition(quote);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -90,8 +90,8 @@ describe('assistant message layout order', () => {
   it('renders the "Open note" action after the quoted answer', () => {
     renderMessage();
 
-    const quote = screen.getByRole('blockquote');
-    const openNote = screen.getByRole('button', { name: 'Open note' });
+    const quote = screen.getByRole("blockquote");
+    const openNote = screen.getByRole("button", { name: "Open note" });
 
     const position = quote.compareDocumentPosition(openNote);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { ConfirmDialog } from './ConfirmDialog';
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 /**
  * AC 4 — deleting a note asks for confirmation.
@@ -15,8 +15,8 @@ import { ConfirmDialog } from './ConfirmDialog';
  * asserted here — Sasha is re-auditing that surface separately.
  */
 
-describe('ConfirmDialog — AC 4/44 gate behaviour', () => {
-  it('renders nothing when open is false', () => {
+describe("ConfirmDialog — AC 4/44 gate behaviour", () => {
+  it("renders nothing when open is false", () => {
     render(
       <ConfirmDialog
         open={false}
@@ -27,10 +27,10 @@ describe('ConfirmDialog — AC 4/44 gate behaviour', () => {
         onCancel={vi.fn()}
       />,
     );
-    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
-  it('renders an alertdialog with the given title and description text when open is true', () => {
+  it("renders an alertdialog with the given title and description text when open is true", () => {
     render(
       <ConfirmDialog
         open
@@ -41,13 +41,13 @@ describe('ConfirmDialog — AC 4/44 gate behaviour', () => {
         onCancel={vi.fn()}
       />,
     );
-    const dialog = screen.getByRole('alertdialog');
+    const dialog = screen.getByRole("alertdialog");
     expect(dialog).toBeInTheDocument();
-    expect(dialog.textContent).toContain('Delete note?');
-    expect(dialog.textContent).toContain('This cannot be undone.');
+    expect(dialog.textContent).toContain("Delete note?");
+    expect(dialog.textContent).toContain("This cannot be undone.");
   });
 
-  it('calls onConfirm exactly once and does not call onCancel when the confirm button is clicked', async () => {
+  it("calls onConfirm exactly once and does not call onCancel when the confirm button is clicked", async () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
     render(
@@ -61,13 +61,13 @@ describe('ConfirmDialog — AC 4/44 gate behaviour', () => {
       />,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onCancel).not.toHaveBeenCalled();
   });
 
-  it('calls onCancel exactly once and does not call onConfirm when the cancel button is clicked', async () => {
+  it("calls onCancel exactly once and does not call onConfirm when the cancel button is clicked", async () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
     render(
@@ -82,13 +82,13 @@ describe('ConfirmDialog — AC 4/44 gate behaviour', () => {
       />,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('calls onCancel exactly once and does not call onConfirm when the Escape key is pressed while the dialog is open', async () => {
+  it("calls onCancel exactly once and does not call onConfirm when the Escape key is pressed while the dialog is open", async () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
     render(
@@ -102,13 +102,13 @@ describe('ConfirmDialog — AC 4/44 gate behaviour', () => {
       />,
     );
     const user = userEvent.setup();
-    await user.keyboard('{Escape}');
+    await user.keyboard("{Escape}");
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('calls onCancel exactly once when the backdrop is clicked, without invoking onConfirm', async () => {
+  it("calls onCancel exactly once when the backdrop is clicked, without invoking onConfirm", async () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
     render(
@@ -124,17 +124,19 @@ describe('ConfirmDialog — AC 4/44 gate behaviour', () => {
     const user = userEvent.setup();
     // The dialog is portaled to document.body, so `container` no longer holds
     // the backdrop. Reach it through the alertdialog's ancestor instead.
-    const dialog = screen.getByRole('alertdialog');
-    const backdrop = dialog.closest('.confirm-backdrop');
+    const dialog = screen.getByRole("alertdialog");
+    const backdrop = dialog.closest(".confirm-backdrop");
     expect(backdrop).not.toBeNull();
     // Backdrop uses onMouseDown for the outside-click gesture.
-    await user.pointer([{ target: backdrop as HTMLElement, keys: '[MouseLeft]' }]);
+    await user.pointer([
+      { target: backdrop as HTMLElement, keys: "[MouseLeft]" },
+    ]);
 
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('renders the confirm button before the cancel button is triggered by Escape, and does not fire either handler on mount', () => {
+  it("renders the confirm button before the cancel button is triggered by Escape, and does not fire either handler on mount", () => {
     // Guard: the dialog must not auto-fire on mount. That would delete the
     // note the second it opens, which is the opposite of a confirmation gate.
     const onConfirm = vi.fn();

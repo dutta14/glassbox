@@ -28,7 +28,9 @@ const notes = [
   mkNote("n2", "Sourdough", "the starter was underfed"),
 ];
 
-const renderRail = (overrides: Partial<ComponentProps<typeof NotesRail>> = {}) =>
+const renderRail = (
+  overrides: Partial<ComponentProps<typeof NotesRail>> = {},
+) =>
   render(
     <NotesRail
       notes={notes}
@@ -56,6 +58,7 @@ const renderRail = (overrides: Partial<ComponentProps<typeof NotesRail>> = {}) =
       selectedBookId={null}
       bookNameByNoteId={new Map<string, string>()}
       onSelectBook={vi.fn()}
+      onOpenBooks={vi.fn()}
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
@@ -198,9 +201,11 @@ describe("NotesRail collapse", () => {
 
     await user.click(collapseButton());
     await user.click(screen.getByRole("button", { name: "Notes" }));
-    await user.click(within(screen.getByRole("group", { name: "Notes" })).getByText(
-      "Postgres tuning",
-    ));
+    await user.click(
+      within(screen.getByRole("group", { name: "Notes" })).getByText(
+        "Postgres tuning",
+      ),
+    );
 
     expect(onSelect).toHaveBeenCalledWith("n1");
     expect(screen.queryByRole("group", { name: "Notes" })).toBeNull();
@@ -245,8 +250,7 @@ describe("NotesRail collapse", () => {
     expect(topRow).not.toBeNull();
     expect(topRow!.lastElementChild).toBe(toggle);
     expect(
-      search.compareDocumentPosition(toggle) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      search.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -257,8 +261,7 @@ describe("NotesRail collapse", () => {
     const search = screen.getByRole("button", { name: "Search notes" });
 
     expect(
-      brand.compareDocumentPosition(search) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+      brand.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 

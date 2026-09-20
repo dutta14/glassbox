@@ -126,7 +126,9 @@ describe("AddToBookModal", () => {
     await openModal(user);
     const button = bookButton(/Poems/);
 
-    expect(within(button).getByText("Already in this book")).toBeInTheDocument();
+    expect(
+      within(button).getByText("Already in this book"),
+    ).toBeInTheDocument();
     expect(button).toBeDisabled();
   });
 
@@ -166,7 +168,11 @@ describe("AddToBookModal", () => {
     const onCreateBook = vi.fn();
     const onClose = vi.fn();
     render(
-      <Harness books={[mkBook()]} onCreateBook={onCreateBook} onClose={onClose} />,
+      <Harness
+        books={[mkBook()]}
+        onCreateBook={onCreateBook}
+        onClose={onClose}
+      />,
     );
 
     await openModal(user);

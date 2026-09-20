@@ -29,6 +29,7 @@ import { COPY } from "./engine/copy";
 import { NotesRail } from "./components/NotesRail";
 import { AddToBookModal } from "./components/AddToBookModal";
 import { BookStage } from "./components/BookStage";
+import { BooksPage } from "./components/BooksPage";
 import { useNoteNeighbours } from "./hooks/useNoteNeighbours";
 import { NoteEditor } from "./components/NoteEditor";
 import { ChatPanel } from "./components/ChatPanel";
@@ -596,6 +597,20 @@ export const AppReady = ({
     [navigate],
   );
 
+  const handleOpenBooks = useCallback(() => {
+    navigate("/books");
+  }, [navigate]);
+
+  /* Lands the reader in the book it just made, which is where naming it and
+     adding chapters happens. An untitled book is valid: BookStage can rename
+     it, and asking for a name before there is anything to name would put a
+     dialog in front of a one-click action. */
+  const handleCreateBook = useCallback(() => {
+    void createBook(COPY.untitledBook).then((book) => {
+      navigate(bookPath(book.id));
+    });
+  }, [createBook, navigate]);
+
   /* Leaving the book's own URL behind matters here. Once the record is gone
      the address points at nothing, so staying put would leave a dead route in
      history for the back button to land on. Only the open book moves the URL;
@@ -755,6 +770,7 @@ export const AppReady = ({
             selectedBookId={selectedBookId}
             bookNameByNoteId={bookNameByNoteId}
             onSelectBook={handleSelectBook}
+            onOpenBooks={handleOpenBooks}
             onDeleteBook={handleDeleteBook}
             onAddNoteToBook={handleRequestAddToBook}
             onNewChat={handleNewChat}
@@ -902,6 +918,18 @@ export const AppReady = ({
                       }}
                       positionFor={readingPositionFor}
                       onReadChapter={rememberReadingPosition}
+                    />
+                  }
+                />
+                {/* Before the catch-all, or it would redirect away. */}
+                <Route
+                  path="/books"
+                  element={
+                    <BooksPage
+                      books={books}
+                      booksLoaded={booksLoaded}
+                      onOpen={handleSelectBook}
+                      onCreate={handleCreateBook}
                     />
                   }
                 />

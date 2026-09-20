@@ -71,6 +71,7 @@ const renderRail = (
       selectedBookId={null}
       bookNameByNoteId={new Map<string, string>()}
       onSelectBook={vi.fn()}
+      onOpenBooks={vi.fn()}
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
@@ -218,11 +219,13 @@ describe("rail chat entry", () => {
 
     const scroller = document.querySelector(".notes-rail__list");
 
-    expect(scroller?.contains(screen.getByRole("button", { name: "a chat" }))).toBe(
-      true,
-    );
     expect(
-      scroller?.contains(screen.getByRole("button", { name: "Postgres tuning" })),
+      scroller?.contains(screen.getByRole("button", { name: "a chat" })),
+    ).toBe(true);
+    expect(
+      scroller?.contains(
+        screen.getByRole("button", { name: "Postgres tuning" }),
+      ),
     ).toBe(true);
   });
 

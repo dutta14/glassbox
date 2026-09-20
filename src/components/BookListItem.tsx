@@ -38,9 +38,7 @@ export const BookListItem = ({
   onRequestDelete,
 }: BookListItemProps) => {
   const title = book.title.trim() || COPY.untitledBook;
-  const count = book.chapterIds.length;
-  const countLabel =
-    count === 0 ? "Empty" : count === 1 ? "1 chapter" : `${count} chapters`;
+  const countLabel = COPY.chapterCount(book.chapterIds.length);
 
   return (
     <li className={expansion ? "note-row note-row--expandable" : "note-row"}>

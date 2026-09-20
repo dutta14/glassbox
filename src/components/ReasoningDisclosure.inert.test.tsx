@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { ReasoningDisclosure } from './ReasoningDisclosure';
-import type { Answer, ScoredChunk } from '../types';
+import { describe, expect, it, vi } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ReasoningDisclosure } from "./ReasoningDisclosure";
+import type { Answer, ScoredChunk } from "../types";
 
 /**
  * A11y finding B8 — the reasoning panel must be `inert` from its very first
@@ -27,12 +27,12 @@ import type { Answer, ScoredChunk } from '../types';
  */
 
 const mkChunk = (): ScoredChunk => ({
-  noteId: 'n1',
-  noteTitle: 'Postgres tuning',
+  noteId: "n1",
+  noteTitle: "Postgres tuning",
   position: 0,
-  text: 'shared_buffers should be 25% of RAM.',
+  text: "shared_buffers should be 25% of RAM.",
   score: 0.42,
-  matchedTerms: ['postgres'],
+  matchedTerms: ["postgres"],
   coverage: 0.75,
 });
 
@@ -42,18 +42,18 @@ const mkAnswer = (): Answer => {
     text: source.text,
     sources: [source],
     trace: {
-      intent: 'search',
+      intent: "search",
       confidence: 0.42,
-      queryTerms: ['postgres'],
+      queryTerms: ["postgres"],
       candidatesConsidered: 3,
       results: [source],
-      reason: 'quoted the highest scoring passage',
+      reason: "quoted the highest scoring passage",
     },
   };
 };
 
-describe('ReasoningDisclosure inert behaviour (B8)', () => {
-  it('marks the collapsed panel inert during the render pass, before any effect runs', () => {
+describe("ReasoningDisclosure inert behaviour (B8)", () => {
+  it("marks the collapsed panel inert during the render pass, before any effect runs", () => {
     const html = renderToStaticMarkup(
       <ReasoningDisclosure
         answer={mkAnswer()}
@@ -66,7 +66,7 @@ describe('ReasoningDisclosure inert behaviour (B8)', () => {
     expect(html).toContain('aria-hidden="true"');
   });
 
-  it('does not mark the panel inert during the render pass when it starts expanded', () => {
+  it("does not mark the panel inert during the render pass when it starts expanded", () => {
     const html = renderToStaticMarkup(
       <ReasoningDisclosure
         answer={mkAnswer()}
@@ -80,7 +80,7 @@ describe('ReasoningDisclosure inert behaviour (B8)', () => {
     expect(html).toContain('aria-hidden="false"');
   });
 
-  it('clears inert from the panel when the user expands it', async () => {
+  it("clears inert from the panel when the user expands it", async () => {
     const user = userEvent.setup();
     render(
       <ReasoningDisclosure
@@ -90,17 +90,17 @@ describe('ReasoningDisclosure inert behaviour (B8)', () => {
       />,
     );
 
-    const summary = screen.getByRole('button', { expanded: false });
+    const summary = screen.getByRole("button", { expanded: false });
     const panel = document.getElementById(
-      summary.getAttribute('aria-controls') ?? '',
+      summary.getAttribute("aria-controls") ?? "",
     );
     expect(panel).not.toBeNull();
-    expect(panel).toHaveAttribute('inert');
+    expect(panel).toHaveAttribute("inert");
 
     await user.click(summary);
 
-    expect(summary).toHaveAttribute('aria-expanded', 'true');
-    expect(panel).not.toHaveAttribute('inert');
-    expect(panel).toHaveAttribute('aria-hidden', 'false');
+    expect(summary).toHaveAttribute("aria-expanded", "true");
+    expect(panel).not.toHaveAttribute("inert");
+    expect(panel).toHaveAttribute("aria-hidden", "false");
   });
 });

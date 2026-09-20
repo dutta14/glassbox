@@ -31,7 +31,12 @@ const notes = [
 ];
 
 const renderRail = (
-  overrides: { notes?: Note[]; conversations?: Conversation[]; books?: Book[] } = {},
+  overrides: {
+    notes?: Note[];
+    conversations?: Conversation[];
+    books?: Book[];
+    organizeMode?: "list" | "book";
+  } = {},
 ) => {
   const onCreate = vi.fn();
   const onSelect = vi.fn();
@@ -62,10 +67,11 @@ const renderRail = (
       selectedBookId={null}
       bookNameByNoteId={new Map<string, string>()}
       onSelectBook={vi.fn()}
+      onOpenBooks={vi.fn()}
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
-      organizeMode="list"
+      organizeMode={overrides.organizeMode ?? "list"}
       onOrganizeChange={vi.fn()}
     />,
   );
@@ -109,9 +115,7 @@ describe("NotesRail search wiring", () => {
     expect(
       section!.querySelector('[aria-label="Organize notes"]'),
     ).not.toBeNull();
-    expect(
-      section!.querySelector('[aria-label="Search notes"]'),
-    ).toBeNull();
+    expect(section!.querySelector('[aria-label="Search notes"]')).toBeNull();
   });
 
   it("keeps the modal closed until the glyph is used", () => {
@@ -235,7 +239,15 @@ describe("NotesRail search wiring", () => {
    * the reader unable to tell chats from books from notes.
    */
   it("gives each empty section wording that no other section repeats", () => {
-    renderRail({ notes: [], conversations: [], books: [] });
+    /* Arranged by book, because that is the only arrangement in which all
+       three sections can be empty at once. In one list the Books section is a
+       single row into the Books page and has no empty state to read. */
+    renderRail({
+      notes: [],
+      conversations: [],
+      books: [],
+      organizeMode: "book",
+    });
 
     const bodyOf = (listId: string): string => {
       const list = document.getElementById(listId);

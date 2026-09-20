@@ -15,7 +15,8 @@ const renderMenu = () => {
 };
 
 const primary = () => screen.getByRole("button", { name: "New note" });
-const disclosure = () => screen.getByRole("button", { name: "New note options" });
+const disclosure = () =>
+  screen.getByRole("button", { name: "New note options" });
 const noteItem = () => screen.queryByRole("menuitem", { name: "Note" });
 const verseItem = () => screen.queryByRole("menuitem", { name: "Verse" });
 

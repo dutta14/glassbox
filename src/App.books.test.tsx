@@ -132,7 +132,9 @@ const addNoteToNewBook = async (
   bookTitle: string,
 ): Promise<void> => {
   await openRowMenu(user, noteTitle);
-  await user.click(await screen.findByRole("menuitem", { name: /add to book/i }));
+  await user.click(
+    await screen.findByRole("menuitem", { name: /add to book/i }),
+  );
   const dialog = await screen.findByRole("dialog");
   await user.type(within(dialog).getByRole("textbox"), bookTitle);
   await user.click(within(dialog).getByRole("button", { name: /create/i }));
@@ -146,8 +148,25 @@ beforeEach(() => {
   localStorage.clear();
 });
 
+/* The rail lists books only when notes are arranged by book. In the default
+   arrangement, one list, the Books section is a single row that opens the
+   Books page, and notes stay where they are. Tests that read book rows out of
+   the rail say so by calling this before rendering; tests that read note rows
+   leave the default alone. */
+const arrangeByBook = () => {
+  localStorage.setItem("glassbox.notesOrganize.v1", "book");
+};
+
+/** The same change made the way a reader makes it, for tests that need note
+    rows first and book rows after. */
+const switchToByBook = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole("button", { name: "Organize notes" }));
+  await user.click(screen.getByRole("menuitemradio", { name: "By book" }));
+};
+
 describe("books, end to end through the interface", () => {
   it("creates a book from a note's row menu and lists it in the rail", async () => {
+    arrangeByBook();
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
@@ -156,7 +175,9 @@ describe("books, end to end through the interface", () => {
 
     // Shown, and actually persisted holding that note. Either one alone
     // would pass with the other half of the wire cut.
-    expect(await screen.findByRole("button", { name: /^Childhood/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /^Childhood/ }),
+    ).toBeInTheDocument();
     await waitFor(() => {
       expect(read()).toHaveLength(1);
       expect(read()[0].title).toBe("Childhood");
@@ -187,6 +208,7 @@ describe("books, end to end through the interface", () => {
   });
 
   it("opens the book and reads its chapters when its rail row is clicked", async () => {
+    arrangeByBook();
     const user = userEvent.setup();
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
@@ -199,6 +221,7 @@ describe("books, end to end through the interface", () => {
   });
 
   it("reads chapters in the book's order rather than the library's", async () => {
+    arrangeByBook();
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp(
@@ -217,18 +240,23 @@ describe("books, end to end through the interface", () => {
       await screen.findByRole("menuitem", { name: /add to book/i }),
     );
     const dialog = await screen.findByRole("dialog");
-    await user.click(within(dialog).getByRole("button", { name: /^Childhood/ }));
+    await user.click(
+      within(dialog).getByRole("button", { name: /^Childhood/ }),
+    );
     await waitFor(() => expect(read()[0].chapterIds).toEqual(["n2", "n1"]));
 
     await user.click(await screen.findByRole("button", { name: /^Childhood/ }));
 
     const main = await screen.findByRole("main");
     await within(main).findByText("second written");
-    const shown = within(main).getAllByText(/written$/).map((n) => n.textContent);
+    const shown = within(main)
+      .getAllByText(/written$/)
+      .map((n) => n.textContent);
     expect(shown).toEqual(["second written", "first written"]);
   });
 
   it("keeps every note in the library after its book is deleted", async () => {
+    arrangeByBook();
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
@@ -259,7 +287,9 @@ describe("books, end to end through the interface", () => {
     await openRowMenu(user, "Luncheon");
     await user.click(await screen.findByRole("menuitem", { name: /delete/i }));
     const noteConfirm = await screen.findByRole("alertdialog");
-    await user.click(within(noteConfirm).getByRole("button", { name: "Delete" }));
+    await user.click(
+      within(noteConfirm).getByRole("button", { name: "Delete" }),
+    );
 
     await waitFor(() => expect(read()[0].chapterIds).toEqual([]));
   });
@@ -296,7 +326,9 @@ describe("books, end to end through the interface", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(
-      within(dialog).getByText(/is in Childhood\. Choosing another book moves it/),
+      within(dialog).getByText(
+        /is in Childhood\. Choosing another book moves it/,
+      ),
     ).toBeInTheDocument();
   });
 
@@ -322,9 +354,11 @@ describe("books, end to end through the interface", () => {
     renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
-    await user.click(within(await railRow("Luncheon")).getByRole("button", {
-      name: /^Luncheon/,
-    }));
+    await user.click(
+      within(await railRow("Luncheon")).getByRole("button", {
+        name: /^Luncheon/,
+      }),
+    );
 
     const main = await screen.findByRole("main");
     expect(await within(main).findByText(/In the Book -/)).toBeInTheDocument();
@@ -340,9 +374,11 @@ describe("books, end to end through the interface", () => {
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
 
-    await user.click(within(await railRow("Luncheon")).getByRole("button", {
-      name: /^Luncheon/,
-    }));
+    await user.click(
+      within(await railRow("Luncheon")).getByRole("button", {
+        name: /^Luncheon/,
+      }),
+    );
 
     const main = await screen.findByRole("main");
     await within(main).findByRole("textbox", { name: /note title/i });
@@ -362,9 +398,11 @@ describe("books, end to end through the interface", () => {
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
     await addNoteToNewBook(user, "Luncheon", "Summers");
-    await user.click(within(await railRow("Luncheon")).getByRole("button", {
-      name: /^Luncheon/,
-    }));
+    await user.click(
+      within(await railRow("Luncheon")).getByRole("button", {
+        name: /^Luncheon/,
+      }),
+    );
 
     const main = await screen.findByRole("main");
     expect(await within(main).findByText(/In the Book -/)).toBeInTheDocument();
@@ -383,6 +421,11 @@ describe("books, end to end through the interface", () => {
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
     await addNoteToNewBook(user, "Luncheon", "Summers");
+
+    /* Adding is done from the note's row, which only the default arrangement
+       shows once the note is shelved. Reading the book back is done from the
+       book's row, which only the other arrangement shows. */
+    await switchToByBook(user);
 
     expect(
       await screen.findByRole("button", { name: /^Childhood\s*Empty/ }),

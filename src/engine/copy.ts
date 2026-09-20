@@ -43,6 +43,12 @@ export const COPY = {
   organizeOptionList: 'In one list',
   organizeOptionBook: 'By book',
 
+  /* One phrasing for the rail row and the landing page, so the same book is
+     never "Empty" in one place and "0 chapters" in another. An empty book says
+     so rather than showing a count, which reads like a counter that failed. */
+  chapterCount: (n: number) =>
+    n === 0 ? 'Empty' : n === 1 ? '1 chapter' : `${n} chapters`,
+
   booksRow: 'Books',
   booksPageTitle: 'Books',
   /* Placeholder and label share their words: a placeholder is not a label, but

@@ -43,6 +43,7 @@ const renderRail = (
       selectedBookId={null}
       bookNameByNoteId={new Map<string, string>()}
       onSelectBook={vi.fn()}
+      onOpenBooks={vi.fn()}
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onNewChat={vi.fn()}

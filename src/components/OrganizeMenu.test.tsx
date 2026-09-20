@@ -65,10 +65,9 @@ describe("OrganizeMenu", () => {
   it("marks the active choice as the checked one", async () => {
     render(<Harness initialMode="book" />);
     await openMenu();
-    expect(screen.getByRole("menuitemradio", { name: /By book/ })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    expect(
+      screen.getByRole("menuitemradio", { name: /By book/ }),
+    ).toHaveAttribute("aria-checked", "true");
     expect(
       screen.getByRole("menuitemradio", { name: /In one list/ }),
     ).toHaveAttribute("aria-checked", "false");
@@ -100,10 +99,9 @@ describe("OrganizeMenu", () => {
       screen.getByRole("menuitemradio", { name: /By book/ }),
     );
     await openMenu();
-    expect(screen.getByRole("menuitemradio", { name: /By book/ })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    expect(
+      screen.getByRole("menuitemradio", { name: /By book/ }),
+    ).toHaveAttribute("aria-checked", "true");
   });
 
   /* Opening on the active choice rather than the first one means the menu
@@ -111,7 +109,9 @@ describe("OrganizeMenu", () => {
   it("opens with focus on the mode already in use", async () => {
     render(<Harness initialMode="book" />);
     await openMenu();
-    expect(screen.getByRole("menuitemradio", { name: /By book/ })).toHaveFocus();
+    expect(
+      screen.getByRole("menuitemradio", { name: /By book/ }),
+    ).toHaveFocus();
   });
 
   /* Deliberately the mode that is FIRST in the list. Checking only the "book"
@@ -138,7 +138,9 @@ describe("OrganizeMenu", () => {
     render(<Harness />);
     await openMenu();
     await userEvent.keyboard("{Escape}");
-    expect(screen.getByRole("button", { name: "Organize notes" })).toHaveFocus();
+    expect(
+      screen.getByRole("button", { name: "Organize notes" }),
+    ).toHaveFocus();
   });
 
   /* The heading repeats the menu's own accessible name, so leaving it readable
@@ -147,9 +149,8 @@ describe("OrganizeMenu", () => {
     render(<Harness />);
     await openMenu();
     expect(screen.getByRole("menu")).toHaveAccessibleName("Organize notes");
-    expect(screen.getByText("Organize notes", { selector: "p" })).toHaveAttribute(
-      "aria-hidden",
-      "true",
-    );
+    expect(
+      screen.getByText("Organize notes", { selector: "p" }),
+    ).toHaveAttribute("aria-hidden", "true");
   });
 });
