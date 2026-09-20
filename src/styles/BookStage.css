@@ -204,7 +204,7 @@
    than the ornament between chapters, because crossing it means starting
    something new rather than turning a page. */
 .book-story {
-  margin: var(--space-20) 0 var(--space-12);
+  margin: var(--space-16) 0 var(--space-12);
   padding-top: var(--space-12);
   border-top: 1px solid var(--color-border);
   text-align: center;
@@ -220,7 +220,7 @@
 .book-story__title {
   margin: 0;
   font-family: var(--font-ui);
-  font-size: var(--text-xs);
+  font-size: var(--fs-xs);
   font-weight: var(--fw-semibold);
   letter-spacing: 0.18em;
   text-transform: uppercase;

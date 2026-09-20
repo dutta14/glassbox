@@ -355,5 +355,5 @@
   height: 34px;
   margin-right: 0;
   padding: 0;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius);
 }
