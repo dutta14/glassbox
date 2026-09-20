@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { NotesRail } from "./NotesRail";
+import { COPY } from "../engine/copy";
 import type { Conversation, Note } from "../types";
 
 const iso = "2024-01-01T00:00:00.000Z";
@@ -66,7 +67,7 @@ const renderRail = (
   );
 
 /** The toggle lives inside the heading, so it is reachable by either role. */
-const toggle = (name: "Chats" | "Notes") =>
+const toggle = (name: string) =>
   screen.getByRole("button", { name: new RegExp(`^${name}$`) });
 
 beforeEach(() => localStorage.clear());
@@ -79,7 +80,7 @@ describe("NotesRail section accordions", () => {
   it("keeps both sections open on a first visit", () => {
     renderRail();
 
-    expect(toggle("Chats")).toHaveAttribute("aria-expanded", "true");
+    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Why is it slow")).toBeVisible();
     expect(screen.getByText("Postgres tuning")).toBeVisible();
@@ -88,17 +89,17 @@ describe("NotesRail section accordions", () => {
   it("keeps the heading role, so the outline still has both sections", () => {
     renderRail();
 
-    expect(screen.getByRole("heading", { name: "Chats" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: COPY.questionsHeading })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
   });
 
-  it("hides the chat list when the Chats heading is collapsed", async () => {
+  it("hides the question list when the Questions heading is collapsed", async () => {
     const user = userEvent.setup();
     renderRail();
 
-    await user.click(toggle("Chats"));
+    await user.click(toggle(COPY.questionsHeading));
 
-    expect(toggle("Chats")).toHaveAttribute("aria-expanded", "false");
+    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "false");
     // Not merely "not visible": hidden removes it from the accessibility tree
     // too, which is the part a screen reader depends on.
     expect(screen.queryByText("Why is it slow")).not.toBeVisible();
@@ -108,7 +109,7 @@ describe("NotesRail section accordions", () => {
     const user = userEvent.setup();
     renderRail();
 
-    await user.click(toggle("Chats"));
+    await user.click(toggle(COPY.questionsHeading));
 
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Postgres tuning")).toBeVisible();
@@ -117,7 +118,7 @@ describe("NotesRail section accordions", () => {
   it("points the toggle at the list it controls", async () => {
     renderRail();
 
-    const controls = toggle("Chats").getAttribute("aria-controls");
+    const controls = toggle(COPY.questionsHeading).getAttribute("aria-controls");
     expect(controls).toBe("rail-chats-list");
     expect(document.getElementById(controls!)).not.toBeNull();
   });
@@ -142,14 +143,14 @@ describe("NotesRail section accordions", () => {
     renderRail();
 
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "false");
-    expect(toggle("Chats")).toHaveAttribute("aria-expanded", "true");
+    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "true");
   });
 
   it("falls back to open when the stored value is not usable", () => {
     localStorage.setItem("glassbox.railSections.v1", "{ not json");
     renderRail();
 
-    expect(toggle("Chats")).toHaveAttribute("aria-expanded", "true");
+    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -162,7 +163,7 @@ describe("NotesRail section accordions", () => {
     );
     renderRail();
 
-    expect(toggle("Chats")).toHaveAttribute("aria-expanded", "true");
+    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -173,9 +174,9 @@ describe("NotesRail section accordions", () => {
     });
     renderRail();
 
-    await user.click(toggle("Chats"));
+    await user.click(toggle(COPY.questionsHeading));
 
-    expect(toggle("Chats")).toHaveAttribute("aria-expanded", "false");
+    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "false");
   });
 
   it("collapses the sample banner with the notes section it belongs to", async () => {

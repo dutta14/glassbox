@@ -77,7 +77,7 @@ export interface ChatMessage {
  * inventing text would break the one promise the product makes. Storing it
  * also keeps the name stable if the messages are ever trimmed.
  *
- * A conversation only exists once it has a message. Clicking "New chat" puts
+ * A conversation only exists once it has a message. Clicking "Ask" puts
  * the user in a draft that has no record, so the rail never fills with empty
  * threads.
  */

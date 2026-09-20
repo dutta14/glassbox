@@ -327,7 +327,7 @@ describe("ChatPanel — the archive line", () => {
     /* An absent line has to be absent rather than blank. The empty state is
        a flex column with a gap, so a paragraph holding nothing still opens a
        band of space in the middle of it and reads as a layout fault. */
-    const blanks = [...screen.getByLabelText("Chat").querySelectorAll("p")].filter(
+    const blanks = [...screen.getByLabelText(COPY.chatRegion).querySelectorAll("p")].filter(
       (p) => p.textContent?.trim() === "",
     );
     expect(blanks).toHaveLength(0);

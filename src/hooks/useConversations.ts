@@ -8,7 +8,7 @@ import { createId } from '../storage/notes';
  *
  * The load-bearing idea is the draft. A conversation does not exist until it
  * has a message, so `activeId === null` while viewing the chat means the user
- * is in a draft that has no record anywhere. Without that, clicking "New chat"
+ * is in a draft that has no record anywhere. Without that, clicking "Ask"
  * would file an empty thread in the rail every time.
  *
  * Titles are the user's first prompt, verbatim. There is no model here to name
@@ -107,7 +107,7 @@ export const useConversations = (
 
   /* A no-op when already in a draft. The composer owns its own text, so
      leaving this alone is what keeps a half-typed prompt from being thrown
-     away when the user clicks "New chat" a second time. */
+     away when the user clicks "Ask" a second time. */
   /*
    * AC 13 expands the first assistant message of a *session*, once, so the
    * reasoning panel introduces itself to someone who has never seen it. It used
@@ -167,7 +167,7 @@ export const useConversations = (
       // When the caller passes targetId it is speaking for the URL, which is the
       // real source of truth; a bare call falls back to activeId for the many
       // callers that have no route. null means "mint a new thread no matter what
-      // activeId says", which is how a submit right after "New chat" avoids
+      // activeId says", which is how a submit right after "Ask" avoids
       // extending the thread the async route change has not yet left.
       const resolvedTarget = targetId === undefined ? activeId : targetId;
       const existing =

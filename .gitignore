@@ -9,3 +9,7 @@ test-results
 playwright-report
 blob-report
 .playwright
+
+# Throwaway browser probes. They live in the root because @playwright/test
+# is only resolvable from here, and they are rewritten per investigation.
+*shot*.mjs

@@ -110,7 +110,7 @@ const ChatStage = ({
   // instance mounted as the route flips between them. If the two routes
   // rendered different element types, the outlet would swap them, React would
   // remount the composer, and any prompt typed during that flip, exactly what
-  // happens when a user hits "New chat" and immediately types, would be lost
+  // happens when a user hits "Ask" and immediately types, would be lost
   // to an emptied input. Keeping the type stable keeps the composer alive.
   if (!id) {
     return <>{children}</>;
@@ -392,9 +392,9 @@ export const AppReady = ({
   // is the exact race the design warns about; the ref is what defuses it.
   const freshConversationIdRef = useRef<string | null>(null);
 
-  // Set by "New chat", read and cleared by the next submit. It forces that
+  // Set by "Ask", read and cleared by the next submit. It forces that
   // submit to mint a brand new conversation even when the async hashchange from
-  // navigate('/') has not landed yet, so typing straight after "New chat" never
+  // navigate('/') has not landed yet, so typing straight after "Ask" never
   // appends to the thread just left. Being a ref, it is immune to the route and
   // activeId timing that a click-then-type sequence can otherwise outrun.
   const newDraftPendingRef = useRef(false);
@@ -721,7 +721,7 @@ export const AppReady = ({
       // blank composer the user can never get a real thread out of again.
       //
       // newDraftPendingRef wins over activeConversationId on purpose. Right
-      // after "New chat" the async hashchange may not have landed, so activeId
+      // after "Ask" the async hashchange may not have landed, so activeId
       // can still point at the previous thread; honouring the ref is what makes
       // the new prompt start a new conversation instead of extending the old
       // one. Passing null as the explicit target tells append to mint fresh

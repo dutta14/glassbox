@@ -270,14 +270,14 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
     await waitFor(() => expect(pathname()).toBe("/"));
   });
 
-  it("New chat from a note navigates to / and back returns to the note", async () => {
+  it("Ask from a note navigates to / and back returns to the note", async () => {
     renderApp(["/note/n1"], {
       notes: [makeNote("n1", ISO, "Alpha note")],
     });
     const user = userEvent.setup();
     await screen.findByRole("region", { name: "Note editor" });
 
-    await user.click(screen.getByRole("button", { name: "New chat" }));
+    await user.click(screen.getByRole("button", { name: COPY.askRow }));
     await waitFor(() => expect(pathname()).toBe("/"));
 
     act(() => {
@@ -405,7 +405,7 @@ describe("the first message in a draft replaces / with /chat/<id> (AC 7)", () =>
 });
 
 describe("the composer survives the draft/chat transition (remount regression)", () => {
-  it("keeps text typed into the composer when New chat flips the route from a chat to the draft", async () => {
+  it("keeps text typed into the composer when Ask flips the route from a chat to the draft", async () => {
     // The '/' and '/chat/:id' routes must render the same component type so the
     // outlet preserves one ChatPanel instance across the flip. When they did
     // not, "New chat" remounted the composer and dropped whatever the user was
@@ -423,7 +423,7 @@ describe("the composer survives the draft/chat transition (remount regression)",
     const input = screen.getByRole("textbox", { name: "Ask a question" });
     await user.type(input, "six hours");
 
-    await user.click(screen.getByRole("button", { name: "New chat" }));
+    await user.click(screen.getByRole("button", { name: COPY.askRow }));
 
     await waitFor(() => expect(pathname()).toBe("/"));
     expect(

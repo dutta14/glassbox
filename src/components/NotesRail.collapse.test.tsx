@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { NotesRail } from "./NotesRail";
+import { COPY } from "../engine/copy";
 import type { Note } from "../types";
 
 /**
@@ -174,7 +175,7 @@ describe("NotesRail collapse", () => {
 
     await user.click(collapseButton());
 
-    expect(screen.getByRole("button", { name: "Chats" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: COPY.questionsHeading })).toHaveAttribute(
       "aria-expanded",
       "false",
     );

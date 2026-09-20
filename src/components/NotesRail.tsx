@@ -256,7 +256,7 @@ export const NotesRail = ({
       .map((id) => noteById.get(id))
       .filter((note): note is Note => note !== undefined);
   /* A draft is current only when the chat is showing and no saved thread is
-     open. Without this the New chat row and a conversation row would both
+     open. Without this the Ask row and a conversation row would both
      claim aria-current. */
   const draftActive = chatActive && activeConversationId === null;
 
@@ -415,13 +415,13 @@ export const NotesRail = ({
                 strokeLinejoin="round"
               />
             </svg>
-            New chat
+            {COPY.askRow}
           </button>
 
           <NewNoteMenu onCreate={onCreate} />
 
           {/* In one list the shelf is a place to go, not a section of the
-              sidebar, so it sits with New chat and New note rather than
+              sidebar, so it sits with Ask and New note rather than
               heading a list of its own. No count: the number of books is
               what the page is for. */}
           {!byBook && (
@@ -482,7 +482,7 @@ export const NotesRail = ({
                   aria-expanded={chatsOpen}
                   aria-controls="rail-chats-list"
                 >
-                  Chats
+                  {COPY.questionsHeading}
                   <Chevron open={chatsOpen} />
                 </button>
               </h2>
@@ -700,7 +700,7 @@ export const NotesRail = ({
             type="button"
             className="rail-flyout__trigger rail-tip-host"
             onClick={onNewChat}
-            aria-label="New chat"
+            aria-label={COPY.askRow}
             aria-current={draftActive ? "true" : undefined}
           >
             <svg
@@ -717,7 +717,7 @@ export const NotesRail = ({
                 strokeLinejoin="round"
               />
             </svg>
-            <RailTip label="New chat" />
+            <RailTip label={COPY.askRow} />
           </button>
 
           <button
@@ -782,8 +782,8 @@ export const NotesRail = ({
           <div className="notes-rail__icons-divider" />
 
           <RailFlyout
-            label="Chats"
-            heading="Chats"
+            label={COPY.questionsHeading}
+            heading={COPY.questionsHeading}
             open={openFlyout === "chats"}
             onOpenChange={(next) => setOpenFlyout(next ? "chats" : null)}
             isEmpty={conversations.length === 0}

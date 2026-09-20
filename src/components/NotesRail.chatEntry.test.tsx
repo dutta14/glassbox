@@ -83,11 +83,11 @@ const renderRail = (
   return { onNewChat, onCreate };
 };
 
-const chatEntry = () => screen.getByRole("button", { name: "New chat" });
+const chatEntry = () => screen.getByRole("button", { name: COPY.askRow });
 const newNote = () => screen.getByRole("button", { name: "New note" });
 
-describe("rail chat entry", () => {
-  it("places the chat entry directly above the new-note item", () => {
+describe("rail Ask entry", () => {
+  it("places the Ask entry directly above the new-note item", () => {
     renderRail();
 
     const position = chatEntry().compareDocumentPosition(newNote());
@@ -99,7 +99,7 @@ describe("rail chat entry", () => {
     expect(chatEntry().nextElementSibling).toContainElement(newNote());
   });
 
-  it("starts a new chat when the entry is pressed", async () => {
+  it("starts a new question when the entry is pressed", async () => {
     const { onNewChat, onCreate } = renderRail();
 
     await userEvent.click(chatEntry());
@@ -108,7 +108,7 @@ describe("rail chat entry", () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
-  it("marks the new-chat entry as current while an unsent draft is showing", () => {
+  it("marks the Ask entry as current while an unsent draft is showing", () => {
     renderRail({ chatActive: true });
 
     expect(chatEntry()).toHaveAttribute("aria-current", "true");
@@ -151,7 +151,7 @@ describe("rail chat entry", () => {
    * and a note. Exactly one of them may say so. These are the pairs that a
    * naive implementation marks twice.
    */
-  it("drops the current marker from the new-chat entry once a saved chat is open", () => {
+  it("drops the current marker from the Ask entry once a saved question is open", () => {
     renderRail({
       chatActive: true,
       conversations: [mkConversation("c1", "why is the fog grading?")],
@@ -202,10 +202,10 @@ describe("rail chat entry", () => {
     ).toBe(COPY.emptyChatsSidebar);
   });
 
-  it("lists the chats section above the notes section", () => {
+  it("lists the Questions section above the Notes section", () => {
     renderRail({ conversations: [mkConversation("c1", "a chat")] });
 
-    const chats = screen.getByRole("heading", { name: "Chats" });
+    const chats = screen.getByRole("heading", { name: COPY.questionsHeading });
     const notes = screen.getByRole("heading", { name: "Notes" });
 
     expect(
@@ -255,7 +255,7 @@ describe("panels left without their tabs", () => {
       />,
     );
 
-    expect(screen.getByRole("region", { name: "Chat" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: COPY.chatRegion })).toBeInTheDocument();
     expect(screen.queryByRole("tabpanel")).toBeNull();
   });
 

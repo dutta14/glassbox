@@ -1,6 +1,6 @@
 /** Every fixed string the assistant can say. If it is not here, it came from a note. */
 export const COPY = {
-  greeting: 'Hi. Ask me something about your notes.',
+  greeting: "Hi. Ask me something you've written about.",
 
   help:
     'I can find passages in your notes. Try: "what did I write about postgres", ' +
@@ -22,8 +22,23 @@ export const COPY = {
   /* A chat is titled by its first prompt, so this only appears if that prompt
      was whitespace. Distinct from a note's "Untitled" so the two lists in the
      rail never show an identical unlabelled row. */
-  untitledChat: 'Untitled chat',
-  emptyChatsSidebar: 'Ask a question to start a chat.',
+  untitledChat: 'Untitled question',
+  /* "Ask", not "New chat". A chat invites comparison with an assistant that
+     writes its own sentences, which is the one thing this cannot do and the
+     one comparison it always loses. Asking is what the reader is actually
+     here to do, and what comes back is their own writing. The route and the
+     stored keys still say chat; only the words on screen changed, because
+     renaming those buys nothing and costs a migration. */
+  askRow: 'Ask',
+  /* The list holds past questions, each one titled by the words that opened
+     it, so this names what is in it rather than the shape of the exchange. */
+  questionsHeading: 'Questions',
+  /* Names the main region for anyone moving by landmark. Distinct from the
+     rail's "Questions", which is the list of past ones: hearing the same
+     word for the list and for the thing it opens would hide the move
+     between them. */
+  chatRegion: 'Conversation',
+  emptyChatsSidebar: 'Ask a question to start one.',
 
   /* Distinct from the other two for the same reason they are distinct from
      each other: three lists share the rail, and an unnamed row in one must
@@ -84,9 +99,9 @@ export const COPY = {
   archiveContract: 'Every answer is a passage you wrote, quoted exactly.',
 
   storageUnavailable:
-    'Your browser is not saving data. Notes and chat will disappear when you close this tab.',
+    'Your browser is not saving data. Notes and questions will disappear when you close this tab.',
 
-  sampleBanner: 'These are sample notes so you can try the chat. Delete them anytime.',
+  sampleBanner: 'These are sample notes so you have something to ask about. Delete them anytime.',
   noteDeleted: 'This note was deleted.',
 
   placeholderTitle: 'Title',

@@ -90,7 +90,7 @@ export const ChatPanel = ({
   return (
     <section
       id="chat-panel"
-      aria-label="Chat"
+      aria-label={COPY.chatRegion}
       className={isEmpty ? 'chat chat--empty' : 'chat'}
     >
       {isEmpty ? (
