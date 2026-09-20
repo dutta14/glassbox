@@ -110,6 +110,13 @@ const notesList = () => {
   return within(nav as HTMLElement);
 };
 
+/* Arranged by book the section heading is a button named "Books" too, so the
+   name alone cannot tell the top-level entry from the heading. */
+const booksEntry = () =>
+  screen
+    .queryAllByRole("button", { name: "Books" })
+    .find((b) => b.classList.contains("notes-rail__entry"));
+
 describe("NotesRail organize modes", () => {
   it("lists every note, booked or not, in list mode", () => {
     renderRail({ organizeMode: "list" });
@@ -131,46 +138,53 @@ describe("NotesRail organize modes", () => {
     expect(list.getByRole("button", { name: /^Not in the book/ })).toBeTruthy();
   });
 
-  /* In one list, the shelf is one row that opens a page, the way a folder is
-     one row. Listing every book here as well would put the same books in two
-     places. */
-  it("shows the books as a single row in list mode", () => {
+  /* In one list the shelf is somewhere to go, so it sits with New chat and
+     New note. Heading a section of its own would have implied the sidebar was
+     about to list the books, which in this arrangement it never does. */
+  it("offers Books alongside New chat in list mode, with no section of its own", () => {
     renderRail({ organizeMode: "list" });
-    const nav = within(document.getElementById("rail-books-list")!);
 
-    expect(nav.getByRole("button", { name: /^Books/ })).toBeTruthy();
-    expect(nav.queryByRole("button", { name: /^Autumn/ })).toBeNull();
+    expect(booksEntry()).toBeTruthy();
+    expect(document.getElementById("rail-books-heading")).toBeNull();
+    expect(document.getElementById("rail-books-list")?.hidden).toBe(true);
+    expect(screen.queryByRole("button", { name: /^Autumn/ })).toBeNull();
   });
 
-  it("opens the Books page from that row", async () => {
+  /* The page is what the count is for. Carrying it up here would say the same
+     thing twice, less well. */
+  it("puts no book count on the Books entry", () => {
+    renderRail({ organizeMode: "list" });
+
+    expect(booksEntry()?.textContent?.trim()).toBe("Books");
+  });
+
+  it("opens the Books page from that entry", async () => {
     const onOpenBooks = vi.fn();
     renderRail({ organizeMode: "list", onOpenBooks });
-    await userEvent.click(
-      within(document.getElementById("rail-books-list")!).getByRole("button", {
-        name: /^Books/,
-      }),
-    );
+    await userEvent.click(booksEntry()!);
 
     expect(onOpenBooks).toHaveBeenCalled();
   });
 
-  /* The row is the way to make a first book, so it cannot wait for one to
+  /* The entry is the way to make a first book, so it cannot wait for one to
      exist. */
-  it("keeps the Books row with no books at all", () => {
+  it("keeps the Books entry with no books at all", () => {
     renderRail({ organizeMode: "list", books: [] });
 
-    expect(
-      within(document.getElementById("rail-books-list")!).getByRole("button", {
-        name: /^Books/,
-      }),
-    ).toBeTruthy();
+    expect(booksEntry()).toBeTruthy();
   });
 
-  it("lists the books themselves in book mode, not a single row", () => {
+  /* Arranged by book the sidebar does list them, so the entry would be a
+     second door to the same place. */
+  it("drops the Books entry in book mode and lists the books instead", () => {
     renderRail({ organizeMode: "book" });
-    const nav = within(document.getElementById("rail-books-list")!);
 
-    expect(nav.getByRole("button", { name: /^Autumn/ })).toBeTruthy();
+    expect(booksEntry()).toBeUndefined();
+    expect(
+      within(document.getElementById("rail-books-list")!).getByRole("button", {
+        name: /^Autumn/,
+      }),
+    ).toBeTruthy();
   });
 
   it("gives book rows no expander in list mode, where a book only opens", () => {

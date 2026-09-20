@@ -59,3 +59,17 @@ describe('stylesheet tokens', () => {
     expect(missing).toEqual([])
   })
 })
+
+/* The margin reset on the split control's primary half has to out-specify
+   .notes-rail__entry, which is equally specific and imported later. Written
+   with one class it silently lost, and the gap below New note came out at
+   twice the gap above it. Nothing in jsdom can see that: vite.config.ts sets
+   css: false, so this reads the file. */
+describe('New note spacing', () => {
+  it('resets the primary half margin with both class names', () => {
+    const css = read('NewNoteMenu.css')
+
+    expect(css).toContain('.notes-rail__entry.new-note__primary')
+    expect(css).not.toMatch(/^\.new-note__primary\s*\{/m)
+  })
+})

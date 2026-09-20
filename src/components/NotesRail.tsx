@@ -417,6 +417,46 @@ export const NotesRail = ({
 
           <NewNoteMenu onCreate={onCreate} />
 
+          {/* In one list the shelf is a place to go, not a section of the
+              sidebar, so it sits with New chat and New note rather than
+              heading a list of its own. No count: the number of books is
+              what the page is for. */}
+          {!byBook && (
+            <button
+              type="button"
+              className="notes-rail__entry"
+              onClick={onOpenBooks}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true"
+              >
+                {/* An open book: two pages meeting at a fold, each one
+                    lifting off a cover that sits a little proud at the
+                    bottom. Wider than tall, so it reads as a book and not as
+                    a card or a door, which is what two earlier attempts at a
+                    closed book looked like at this size. Same 16px grid and
+                    1.4 stroke as the chat bubble. */}
+                <path
+                  d="M2.5 3.25h3.25A2.25 2.25 0 0 1 8 5.5v7.25a1.75 1.75 0 0 0-1.75-1.75H2.5V3.25Z"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M13.5 3.25h-3.25A2.25 2.25 0 0 0 8 5.5v7.25a1.75 1.75 0 0 1 1.75-1.75h3.75V3.25Z"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {COPY.booksRow}
+            </button>
+          )}
+
           {/* One scroll area for both lists, so the rail scrolls as a single
               column instead of two boxes that run out of room independently.
               Two navs inside it rather than one, because a single landmark
@@ -473,43 +513,29 @@ export const NotesRail = ({
               )}
             </nav>
 
-            <div className="notes-rail__section notes-rail__section--sticky">
-              <h2 className="notes-rail__title" id="rail-books-heading">
-                <button
-                  type="button"
-                  className="notes-rail__title-toggle"
-                  onClick={() => toggleSection("books")}
-                  aria-expanded={booksOpen}
-                  aria-controls="rail-books-list"
-                >
-                  Books
-                  <Chevron open={booksOpen} />
-                </button>
-              </h2>
-            </div>
+            {byBook && (
+              <div className="notes-rail__section notes-rail__section--sticky">
+                <h2 className="notes-rail__title" id="rail-books-heading">
+                  <button
+                    type="button"
+                    className="notes-rail__title-toggle"
+                    onClick={() => toggleSection("books")}
+                    aria-expanded={booksOpen}
+                    aria-controls="rail-books-list"
+                  >
+                    Books
+                    <Chevron open={booksOpen} />
+                  </button>
+                </h2>
+              </div>
+            )}
 
             <nav
               id="rail-books-list"
               aria-labelledby="rail-books-heading"
-              hidden={!booksOpen}
+              hidden={!byBook || !booksOpen}
             >
-              {/* One row standing for the whole shelf, the way a folder does.
-                  It shows even with no books, because the page behind it is
-                  where a first book gets made. */}
-              {!byBook ? (
-                <ul>
-                  <li className="note-row">
-                    <button
-                      type="button"
-                      className="note-item"
-                      onClick={onOpenBooks}
-                    >
-                      <span className="note-item__title">{COPY.booksRow}</span>
-                      <span className="note-item__meta">{books.length}</span>
-                    </button>
-                  </li>
-                </ul>
-              ) : books.length === 0 ? (
+              {books.length === 0 ? (
                 <div className="notes-rail__empty">
                   <p className="notes-rail__empty-body">
                     {COPY.emptyBooksSidebar}

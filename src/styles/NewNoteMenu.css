@@ -16,8 +16,12 @@
 
 /* The primary keeps .notes-rail__entry, so it stays the same row as New chat
    above it. Only its own bottom margin is dropped, because the wrapper now
-   owns the spacing for both halves. */
-.new-note__primary {
+   owns the spacing for both halves.
+
+   Both class names, because .notes-rail__entry is equally specific and is
+   imported after this file. On its own, .new-note__primary lost the margin
+   reset and the rail's spacing came out doubled below New note. */
+.notes-rail__entry.new-note__primary {
   flex: 1 1 auto;
   width: auto;
   margin-bottom: 0;
