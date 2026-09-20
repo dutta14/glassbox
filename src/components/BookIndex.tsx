@@ -86,6 +86,11 @@ export const BookIndex = ({
      that opening a second field closes the first, which stops two half-typed
      names being in play at once. */
   const [naming, setNaming] = useState<string | null>(null);
+
+  /* A collection of poems counts nothing, and a column of dashes down the
+     whole contents is noise. The dash marks the exception in a book that
+     counts; where there is no counting there is no exception to mark. */
+  const counts = chapters.some((c) => c.number !== null);
   const [announcement, setAnnouncement] = useState("");
 
   const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -216,18 +221,21 @@ export const BookIndex = ({
                 aria-label={`Go to ${name}`}
                 onClick={() => onJump(chapter.id)}
               >
-                <span
-                  className={
-                    numbered
-                      ? "book-index__number"
-                      : "book-index__number book-index__number--none"
-                  }
-                  aria-hidden="true"
-                >
-                  {/* A dash rather than a blank for front matter, so the titles
-                    stay on the same left edge as every other chapter. */}
-                  {gutter}
-                </span>{" "}
+                {counts && (
+                  <span
+                    className={
+                      numbered
+                        ? "book-index__number"
+                        : "book-index__number book-index__number--none"
+                    }
+                    aria-hidden="true"
+                  >
+                    {/* A dash rather than a blank for front matter, so the
+                      titles stay on the same left edge as every other
+                      chapter. */}
+                    {gutter}
+                  </span>
+                )}{" "}
                 <span
                   className={
                     chapter.missing

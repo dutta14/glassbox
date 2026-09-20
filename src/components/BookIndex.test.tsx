@@ -428,3 +428,61 @@ describe("BookIndex stories", () => {
     );
   });
 });
+
+describe("BookIndex — a book that counts nothing", () => {
+  it("shows no gutter at all when no chapter is counted", () => {
+    const { container } = render(
+      <Harness
+        initial={[
+          { id: "a", title: "May", number: null, story: null, missing: false },
+          {
+            id: "b",
+            title: "Leaving",
+            number: null,
+            story: null,
+            missing: false,
+          },
+        ]}
+      />,
+    );
+
+    // A column of dashes down a whole poetry collection is noise. The dash
+    // marks the exception in a book that counts.
+    expect(container.querySelectorAll(".book-index__number")).toHaveLength(0);
+  });
+
+  it("still marks the uncounted chapters in a book that counts some", () => {
+    const { container } = render(
+      <Harness
+        initial={[
+          {
+            id: "a",
+            title: "Prologue",
+            number: null,
+            story: null,
+            missing: false,
+          },
+          { id: "b", title: "One", number: 1, story: null, missing: false },
+        ]}
+      />,
+    );
+
+    expect(
+      container.querySelectorAll(".book-index__number--none"),
+    ).toHaveLength(1);
+  });
+
+  it("still reads out the titles when there is no gutter", () => {
+    render(
+      <Harness
+        initial={[
+          { id: "a", title: "May", number: null, story: null, missing: false },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Go to May" }),
+    ).toBeInTheDocument();
+  });
+});
