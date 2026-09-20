@@ -194,6 +194,9 @@ interface BookStageRouteProps {
   /** Where reading stopped in each book, so a book reopens where it was left. */
   positionFor: (bookId: string) => string | null;
   onReadChapter: (bookId: string, chapterId: string) => void;
+  /** The book and chapter picked from the rail, if the pick is still unspent. */
+  openAt: { bookId: string; chapterId: string } | null;
+  onOpenedAtChapter: () => void;
 }
 
 const BookStageRoute = ({
@@ -208,6 +211,8 @@ const BookStageRoute = ({
   onRename,
   positionFor,
   onReadChapter,
+  openAt,
+  onOpenedAtChapter,
 }: BookStageRouteProps) => {
   const { id } = useParams();
   const book = books.find((b) => b.id === id) ?? null;
@@ -252,6 +257,10 @@ const BookStageRoute = ({
       onRename={(title) => onRename(book.id, title)}
       resumeChapterId={positionFor(book.id)}
       onReadChapter={handleReadChapter}
+      /* Only this book's pick counts. A pick left over from another book
+         would scroll this one to a chapter it does not contain. */
+      openAtChapterId={openAt?.bookId === book.id ? openAt.chapterId : null}
+      onOpenedAtChapter={onOpenedAtChapter}
     />
   );
 };
@@ -597,6 +606,24 @@ export const AppReady = ({
     [navigate],
   );
 
+  /* Held in state rather than passed through the URL. The pick is a one-shot
+     instruction, and a URL is a place: putting it in the address would make
+     reloading or sharing the link repeat a glance that was only meant once. */
+  const [openAt, setOpenAt] = useState<{
+    bookId: string;
+    chapterId: string;
+  } | null>(null);
+
+  const handleOpenChapter = useCallback(
+    (bookId: string, chapterId: string) => {
+      setOpenAt({ bookId, chapterId });
+      navigate(bookPath(bookId));
+    },
+    [navigate],
+  );
+
+  const handleOpenedAtChapter = useCallback(() => setOpenAt(null), []);
+
   const handleOpenBooks = useCallback(() => {
     navigate("/books");
   }, [navigate]);
@@ -771,6 +798,7 @@ export const AppReady = ({
             bookNameByNoteId={bookNameByNoteId}
             onSelectBook={handleSelectBook}
             onOpenBooks={handleOpenBooks}
+            onOpenChapter={handleOpenChapter}
             onDeleteBook={handleDeleteBook}
             onAddNoteToBook={handleRequestAddToBook}
             onNewChat={handleNewChat}
@@ -918,6 +946,8 @@ export const AppReady = ({
                       }}
                       positionFor={readingPositionFor}
                       onReadChapter={rememberReadingPosition}
+                      openAt={openAt}
+                      onOpenedAtChapter={handleOpenedAtChapter}
                     />
                   }
                 />

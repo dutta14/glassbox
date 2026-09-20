@@ -13,7 +13,9 @@ interface BookChapterListProps {
   chapters: Note[];
   currentNoteId: string | null;
   openMenuId: string | null;
-  onSelect: (noteId: string) => void;
+  /** Opens the book at this chapter. A chapter row is a way into the book,
+      not a way to the note on its own. */
+  onOpenChapter: (noteId: string) => void;
   onMenuOpenChange: (noteId: string, open: boolean) => void;
   onRequestDelete: (note: Note) => void;
   onToggleFormat: (noteId: string) => void;
@@ -43,7 +45,7 @@ export const BookChapterList = ({
   chapters,
   currentNoteId,
   openMenuId,
-  onSelect,
+  onOpenChapter,
   onMenuOpenChange,
   onRequestDelete,
   onToggleFormat,
@@ -78,7 +80,7 @@ export const BookChapterList = ({
           note={note}
           isSelected={note.id === currentNoteId}
           menuOpen={openMenuId === note.id}
-          onSelect={() => onSelect(note.id)}
+          onSelect={() => onOpenChapter(note.id)}
           onMenuOpenChange={(open) => onMenuOpenChange(note.id, open)}
           onRequestDelete={() => onRequestDelete(note)}
           onToggleFormat={() => onToggleFormat(note.id)}

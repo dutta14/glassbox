@@ -59,6 +59,7 @@ const renderRail = (
   } = {},
 ) => {
   const onSelect = vi.fn();
+  const onOpenChapter = vi.fn();
   const props = (mode: "list" | "book") => (
     <NotesRail
       notes={overrides.notes ?? notes}
@@ -87,6 +88,7 @@ const renderRail = (
       bookNameByNoteId={overrides.bookNameByNoteId ?? bookNames}
       onSelectBook={vi.fn()}
       onOpenBooks={overrides.onOpenBooks ?? vi.fn()}
+      onOpenChapter={onOpenChapter}
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
@@ -98,6 +100,7 @@ const renderRail = (
   const { rerender } = render(props(mode));
   return {
     onSelect,
+    onOpenChapter,
     setMode: (next: "list" | "book") => rerender(props(next)),
   };
 };
@@ -233,8 +236,23 @@ describe("NotesRail organize modes", () => {
   });
 
   /* The whole point of book mode: a note taken out of the Notes list is still
-     one click away, so nothing is lost by switching. */
-  it("opens a note from its chapter row", async () => {
+     one click away, so nothing is lost by switching. It opens in the book it
+     belongs to, which is the thing the chapter is a chapter of. */
+  it("opens the book at the chapter whose row was clicked", async () => {
+    const { onOpenChapter } = renderRail({ organizeMode: "book" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Expand Autumn" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Chapter 2: Abdul's Shop" }),
+    );
+
+    expect(onOpenChapter).toHaveBeenCalledWith("b1", "c2");
+  });
+
+  /* Opening the note on its own would strand the reader outside the book
+     they were browsing, with no sign of how they got there. */
+  it("does not open the note on its own from a chapter row", async () => {
     const { onSelect } = renderRail({ organizeMode: "book" });
     await userEvent.click(
       screen.getByRole("button", { name: "Expand Autumn" }),
@@ -243,7 +261,7 @@ describe("NotesRail organize modes", () => {
       screen.getByRole("button", { name: "Chapter 2: Abdul's Shop" }),
     );
 
-    expect(onSelect).toHaveBeenCalledWith("c2");
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it("lets two books stand open at once", async () => {

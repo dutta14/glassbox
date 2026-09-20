@@ -46,7 +46,11 @@ const titles = () =>
 describe("BooksPage", () => {
   it("lists every book with its chapter count", () => {
     renderPage();
-    expect(titles()).toEqual(["Autumn5 chapters", "Decagon1 chapter", "ShaenaEmpty"]);
+    expect(titles()).toEqual([
+      "Autumn5 chapters",
+      "Decagon1 chapter",
+      "ShaenaEmpty",
+    ]);
   });
 
   /* The same words as the rail row. A book that is "Empty" in the sidebar and

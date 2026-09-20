@@ -29,7 +29,7 @@ const renderList = (
   }> = {},
 ) => {
   const handlers = {
-    onSelect: vi.fn(),
+    onOpenChapter: vi.fn(),
     onMenuOpenChange: vi.fn(),
     onRequestDelete: vi.fn(),
     onToggleFormat: vi.fn(),
@@ -64,10 +64,12 @@ describe("BookChapterList", () => {
     expect(row("Chapter 2: Abdul's Shop")).toBeTruthy();
   });
 
-  it("opens the chapter that was clicked", async () => {
-    const { onSelect } = renderList();
+  /* A chapter row is a way into the book, not to the note on its own. The
+     note is reachable from the book once it is open. */
+  it("opens the book at the chapter that was clicked", async () => {
+    const { onOpenChapter } = renderList();
     await userEvent.click(row("Chapter 2: Abdul's Shop"));
-    expect(onSelect).toHaveBeenCalledWith("c2");
+    expect(onOpenChapter).toHaveBeenCalledWith("c2");
   });
 
   it("marks only the open chapter as current", () => {

@@ -35,6 +35,8 @@ interface StageOverrides {
   onRename?: (title: string) => void;
   resumeChapterId?: string | null;
   onReadChapter?: (id: string) => void;
+  openAtChapterId?: string | null;
+  onOpenedAtChapter?: () => void;
 }
 
 /** BookStage links chapter titles to their notes, so it needs a router. */
@@ -52,6 +54,8 @@ const renderStage = (over: StageOverrides = {}) =>
         onRename={over.onRename ?? noop}
         resumeChapterId={over.resumeChapterId ?? null}
         onReadChapter={over.onReadChapter ?? noop}
+        openAtChapterId={over.openAtChapterId ?? null}
+        onOpenedAtChapter={over.onOpenedAtChapter ?? noop}
       />
     </MemoryRouter>,
   );
@@ -760,5 +764,167 @@ describe("BookStage — offering to divide a book", () => {
     expect(
       screen.queryByRole("button", { name: "Divide the book" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Opening a book at a chapter somebody picked from the rail.
+ *
+ * The thing worth protecting here is the saved place. One book in the real
+ * library runs to 131 chapters, and a reader ninety chapters in who glances at
+ * chapter three must not pay for the glance with their place. The loss would
+ * be silent at the time and only surface later, which is the worst shape a bug
+ * can have.
+ */
+describe("BookStage opened at a chapter", () => {
+  const TITLES: Record<string, string> = {
+    n1: "One",
+    n2: "Two",
+    n3: "Three",
+  };
+  const threeChapters = () => ({
+    book: makeBook(["n1", "n2", "n3"]),
+    chapters: ["n1", "n2", "n3"].map((id) =>
+      makeNote({ id, title: TITLES[id] }),
+    ),
+  });
+  /** Headings read "Chapter N Title", so a chapter is found by both. */
+  const chapter = (id: string): HTMLElement =>
+    articleFor(`Chapter ${id.slice(1)} ${TITLES[id]}`);
+
+  it("scrolls to the chapter it was opened at", () => {
+    const scroll = stubScrollIntoView();
+    try {
+      renderStage({ ...threeChapters(), openAtChapterId: "n3" });
+
+      expect(scroll.spy).toHaveBeenCalledTimes(1);
+      expect(
+        (scroll.spy.mock.instances[0] as HTMLElement).dataset.chapterId,
+      ).toBe("n3");
+    } finally {
+      scroll.restore();
+    }
+  });
+
+  /* Unlike resuming, which skips chapter one so the book does not look like it
+     lost its front matter. Asking for chapter one is an instruction, not a
+     restored position. */
+  it("scrolls to the first chapter when that is the one picked", () => {
+    const scroll = stubScrollIntoView();
+    try {
+      renderStage({ ...threeChapters(), openAtChapterId: "n1" });
+
+      expect(
+        (scroll.spy.mock.instances[0] as HTMLElement).dataset.chapterId,
+      ).toBe("n1");
+    } finally {
+      scroll.restore();
+    }
+  });
+
+  it("goes to the picked chapter rather than the saved place", () => {
+    const scroll = stubScrollIntoView();
+    try {
+      renderStage({
+        ...threeChapters(),
+        resumeChapterId: "n2",
+        openAtChapterId: "n3",
+      });
+
+      expect(scroll.spy).toHaveBeenCalledTimes(1);
+      expect(
+        (scroll.spy.mock.instances[0] as HTMLElement).dataset.chapterId,
+      ).toBe("n3");
+    } finally {
+      scroll.restore();
+    }
+  });
+
+  /* Spent on use, so picking the same chapter again is a second instruction
+     and not a click that appears to do nothing. */
+  it("reports the pick as spent", () => {
+    const scroll = stubScrollIntoView();
+    const onOpenedAtChapter = vi.fn();
+    try {
+      renderStage({
+        ...threeChapters(),
+        openAtChapterId: "n3",
+        onOpenedAtChapter,
+      });
+
+      expect(onOpenedAtChapter).toHaveBeenCalledTimes(1);
+    } finally {
+      scroll.restore();
+    }
+  });
+
+  /* The heart of it. */
+  it("keeps the saved place when the picked chapter passes the marker", () => {
+    const scroll = stubScrollIntoView();
+    const io = installFakeObserver();
+    const onReadChapter = vi.fn();
+    try {
+      renderStage({ ...threeChapters(), openAtChapterId: "n3", onReadChapter });
+      io.intersect(chapter("n3"));
+
+      expect(onReadChapter).not.toHaveBeenCalled();
+    } finally {
+      io.restore();
+      scroll.restore();
+    }
+  });
+
+  /* Holding the place must not freeze the contents as well. Where the book is
+     and where the reader got to are different facts, and only the second one
+     is being protected. */
+  it("still marks the picked chapter as the one in view", () => {
+    const scroll = stubScrollIntoView();
+    const io = installFakeObserver();
+    try {
+      renderStage({ ...threeChapters(), openAtChapterId: "n3" });
+      io.intersect(chapter("n3"));
+
+      expect(
+        screen.getByRole("button", { name: /^Go to Three$/ }),
+      ).toHaveAttribute("aria-current", "true");
+    } finally {
+      io.restore();
+      scroll.restore();
+    }
+  });
+
+  /* Reading on from the chapter you jumped to is reading. Only the arrival was
+     not. */
+  it("saves the place again once the reader moves the book", async () => {
+    const scroll = stubScrollIntoView();
+    const io = installFakeObserver();
+    const onReadChapter = vi.fn();
+    try {
+      renderStage({ ...threeChapters(), openAtChapterId: "n1", onReadChapter });
+      await act(async () => {
+        window.dispatchEvent(new Event("wheel"));
+      });
+      io.intersect(chapter("n2"));
+
+      expect(onReadChapter).toHaveBeenCalledWith("n2");
+    } finally {
+      io.restore();
+      scroll.restore();
+    }
+  });
+
+  /* The ordinary path has to be untouched: a book opened normally records
+     where the reader gets to, with nothing held back. */
+  it("saves the place as usual when no chapter was picked", () => {
+    const io = installFakeObserver();
+    const onReadChapter = vi.fn();
+    try {
+      renderStage({ ...threeChapters(), onReadChapter });
+      io.intersect(chapter("n2"));
+
+      expect(onReadChapter).toHaveBeenCalledWith("n2");
+    } finally {
+      io.restore();
+    }
   });
 });

@@ -38,6 +38,16 @@ interface BookStageProps {
   resumeChapterId: string | null;
   /** Records the chapter being read, so the book can be resumed there. */
   onReadChapter: (chapterId: string) => void;
+  /**
+   * A chapter to open at this once, chosen from the rail, or null.
+   *
+   * Separate from resumeChapterId because it means the opposite thing. The
+   * resume point is where the reader left off; this is a glance at a chapter
+   * they picked, and a glance must not become the new place they left off.
+   */
+  openAtChapterId: string | null;
+  /** Clears the one-shot open, so the same chapter can be picked again. */
+  onOpenedAtChapter: () => void;
 }
 
 const titleOf = (note: Note): string => note.title.trim() || COPY.untitled;
@@ -74,6 +84,8 @@ export const BookStage = ({
   onApplyStories,
   onRename,
   resumeChapterId,
+  openAtChapterId,
+  onOpenedAtChapter,
   onReadChapter,
 }: BookStageProps) => {
   const bookTitle = book.title.trim() || COPY.untitledBook;
@@ -112,6 +124,37 @@ export const BookStage = ({
   const orderKey = book.chapterIds.join(",");
 
   /**
+   * Holds the reading position still while the book is parked at a chapter
+   * somebody picked from the rail.
+   *
+   * Landing on a chapter moves it through the observer's band, which would
+   * otherwise record it. For a 131-chapter book that means glancing at chapter
+   * three throws away a place kept at chapter ninety, and the reader only
+   * finds out later, when the book opens in the wrong century.
+   *
+   * A ref, so the observer never has to be rebuilt to see it change.
+   */
+  const holdPosition = useRef(false);
+
+  /* The hold lasts until the reader moves the book themselves. Reading on from
+     the chapter they jumped to is reading, and should be remembered; only the
+     arrival is not. Listeners are permanent and do nothing when no hold is in
+     force, which is cheaper than arming and disarming them. */
+  useEffect(() => {
+    const release = (): void => {
+      holdPosition.current = false;
+    };
+    window.addEventListener("wheel", release, { passive: true });
+    window.addEventListener("touchstart", release, { passive: true });
+    window.addEventListener("keydown", release);
+    return () => {
+      window.removeEventListener("wheel", release);
+      window.removeEventListener("touchstart", release);
+      window.removeEventListener("keydown", release);
+    };
+  }, []);
+
+  /**
    * Marks the chapter being read so the contents can highlight it and the book
    * can be resumed there. Guarded because IntersectionObserver is absent in
    * jsdom and could be absent elsewhere; when it is missing the marker is
@@ -128,8 +171,12 @@ export const BookStage = ({
           if (!entry.isIntersecting) continue;
           const id = (entry.target as HTMLElement).dataset.chapterId;
           if (id) {
+            /* The contents still follow the eye while the position is held.
+               Highlighting is about where the book is now; the saved place is
+               about where the reader got to, and only the second one is being
+               protected here. */
             setCurrentChapterId(id);
-            onReadChapter(id);
+            if (!holdPosition.current) onReadChapter(id);
           }
         }
       },
@@ -189,13 +236,43 @@ export const BookStage = ({
   }, [book.id, orderKey]);
 
   /**
+   * Opens the book at a chapter picked from the rail.
+   *
+   * Declared before the resume effect and claiming the book as already
+   * positioned, so the two never fight over where the book should start. A
+   * picked chapter wins: it is the more recent instruction, and it is the one
+   * the reader can see themselves giving.
+   *
+   * Unlike resuming, this runs even when the chapter is the first one. Landing
+   * on chapter one after asking for chapter one is not a book that lost its
+   * front matter, it is the book doing as it was told.
+   */
+  const resumedFor = useRef<string | null>(null);
+  const openPending = useRef(false);
+  useLayoutEffect(() => {
+    if (openAtChapterId === null) {
+      openPending.current = false;
+      return;
+    }
+    if (openPending.current) return;
+    openPending.current = true;
+    resumedFor.current = book.id;
+    holdPosition.current = true;
+    chapterRefs.current
+      .get(openAtChapterId)
+      ?.scrollIntoView?.({ behavior: "auto", block: "start" });
+    /* Cleared straight away rather than left standing, so picking the same
+       chapter a second time is a second instruction and not a no-op. */
+    onOpenedAtChapter();
+  }, [openAtChapterId, onOpenedAtChapter, book.id]);
+
+  /**
    * Opens the book where reading stopped.
    *
    * Skipped when the remembered chapter is the first one, because jumping past
    * the title and contents to land on chapter one reads as the book having
    * lost its front matter rather than as being resumed.
    */
-  const resumedFor = useRef<string | null>(null);
   useLayoutEffect(() => {
     if (resumedFor.current === book.id) return;
     resumedFor.current = book.id;

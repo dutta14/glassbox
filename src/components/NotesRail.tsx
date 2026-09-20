@@ -140,6 +140,8 @@ interface NotesRailProps {
   /** Opens the Books page, the only way into a book while the rail keeps
       notes in one list. */
   onOpenBooks: () => void;
+  /** Opens a book at one of its chapters, from a chapter row. */
+  onOpenChapter: (bookId: string, noteId: string) => void;
   onDeleteBook: (id: string) => void;
   onAddNoteToBook: (id: string) => void;
   chatActive: boolean;
@@ -174,6 +176,7 @@ export const NotesRail = ({
   onDeleteConversation,
   onSelectBook,
   onOpenBooks,
+  onOpenChapter,
   onDeleteBook,
   onAddNoteToBook,
   chatActive,
@@ -580,7 +583,9 @@ export const NotesRail = ({
                             chapters={chaptersOf(book)}
                             currentNoteId={currentNoteId}
                             openMenuId={openMenuId}
-                            onSelect={onSelect}
+                            onOpenChapter={(noteId) =>
+                              onOpenChapter(book.id, noteId)
+                            }
                             onMenuOpenChange={(noteId, open) =>
                               setOpenMenuId(open ? noteId : null)
                             }

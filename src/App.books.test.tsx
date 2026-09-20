@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -149,7 +149,7 @@ beforeEach(() => {
 });
 
 /* The rail lists books only when notes are arranged by book. In the default
-   arrangement, one list, the Books section is a single row that opens the
+   arrangement, one list, Books is a single top-level entry that opens the
    Books page, and notes stay where they are. Tests that read book rows out of
    the rail say so by calling this before rendering; tests that read note rows
    leave the default alone. */
@@ -162,6 +162,21 @@ const arrangeByBook = () => {
 const switchToByBook = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole("button", { name: "Organize notes" }));
   await user.click(screen.getByRole("menuitemradio", { name: "By book" }));
+};
+
+/** jsdom has no scrollIntoView, and opening a book at a chapter is a scroll. */
+const stubScrollIntoView = () => {
+  const original = Element.prototype.scrollIntoView;
+  const spy = vi.fn();
+  Element.prototype.scrollIntoView = spy;
+  return {
+    /** The chapter ids the app actually scrolled to, in order. */
+    targets: () =>
+      spy.mock.instances.map((el) => (el as HTMLElement).dataset.chapterId),
+    restore() {
+      Element.prototype.scrollIntoView = original;
+    },
+  };
 };
 
 describe("books, end to end through the interface", () => {
@@ -450,5 +465,77 @@ describe("books, end to end through the interface", () => {
     expect(
       await screen.findByText(/That book doesn’t exist/),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * Opening a book at one of its chapters, from the rail.
+ *
+ * A pick belongs to one book. Letting whatever book happens to be on screen
+ * answer for it was a real failure: the open book spent the pick, and the book
+ * the reader actually asked for then opened at its first page with no sign
+ * anything had gone wrong.
+ */
+describe("opening a book at a chapter", () => {
+  const twoBooks = async (user: ReturnType<typeof userEvent.setup>) => {
+    await addNoteToNewBook(user, "Drizzle", "Autumn");
+    await addNoteToNewBook(user, "Decagon", "Shapes");
+  };
+
+  const expand = async (
+    user: ReturnType<typeof userEvent.setup>,
+    bookTitle: string,
+  ) =>
+    user.click(
+      await screen.findByRole("button", { name: `Expand ${bookTitle}` }),
+    );
+
+  it("opens the book the chapter belongs to, at that chapter", async () => {
+    arrangeByBook();
+    const scroll = stubScrollIntoView();
+    try {
+      const user = userEvent.setup();
+      const { store } = makeBookStore();
+      renderApp([makeNote("n1", "Drizzle"), makeNote("n2", "Decagon")], store);
+      await twoBooks(user);
+
+      await expand(user, "Shapes");
+      await user.click(await screen.findByRole("button", { name: "Decagon" }));
+
+      expect(
+        await screen.findByRole("textbox", { name: "Book title" }),
+      ).toHaveValue("Shapes");
+      await waitFor(() => expect(scroll.targets()).toContain("n2"));
+    } finally {
+      scroll.restore();
+    }
+  });
+
+  /* The book already open must not answer for another book's pick. When it
+     did, it spent the pick on the way past and Shapes opened at the front. */
+  it("still opens at the chapter when another book is already open", async () => {
+    arrangeByBook();
+    const scroll = stubScrollIntoView();
+    try {
+      const user = userEvent.setup();
+      const { store } = makeBookStore();
+      renderApp([makeNote("n1", "Drizzle"), makeNote("n2", "Decagon")], store);
+      await twoBooks(user);
+
+      await user.click(await screen.findByRole("button", { name: /^Autumn/ }));
+      expect(
+        await screen.findByRole("textbox", { name: "Book title" }),
+      ).toHaveValue("Autumn");
+
+      await expand(user, "Shapes");
+      await user.click(await screen.findByRole("button", { name: "Decagon" }));
+
+      expect(
+        await screen.findByRole("textbox", { name: "Book title" }),
+      ).toHaveValue("Shapes");
+      await waitFor(() => expect(scroll.targets()).toContain("n2"));
+    } finally {
+      scroll.restore();
+    }
   });
 });
