@@ -1,6 +1,5 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import {
-  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -29,8 +28,8 @@ interface NoteEditorProps {
   onScrollHandled: () => void;
   onSelectNote: (id: string) => void;
   readAsset: (path: string) => Promise<Blob | null>;
-  /** Every book holding this note. Empty for the great majority of notes. */
-  books?: Book[];
+  /** The book holding this note. Null for the great majority of notes. */
+  book?: Book | null;
 }
 
 /**
@@ -136,7 +135,7 @@ export const NoteEditor = ({
   onScrollHandled,
   onSelectNote,
   readAsset,
-  books = [],
+  book = null,
 }: NoteEditorProps) => {
   const scrollRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -392,22 +391,13 @@ export const NoteEditor = ({
         {/* Placed above the rule rather than below it, because it says where
             this note sits rather than anything about the writing that follows.
             A real link and not a button: this is a navigation, so it should
-            survive a middle click and be copyable as an address.
-
-            Every book is named, not just the first. A note can sit in more
-            than one, and showing one of two silently would leave the reader
-            wondering why the other never appears. */}
-        {books.length > 0 && (
+            survive a middle click and be copyable as an address. */}
+        {book && (
           <p className="editor__from-book">
-            {books.length === 1 ? "In the Book - " : "In the Books - "}
-            {books.map((book, i) => (
-              <Fragment key={book.id}>
-                {i > 0 && ", "}
-                <Link className="editor__from-book-link" to={bookPath(book.id)}>
-                  {book.title.trim() || COPY.untitledBook}
-                </Link>
-              </Fragment>
-            ))}
+            {"In the Book - "}
+            <Link className="editor__from-book-link" to={bookPath(book.id)}>
+              {book.title.trim() || COPY.untitledBook}
+            </Link>
           </p>
         )}
 

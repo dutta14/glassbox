@@ -235,18 +235,15 @@ describe('useBooks — removeNoteFromAllBooks', () => {
   });
 });
 
-describe('useBooks — booksByNoteId', () => {
-  it('maps each note id to the books that hold it', async () => {
-    const store = fakeStore([
-      mkBook('b1', ['n1', 'n2']),
-      mkBook('b2', ['n2']),
-    ]);
+describe('useBooks — bookByNoteId', () => {
+  it('maps each note id to the book that holds it', async () => {
+    const store = fakeStore([mkBook('b1', ['n1', 'n2']), mkBook('b2', ['n3'])]);
     const { result } = setup(store);
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    const index = result.current.booksByNoteId;
-    expect(index.get('n1')?.map((b) => b.id)).toEqual(['b1']);
-    expect(index.get('n2')?.map((b) => b.id).sort()).toEqual(['b1', 'b2']);
+    const index = result.current.bookByNoteId;
+    expect(index.get('n1')?.id).toBe('b1');
+    expect(index.get('n3')?.id).toBe('b2');
   });
 
   it('excludes a note that no book holds', async () => {
@@ -254,7 +251,7 @@ describe('useBooks — booksByNoteId', () => {
     const { result } = setup(store);
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    expect(result.current.booksByNoteId.has('n2')).toBe(false);
+    expect(result.current.bookByNoteId.has('n2')).toBe(false);
   });
 });
 
@@ -375,5 +372,114 @@ describe('useBooks — chapter numbering', () => {
     });
 
     expect(result.current.books[0].unnumberedIds).toEqual(['n1']);
+  });
+});
+
+describe('useBooks — a note belongs to one book', () => {
+  it('takes the note out of its old book when it is added to another', async () => {
+    const store = fakeStore([mkBook('b1', ['n1', 'n2']), mkBook('b2', ['n3'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.addChapter('b2', 'n2', 'A Chapter');
+    });
+
+    const byId = (id: string) => result.current.books.find((b) => b.id === id)!;
+    expect(byId('b1').chapterIds).toEqual(['n1']);
+    expect(byId('b2').chapterIds).toEqual(['n3', 'n2']);
+  });
+
+  it('persists the book the note left, not only the one it joined', async () => {
+    const store = fakeStore([mkBook('b1', ['n1']), mkBook('b2', [])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.addChapter('b2', 'n1', 'A Chapter');
+    });
+
+    const written = store.puts.filter((b) => b.id === 'b1');
+    expect(written.at(-1)?.chapterIds).toEqual([]);
+  });
+
+  /**
+   * The old book's opinion about whether the chapter was numbered has to go
+   * with it. Left behind it would be waiting to reappear if the note ever came
+   * back, carrying a decision made about a different arrangement of the book.
+   */
+  it('leaves no numbering decision behind in the old book', async () => {
+    const store = fakeStore([
+      { ...mkBook('b1', ['n1']), unnumberedIds: ['n1'] },
+      mkBook('b2', []),
+    ]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.addChapter('b2', 'n1', 'A Chapter');
+    });
+
+    expect(result.current.books.find((b) => b.id === 'b1')!.unnumberedIds).toEqual([]);
+  });
+
+  it('does not disturb the book when the note is added back to where it already is', async () => {
+    const store = fakeStore([mkBook('b1', ['n1', 'n2'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.addChapter('b1', 'n2', 'A Chapter');
+    });
+
+    expect(result.current.books[0].chapterIds).toEqual(['n1', 'n2']);
+  });
+
+  /**
+   * Without the guard the book is briefly written without the chapter and then
+   * written back with it. The end state is the same either way, which is why
+   * this checks what was written rather than what is left.
+   */
+  it('never writes the book without a chapter it is keeping', async () => {
+    const store = fakeStore([mkBook('b1', ['n1', 'n2'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.addChapter('b1', 'n2', 'A Chapter');
+    });
+
+    const missing = store.puts.filter(
+      (b) => b.id === 'b1' && !b.chapterIds.includes('n2')
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it('names the book a note belongs to', async () => {
+    const store = fakeStore([mkBook('b1', ['n1']), mkBook('b2', ['n2'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    expect(result.current.bookByNoteId.get('n2')?.id).toBe('b2');
+  });
+
+  it('reports no book for a note that is in none', async () => {
+    const store = fakeStore([mkBook('b1', ['n1'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    expect(result.current.bookByNoteId.get('n9') ?? null).toBeNull();
+  });
+
+  it('reports the new book immediately after a move', async () => {
+    const store = fakeStore([mkBook('b1', ['n1']), mkBook('b2', [])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.addChapter('b2', 'n1', 'A Chapter');
+    });
+
+    expect(result.current.bookByNoteId.get('n1')?.id).toBe('b2');
   });
 });

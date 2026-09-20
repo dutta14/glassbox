@@ -44,9 +44,24 @@ export interface UseBooksResult {
    * show a "part of a book" marker without scanning every book on every render.
    * Books are few, so this is cheap to rebuild whenever the list changes.
    */
-  booksByNoteId: Map<string, Book[]>;
+  /**
+   * The book each note belongs to. A note belongs to at most one, which is
+   * why this is a book and not a list of them.
+   */
+  bookByNoteId: Map<string, Book>;
   removeNoteFromAllBooks: (noteId: string) => Promise<void>;
 }
+
+/**
+ * A book with one chapter taken out of it, and with every decision that was
+ * about that chapter taken out too. Left behind, they would come back to life
+ * if the note were ever added again.
+ */
+const withoutChapter = (book: Book, noteId: string): Book => ({
+  ...book,
+  chapterIds: book.chapterIds.filter((id) => id !== noteId),
+  unnumberedIds: (book.unnumberedIds ?? []).filter((id) => id !== noteId),
+});
 
 export const useBooks = (store: BookStore | null): UseBooksResult => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -128,6 +143,15 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
 
   const addChapter = useCallback(
     async (bookId: string, noteId: string, noteTitle: string): Promise<void> => {
+      /* A note belongs to one book at a time, so adding it somewhere is also
+         taking it out of wherever it was. Done before the add rather than
+         after, so that a failure part way through leaves the note in no book
+         rather than in two, which is the state the rule exists to forbid. */
+      const previous = booksRef.current.find(
+        (b) => b.id !== bookId && b.chapterIds.includes(noteId)
+      );
+      if (previous) persist({ ...withoutChapter(previous, noteId), updatedAt: new Date().toISOString() });
+
       await mutate(bookId, (book) => {
         // Idempotent by contract. A note already in the book is not appended a
         // second time, so adding the same note twice leaves one entry rather
@@ -167,17 +191,11 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
 
   const removeChapter = useCallback(
     async (bookId: string, noteId: string): Promise<void> => {
-      await mutate(bookId, (book) => ({
-        ...book,
-        chapterIds: book.chapterIds.filter((id) => id !== noteId),
-        // Dropped here too, or the book would carry a numbering decision about
-        // a chapter it no longer has, which would come back if the note were
-        // added again later.
-        unnumberedIds: (book.unnumberedIds ?? []).filter((id) => id !== noteId),
-      }));
+      await mutate(bookId, (book) => withoutChapter(book, noteId));
     },
     [mutate]
   );
+
 
   const reorderChapters = useCallback(
     async (bookId: string, chapterIds: string[]): Promise<void> => {
@@ -227,14 +245,10 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
     []
   );
 
-  const booksByNoteId = useMemo(() => {
-    const index = new Map<string, Book[]>();
+  const bookByNoteId = useMemo(() => {
+    const index = new Map<string, Book>();
     for (const book of books) {
-      for (const noteId of book.chapterIds) {
-        const existing = index.get(noteId);
-        if (existing) existing.push(book);
-        else index.set(noteId, [book]);
-      }
+      for (const noteId of book.chapterIds) index.set(noteId, book);
     }
     return index;
   }, [books]);
@@ -249,7 +263,7 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
     reorderChapters,
     renameBook,
     deleteBook,
-    booksByNoteId,
+    bookByNoteId,
     removeNoteFromAllBooks,
   };
 };

@@ -276,10 +276,44 @@ describe("books, end to end through the interface", () => {
     );
 
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/Childhood/)).toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: /^Childhood/ }),
     ).toBeDisabled();
+  });
+
+  /* The move is the surprising part of the rule, so it is said before the
+     choice is made rather than reported after it. */
+  it("warns that choosing another book will move the note", async () => {
+    const user = userEvent.setup();
+    const { store } = makeBookStore();
+    renderApp([makeNote("n1", "Luncheon")], store);
+
+    await addNoteToNewBook(user, "Luncheon", "Childhood");
+    await openRowMenu(user, "Luncheon");
+    await user.click(
+      await screen.findByRole("menuitem", { name: /add to book/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/is in Childhood\. Choosing another book moves it/),
+    ).toBeInTheDocument();
+  });
+
+  it("asks to add rather than to move when the note is in no book", async () => {
+    const user = userEvent.setup();
+    const { store } = makeBookStore();
+    renderApp([makeNote("n1", "Luncheon")], store);
+
+    await openRowMenu(user, "Luncheon");
+    await user.click(
+      await screen.findByRole("menuitem", { name: /add to book/i }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "Add to book" }),
+    ).toBeInTheDocument();
   });
 
   it("names the book under the note's title, linked to that book", async () => {
@@ -315,10 +349,16 @@ describe("books, end to end through the interface", () => {
     expect(within(main).queryByText(/In the Book/i)).not.toBeInTheDocument();
   });
 
-  it("names every book when a note sits in more than one", async () => {
+  /**
+   * A note belongs to one book, so adding it to a second takes it out of the
+   * first. This goes through the interface end to end because the removal
+   * happens to a book the user is not looking at, which is exactly the kind
+   * of change that can be wired up in the hook and never reach the screen.
+   */
+  it("moves the note out of its old book when it is added to another", async () => {
     const user = userEvent.setup();
     const { store } = makeBookStore();
-    renderApp([makeNote("n1", "Luncheon")], store);
+    renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
     await addNoteToNewBook(user, "Luncheon", "Summers");
@@ -327,33 +367,37 @@ describe("books, end to end through the interface", () => {
     }));
 
     const main = await screen.findByRole("main");
-    expect(await within(main).findByText(/In the Books -/)).toBeInTheDocument();
-    expect(within(main).getByRole("link", { name: "Childhood" })).toBeInTheDocument();
-    expect(within(main).getByRole("link", { name: "Summers" })).toBeInTheDocument();
+    expect(await within(main).findByText(/In the Book -/)).toBeInTheDocument();
+    expect(
+      within(main).getByRole("link", { name: "Summers" }),
+    ).toBeInTheDocument();
+    expect(
+      within(main).queryByRole("link", { name: "Childhood" }),
+    ).not.toBeInTheDocument();
   });
 
-  /* The rail has room for one name, so a note in two books names the first of
-     them. Pinning it to whichever book the rail itself lists first keeps the
-     test honest about what "first" means instead of restating the code. */
-  it("names only the first of a note's books on its rail row", async () => {
+  it("leaves the old book empty after the note moves out of it", async () => {
+    const user = userEvent.setup();
+    const { store } = makeBookStore();
+    renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
+
+    await addNoteToNewBook(user, "Luncheon", "Childhood");
+    await addNoteToNewBook(user, "Luncheon", "Summers");
+
+    expect(
+      await screen.findByRole("button", { name: /^Childhood\s*Empty/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("names the note's book on its rail row", async () => {
     const user = userEvent.setup();
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
-    await addNoteToNewBook(user, "Luncheon", "Summers");
-
-    const bookRows = screen.getAllByRole("button", {
-      name: /^(Childhood|Summers)/,
-    });
-    const [first, second] = bookRows.map((b) =>
-      b.textContent?.startsWith("Childhood") ? "Childhood" : "Summers",
-    );
-    expect(first).not.toBe(second);
 
     const noteRow = await railRow("Luncheon");
-    expect(within(noteRow).getByText(first)).toBeInTheDocument();
-    expect(within(noteRow).queryByText(second)).not.toBeInTheDocument();
+    expect(within(noteRow).getByText("Childhood")).toBeInTheDocument();
   });
 
   it("shows a calm message for a book id that does not exist", async () => {

@@ -7,8 +7,8 @@ import "../styles/AddToBookModal.css";
 interface AddToBookModalProps {
   noteTitle: string;
   books: Book[];
-  /** Ids of books that already contain this note. */
-  containingBookIds: string[];
+  /** The book this note is in, or null. A note belongs to at most one. */
+  currentBookId: string | null;
   open: boolean;
   onClose: () => void;
   onAddToBook: (bookId: string) => void;
@@ -24,7 +24,7 @@ const chapterLabel = (count: number): string =>
 export const AddToBookModal = ({
   noteTitle,
   books,
-  containingBookIds,
+  currentBookId,
   open,
   onClose,
   onAddToBook,
@@ -41,6 +41,8 @@ export const AddToBookModal = ({
   const listLabelId = useId();
 
   const hasBooks = books.length > 0;
+  const current = books.find((b) => b.id === currentBookId) ?? null;
+  const name = noteTitle.trim() || COPY.untitled;
 
   // Reopening for a different note must not carry the last note's half typed
   // title, so the field is cleared on every open rather than on close.
@@ -136,10 +138,15 @@ export const AddToBookModal = ({
         className="add-book"
       >
         <h2 id={titleId} className="add-book__title">
-          Add to book
+          {current ? "Move to another book" : "Add to book"}
         </h2>
+        {/* A note belongs to one book, so choosing a second one is a move
+            rather than an addition. Said before the choice is made, because a
+            book quietly losing a chapter is not a thing to find out later. */}
         <p id={descId} className="add-book__desc">
-          Add {noteTitle.trim() || COPY.untitled} to a book.
+          {current
+            ? `${name} is in ${current.title.trim() || COPY.untitledBook}. Choosing another book moves it.`
+            : `Add ${name} to a book.`}
         </p>
 
         {hasBooks && (
@@ -149,7 +156,7 @@ export const AddToBookModal = ({
             </p>
             <ul className="add-book__list" aria-labelledby={listLabelId}>
               {books.map((book) => {
-                const already = containingBookIds.includes(book.id);
+                const already = book.id === currentBookId;
                 const bookTitle = book.title.trim() || COPY.untitledBook;
                 return (
                   <li key={book.id}>

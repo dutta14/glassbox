@@ -22,14 +22,14 @@ const mkBook = (overrides: Partial<Book> = {}): Book => ({
  */
 const Harness = ({
   books = [],
-  containingBookIds = [],
+  currentBookId = null,
   noteTitle = "React from scratch",
   onClose = vi.fn(),
   onAddToBook = vi.fn(),
   onCreateBook = vi.fn(),
 }: {
   books?: Book[];
-  containingBookIds?: string[];
+  currentBookId?: string | null;
   noteTitle?: string;
   onClose?: () => void;
   onAddToBook?: (bookId: string) => void;
@@ -44,7 +44,7 @@ const Harness = ({
       <AddToBookModal
         noteTitle={noteTitle}
         books={books}
-        containingBookIds={containingBookIds}
+        currentBookId={currentBookId}
         open={open}
         onClose={() => {
           onClose();
@@ -119,7 +119,7 @@ describe("AddToBookModal", () => {
     render(
       <Harness
         books={[mkBook({ id: "b1", title: "Poems" })]}
-        containingBookIds={["b1"]}
+        currentBookId="b1"
       />,
     );
 
@@ -136,7 +136,7 @@ describe("AddToBookModal", () => {
     render(
       <Harness
         books={[mkBook({ id: "b1", title: "Poems" })]}
-        containingBookIds={["b1"]}
+        currentBookId="b1"
         onAddToBook={onAddToBook}
       />,
     );

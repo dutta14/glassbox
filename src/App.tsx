@@ -128,7 +128,7 @@ interface NoteStageProps {
   readAsset: (path: string) => Promise<Blob | null>;
   /* The whole index rather than this note's books, because the stage reads the
      id from the URL and so cannot be handed its own slice from outside. */
-  booksByNoteId: Map<string, Book[]>;
+  bookByNoteId: Map<string, Book>;
 }
 
 /* The stage for /note/:id. This route only mounts once notes have loaded, since
@@ -143,7 +143,7 @@ const NoteStage = ({
   onScrollHandled,
   onSelectNote,
   readAsset,
-  booksByNoteId,
+  bookByNoteId,
 }: NoteStageProps) => {
   const { id } = useParams();
   const note = notes.find((n) => n.id === id) ?? null;
@@ -167,7 +167,7 @@ const NoteStage = ({
       nextNote={nextNote}
       onSelectNote={onSelectNote}
       readAsset={readAsset}
-      books={booksByNoteId.get(note.id) ?? []}
+      book={bookByNoteId.get(note.id) ?? null}
     />
   );
 };
@@ -327,7 +327,7 @@ export const AppReady = ({
     reorderChapters,
     deleteBook,
     renameBook,
-    booksByNoteId,
+    bookByNoteId,
     removeNoteFromAllBooks,
   } = useBooks(bookStore);
 
@@ -340,16 +340,14 @@ export const AppReady = ({
     forget: forgetReadingPosition,
   } = useReadingPosition();
 
-  /* Flattened to one name per note, because that is all a rail row shows. A
-     note in two books names the first; the note's own view lists them all. */
+  /* Reduced to a name per note, because that is all a rail row shows. */
   const bookNameByNoteId = useMemo(() => {
     const byNote = new Map<string, string>();
-    for (const [noteId, holding] of booksByNoteId) {
-      const first = holding[0];
-      if (first) byNote.set(noteId, first.title.trim() || COPY.untitledBook);
+    for (const [noteId, book] of bookByNoteId) {
+      byNote.set(noteId, book.title.trim() || COPY.untitledBook);
     }
     return byNote;
-  }, [booksByNoteId]);
+  }, [bookByNoteId]);
 
   const [pendingScrollOffset, setPendingScrollOffset] = useState<number | null>(
     null,
@@ -758,10 +756,8 @@ export const AppReady = ({
             open={addToBookNote !== null}
             noteTitle={addToBookNote?.title.trim() || COPY.untitled}
             books={books}
-            containingBookIds={
-              addToBookNote
-                ? (booksByNoteId.get(addToBookNote.id) ?? []).map((b) => b.id)
-                : []
+            currentBookId={
+              addToBookNote ? (bookByNoteId.get(addToBookNote.id)?.id ?? null) : null
             }
             onClose={() => setAddToBookNoteId(null)}
             onAddToBook={handleAddToBook}
@@ -855,7 +851,7 @@ export const AppReady = ({
                       onScrollHandled={() => setPendingScrollOffset(null)}
                       onSelectNote={handleSelectNote}
                       readAsset={readAsset}
-                      booksByNoteId={booksByNoteId}
+                      bookByNoteId={bookByNoteId}
                     />
                   }
                 />

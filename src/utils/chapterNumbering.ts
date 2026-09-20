@@ -78,3 +78,87 @@ export const labelChapters = (
     return { number: counted, title: stripSelfNumber(title) };
   });
 };
+
+/* A story name written into the chapter's own title, as in
+   "Borrowed Weather – Chapter 1". The separator must have space around it so
+   that a hyphenated word, "Well-Being – Chapter 1", is never split down the
+   middle, and the tail must be something SELF_NUMBER would recognise so that
+   "Rain – Chapter of Errors" is left alone. */
+const STORY_SPLIT =
+  /^(.+?)(?:\s+[-–—]\s+|\s*:\s+)((?:#\s*|(?:chapters?|chap|ch|parts?)\.?\s+)\d+.*)$/i;
+
+/**
+ * Splits "Borrowed Weather – Chapter 1" into the story it belongs to and what
+ * is left of the chapter's own title.
+ *
+ * `story` is null when the title names no story, which is the common case and
+ * the one that must not be damaged.
+ */
+export const splitStoryTitle = (
+  title: string,
+): { story: string | null; rest: string } => {
+  const m = STORY_SPLIT.exec(title.trim());
+  return m ? { story: m[1].trim(), rest: m[2].trim() } : { story: null, rest: title.trim() };
+};
+
+/** Where a story begins within a book's single flat run of chapters. */
+export interface StoryMark {
+  /** The chapter that opens the story. */
+  startsAt: string;
+  title: string;
+}
+
+export interface StorySection {
+  /** The story's name, or null for chapters standing outside any story. */
+  title: string | null;
+  chapters: (ChapterLabel & { id: string })[];
+}
+
+/**
+ * Divides a book into its stories and numbers each one from the start.
+ *
+ * An anthology is several stories bound together, so chapter one comes round
+ * again with each of them. Stories are marked by which chapter opens them
+ * rather than by listing their members, which makes a story contiguous by
+ * construction: there is no arrangement of the data that can interleave two
+ * of them, which is a thing a book cannot be.
+ *
+ * A chapter that carries its story's name in its own title, "Echoes –
+ * Chapter 2", has that prefix removed, but only when it agrees with the story
+ * it actually sits in. Stripping a prefix that disagrees would hide the fact
+ * that the chapter has probably been filed under the wrong story.
+ */
+export const groupChapters = (
+  chapters: readonly { id: string; title: string }[],
+  unnumbered: ReadonlySet<string>,
+  stories: readonly StoryMark[] = [],
+): StorySection[] => {
+  const opens = new Map(stories.map((s) => [s.startsAt, s.title]));
+
+  const sections: { title: string | null; raw: { id: string; title: string }[] }[] =
+    [];
+  for (const chapter of chapters) {
+    if (opens.has(chapter.id) || sections.length === 0) {
+      sections.push({
+        title: opens.has(chapter.id) ? (opens.get(chapter.id) ?? null) : null,
+        raw: [],
+      });
+    }
+    sections[sections.length - 1].raw.push(chapter);
+  }
+
+  return sections.map(({ title, raw }) => ({
+    title,
+    chapters: labelChapters(
+      raw.map((c) => {
+        const { story, rest } = splitStoryTitle(c.title);
+        const belongs =
+          story !== null &&
+          title !== null &&
+          story.toLowerCase() === title.trim().toLowerCase();
+        return { id: c.id, title: belongs ? rest : c.title };
+      }),
+      unnumbered,
+    ).map((label, i) => ({ ...label, id: raw[i].id })),
+  }));
+};

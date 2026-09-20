@@ -3,6 +3,8 @@ import {
   isFrontMatterTitle,
   stripSelfNumber,
   labelChapters,
+  splitStoryTitle,
+  groupChapters,
 } from "./chapterNumbering";
 
 describe("isFrontMatterTitle", () => {
@@ -192,5 +194,169 @@ describe("labelChapters", () => {
 
   it("returns nothing for a book with no chapters", () => {
     expect(labelChapters([], new Set())).toEqual([]);
+  });
+});
+
+describe("splitStoryTitle", () => {
+  it("takes the story name off a chapter that carries one", () => {
+    expect(splitStoryTitle("Borrowed Weather – Chapter 1")).toEqual({
+      story: "Borrowed Weather",
+      rest: "Chapter 1",
+    });
+  });
+
+  it("reads a part the same way as a chapter", () => {
+    expect(splitStoryTitle("Almost Love – Part 2")).toEqual({
+      story: "Almost Love",
+      rest: "Part 2",
+    });
+  });
+
+  it("accepts a colon as the separator", () => {
+    expect(splitStoryTitle("Echoes: Chapter 3")).toEqual({
+      story: "Echoes",
+      rest: "Chapter 3",
+    });
+  });
+
+  it("finds no story in a chapter that names none", () => {
+    expect(splitStoryTitle("Chapter 1")).toEqual({
+      story: null,
+      rest: "Chapter 1",
+    });
+  });
+
+  /**
+   * The separator needs space on both sides for exactly this reason. Without
+   * it every hyphenated word in the library becomes a story boundary.
+   */
+  it("does not split a hyphenated word", () => {
+    expect(splitStoryTitle("Well-Being – Chapter 1")).toEqual({
+      story: "Well-Being",
+      rest: "Chapter 1",
+    });
+  });
+
+  /** "Chapter" has to be numbering something, or it is just a word. */
+  it("leaves a title alone when the word chapter is part of the prose", () => {
+    expect(splitStoryTitle("Rain – Chapter of Errors")).toEqual({
+      story: null,
+      rest: "Rain – Chapter of Errors",
+    });
+  });
+
+  it("keeps whatever follows the number", () => {
+    expect(splitStoryTitle("Fracture – Chapter 4: The Long Road")).toEqual({
+      story: "Fracture",
+      rest: "Chapter 4: The Long Road",
+    });
+  });
+});
+
+describe("groupChapters", () => {
+  const plain = (...titles: string[]) =>
+    titles.map((title, i) => ({ id: `c${i}`, title }));
+
+  it("puts a book with no stories in one unnamed section", () => {
+    const [section, ...rest] = groupChapters(
+      plain("One", "Two"),
+      new Set(),
+      [],
+    );
+
+    expect(rest).toEqual([]);
+    expect(section.title).toBeNull();
+    expect(section.chapters.map((c) => c.number)).toEqual([1, 2]);
+  });
+
+  /** The whole point: chapter one comes round again with each story. */
+  it("starts each story's numbering over at one", () => {
+    const sections = groupChapters(
+      plain("A1", "A2", "B1", "B2", "B3"),
+      new Set(),
+      [
+        { startsAt: "c0", title: "Echoes" },
+        { startsAt: "c2", title: "Fracture" },
+      ],
+    );
+
+    expect(sections.map((s) => s.title)).toEqual(["Echoes", "Fracture"]);
+    expect(sections[0].chapters.map((c) => c.number)).toEqual([1, 2]);
+    expect(sections[1].chapters.map((c) => c.number)).toEqual([1, 2, 3]);
+  });
+
+  it("leaves chapters before the first story in a section of their own", () => {
+    const sections = groupChapters(plain("Foreword", "A1"), new Set(), [
+      { startsAt: "c1", title: "Echoes" },
+    ]);
+
+    expect(sections.map((s) => s.title)).toEqual([null, "Echoes"]);
+    expect(sections[0].chapters.map((c) => c.id)).toEqual(["c0"]);
+  });
+
+  it("does not leave an empty section when a story opens the book", () => {
+    const sections = groupChapters(plain("A1"), new Set(), [
+      { startsAt: "c0", title: "Echoes" },
+    ]);
+
+    expect(sections).toHaveLength(1);
+  });
+
+  it("ignores a story anchored to a chapter the book does not have", () => {
+    const sections = groupChapters(plain("A1", "A2"), new Set(), [
+      { startsAt: "gone", title: "Echoes" },
+    ]);
+
+    expect(sections.map((s) => s.title)).toEqual([null]);
+  });
+
+  /** Front matter costs nothing inside a story either. */
+  it("skips unnumbered chapters within a story's count", () => {
+    const sections = groupChapters(
+      plain("Echoes", "Prologue", "One"),
+      new Set(["c1"]),
+      [{ startsAt: "c0", title: "Echoes" }],
+    );
+
+    expect(sections[0].chapters.map((c) => c.number)).toEqual([1, null, 2]);
+  });
+
+  it("takes the story's name out of a chapter that repeats it", () => {
+    const sections = groupChapters(
+      plain("Echoes – Chapter 1", "Echoes – Chapter 2"),
+      new Set(),
+      [{ startsAt: "c0", title: "Echoes" }],
+    );
+
+    expect(sections[0].chapters.map((c) => c.title)).toEqual(["", ""]);
+    expect(sections[0].chapters.map((c) => c.number)).toEqual([1, 2]);
+  });
+
+  /**
+   * A chapter calling itself part of another story is almost certainly filed
+   * wrong, and hiding the evidence would make that impossible to notice.
+   */
+  it("keeps a prefix that disagrees with the story it sits in", () => {
+    const sections = groupChapters(
+      plain("Fracture – Chapter 1"),
+      new Set(),
+      [{ startsAt: "c0", title: "Echoes" }],
+    );
+
+    expect(sections[0].chapters[0].title).toBe("Fracture – Chapter 1");
+  });
+
+  it("keeps a story prefix when the chapter is in no story at all", () => {
+    const sections = groupChapters(plain("Echoes – Chapter 1"), new Set(), []);
+
+    expect(sections[0].chapters[0].title).toBe("Echoes – Chapter 1");
+  });
+
+  it("matches the story name regardless of case", () => {
+    const sections = groupChapters(plain("ECHOES – Chapter 1"), new Set(), [
+      { startsAt: "c0", title: "Echoes" },
+    ]);
+
+    expect(sections[0].chapters[0].title).toBe("");
   });
 });
