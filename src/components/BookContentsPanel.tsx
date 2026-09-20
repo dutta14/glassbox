@@ -1,4 +1,3 @@
-import type { StoryMark } from "../types";
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { BookIndex } from "./BookIndex";
@@ -10,13 +9,7 @@ interface BookContentsPanelProps {
   chapters: BookIndexChapter[];
   currentChapterId: string | null;
   onClose: () => void;
-  onReorder: (chapterIds: string[]) => void;
   onJump: (chapterId: string) => void;
-  onRemoveChapter: (chapterId: string) => void;
-  onSetNumbered: (chapterId: string, numbered: boolean) => void;
-  onSetStory: (chapterId: string, title: string | null) => void;
-  suggestedStories?: StoryMark[];
-  onApplyStories?: (stories: StoryMark[]) => void;
 }
 
 const FOCUSABLE =
@@ -39,13 +32,7 @@ export const BookContentsPanel = ({
   chapters,
   currentChapterId,
   onClose,
-  onReorder,
   onJump,
-  onRemoveChapter,
-  onSetNumbered,
-  onSetStory,
-  suggestedStories,
-  onApplyStories,
 }: BookContentsPanelProps) => {
   const panelRef = useRef<HTMLDivElement>(null);
   // Where focus was before the sheet opened, so closing returns the keyboard
@@ -139,12 +126,6 @@ export const BookContentsPanel = ({
           <BookIndex
             chapters={chapters}
             currentChapterId={currentChapterId}
-            onReorder={onReorder}
-            onRemoveChapter={onRemoveChapter}
-            onSetNumbered={onSetNumbered}
-            onSetStory={onSetStory}
-            suggestedStories={suggestedStories}
-            onApplyStories={onApplyStories}
             headingId={headingId}
             /* Closing on jump is the whole point of the sheet: it is a way
                through to a chapter, so leaving it open would cover the place

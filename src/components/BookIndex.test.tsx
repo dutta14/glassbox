@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { StoryMark } from "../types";
 import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -26,6 +27,9 @@ const Harness = ({
   onRemoveChapter = vi.fn(),
   onSetNumbered = vi.fn(),
   onSetStory = vi.fn(),
+  editable,
+  suggestedStories,
+  onApplyStories,
 }: {
   initial?: BookIndexChapter[];
   currentChapterId?: string | null;
@@ -34,6 +38,9 @@ const Harness = ({
   onRemoveChapter?: (id: string) => void;
   onSetNumbered?: (id: string, numbered: boolean) => void;
   onSetStory?: (id: string, title: string | null) => void;
+  editable?: boolean;
+  suggestedStories?: StoryMark[];
+  onApplyStories?: (stories: StoryMark[]) => void;
 }) => {
   const [chapters, setChapters] = useState(initial);
   const handleReorder = (ids: string[]) => {
@@ -44,11 +51,19 @@ const Harness = ({
     <BookIndex
       chapters={chapters}
       currentChapterId={currentChapterId}
-      onReorder={handleReorder}
       onJump={onJump}
-      onRemoveChapter={onRemoveChapter}
-      onSetNumbered={onSetNumbered}
-      onSetStory={onSetStory}
+      editing={
+        editable === false
+          ? undefined
+          : {
+              onReorder: handleReorder,
+              onRemoveChapter,
+              onSetNumbered,
+              onSetStory,
+              suggestedStories,
+              onApplyStories,
+            }
+      }
     />
   );
 };
@@ -396,7 +411,6 @@ describe("BookIndex stories", () => {
         initial={[
           { id: "a", title: "One", number: 1, story: null, missing: false },
         ]}
-        onSetStory={onSetStory}
       />,
     );
 
@@ -484,5 +498,66 @@ describe("BookIndex — a book that counts nothing", () => {
     expect(
       screen.getByRole("button", { name: "Go to May" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("BookIndex — reading rather than arranging", () => {
+  const rows = [
+    { id: "a", title: "May", number: 1, story: "Echoes", missing: false },
+    { id: "b", title: "Leaving", number: 2, story: "Echoes", missing: false },
+  ];
+
+  it("takes the row controls away when the list is not editable", () => {
+    render(<Harness initial={rows} editable={false} />);
+
+    expect(
+      screen.queryByRole("button", { name: /^Move .* down/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Remove / }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Start a story at/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still lets a reader jump to a chapter", async () => {
+    const onJump = vi.fn();
+    render(<Harness initial={rows} editable={false} onJump={onJump} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Go to May" }));
+    expect(onJump).toHaveBeenCalledWith("a");
+  });
+
+  it("names the story without offering to rename it", () => {
+    render(<Harness initial={rows} editable={false} />);
+
+    expect(screen.getByText("Echoes")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /rename this story/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("makes no offer to divide the book", () => {
+    render(
+      <Harness
+        initial={rows}
+        editable={false}
+        suggestedStories={[{ startsAt: "a", title: "Echoes" }]}
+        onApplyStories={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Divide the book" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps every control when the list is editable", () => {
+    render(<Harness initial={rows} />);
+
+    expect(
+      screen.getAllByRole("button", { name: /^Start a story at/ }),
+    ).toHaveLength(2);
   });
 });

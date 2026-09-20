@@ -29,11 +29,7 @@ const renderPanel = (over: PanelOverrides = {}) =>
       chapters={over.chapters ?? CHAPTERS}
       currentChapterId={over.currentChapterId ?? null}
       onClose={over.onClose ?? noop}
-      onReorder={over.onReorder ?? noop}
       onJump={over.onJump ?? noop}
-      onSetNumbered={vi.fn()}
-    onSetStory={vi.fn()}
-    onRemoveChapter={over.onRemoveChapter ?? noop}
     />,
   );
 
@@ -64,11 +60,7 @@ const Opener = ({ onJump = vi.fn() }: { onJump?: (id: string) => void }) => {
         chapters={CHAPTERS}
         currentChapterId={null}
         onClose={() => setOpen(false)}
-        onReorder={noop}
         onJump={onJump}
-        onSetNumbered={vi.fn()}
-    onSetStory={vi.fn()}
-    onRemoveChapter={noop}
       />
     </>
   );
@@ -82,11 +74,7 @@ describe("BookContentsPanel", () => {
         chapters={CHAPTERS}
         currentChapterId={null}
         onClose={noop}
-        onReorder={noop}
         onJump={noop}
-        onSetNumbered={vi.fn()}
-    onSetStory={vi.fn()}
-    onRemoveChapter={noop}
       />,
     );
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -209,23 +197,12 @@ describe("BookContentsPanel", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("stays open while chapters are being reordered", async () => {
-    const user = userEvent.setup();
-    const onClose = vi.fn();
-    renderPanel({ onClose });
-    await user.click(screen.getByRole("button", { name: "Move The Maid down" }));
-    // Reordering is work done on the list, so the list has to stay in front of
-    // the reader to do more of it.
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-  });
-
   it("wraps Tab from the last control back to the first", async () => {
     const user = userEvent.setup();
     renderPanel();
     const close = screen.getByRole("button", { name: "Close" });
     const last = screen.getByRole("button", {
-      name: "Remove The Storm from this book",
+      name: "Go to The Storm",
     });
     last.focus();
     await user.tab();
@@ -239,7 +216,38 @@ describe("BookContentsPanel", () => {
     close.focus();
     await user.tab({ shift: true });
     expect(
-      screen.getByRole("button", { name: "Remove The Storm from this book" }),
+      screen.getByRole("button", { name: "Go to The Storm" }),
     ).toHaveFocus();
+  });
+});
+
+describe("BookContentsPanel — for reading, not arranging", () => {
+  it("shows no row controls, so the titles get the panel's width", () => {
+    renderPanel();
+
+    // The panel is narrow and a chapter title is what a reader came for.
+    // Arranging the book happens on the contents page at the front of it.
+    expect(
+      screen.queryByRole("button", { name: /^Move / }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Remove / }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Start a story at/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Count / }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still lets a reader jump to a chapter", async () => {
+    const onJump = vi.fn();
+    renderPanel({ onJump });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Go to The Maid" }),
+    );
+    expect(onJump).toHaveBeenCalledWith("a");
   });
 });

@@ -30,14 +30,16 @@ const displayTitleOf = (chapter: BookIndexChapter): string =>
 const nameOf = (chapter: BookIndexChapter): string =>
   displayTitleOf(chapter) || "this chapter";
 
-interface BookIndexProps {
-  chapters: BookIndexChapter[];
-  /** The chapter currently in view, so it can be marked. Null when unknown. */
-  currentChapterId: string | null;
+/**
+ * Everything needed to arrange a book from its contents.
+ *
+ * Grouped rather than listed one by one so the type cannot describe a
+ * half-editable list: either the controls are there and every one of them
+ * works, or there are no controls.
+ */
+export interface BookIndexEditing {
   /** Emits the full id list in its new order. */
   onReorder: (chapterIds: string[]) => void;
-  /** Scrolls the matching chapter into view in the stage. */
-  onJump: (chapterId: string) => void;
   /** Takes a chapter out of the book. The note itself is untouched. */
   onRemoveChapter: (chapterId: string) => void;
   /** Moves a chapter into or out of the numbering. */
@@ -53,6 +55,22 @@ interface BookIndexProps {
    */
   suggestedStories?: StoryMark[];
   onApplyStories?: (stories: StoryMark[]) => void;
+}
+
+interface BookIndexProps {
+  chapters: BookIndexChapter[];
+  /** The chapter currently in view, so it can be marked. Null when unknown. */
+  currentChapterId: string | null;
+  /** Scrolls the matching chapter into view in the stage. */
+  onJump: (chapterId: string) => void;
+  /**
+   * Left out to show the contents without any way of changing it.
+   *
+   * The contents at the front of the book is where a book is arranged. The
+   * panel the sticky header opens is for finding your place while reading, so
+   * it takes the controls away and gives the width back to the titles.
+   */
+  editing?: BookIndexEditing;
   /* Set only when something outside needs to name itself after this heading.
      Left undefined on the page copy so that two mounted indexes, the one at
      the front of the book and the one in the panel, cannot collide on an id. */
@@ -73,13 +91,8 @@ const keyFor = (id: string, dir: Direction): string => `${id}:${dir}`;
 export const BookIndex = ({
   chapters,
   currentChapterId,
-  onReorder,
   onJump,
-  onRemoveChapter,
-  onSetNumbered,
-  onSetStory,
-  suggestedStories = [],
-  onApplyStories,
+  editing,
   headingId,
 }: BookIndexProps) => {
   /* Which row is having its story named. Held here rather than in each row so
@@ -138,7 +151,7 @@ export const BookIndex = ({
     setAnnouncement(
       `Moved ${movedName} to position ${target + 1} of ${chapters.length}`,
     );
-    onReorder(ids);
+    editing?.onReorder(ids);
   };
 
   const registerButton =
@@ -159,16 +172,16 @@ export const BookIndex = ({
           enough that nobody would, so the book offers. It is an offer rather
           than something done on load, because the book is the reader's and a
           shape they did not ask for is worse than no shape. */}
-      {onApplyStories && suggestedStories.length > 0 && (
+      {editing?.onApplyStories && (editing.suggestedStories?.length ?? 0) > 0 && (
         <div className="book-index__suggestion">
           <p className="book-index__suggestion-text">
-            These chapters look like {suggestedStories.length} stories:{" "}
-            {suggestedStories.map((m) => m.title).join(", ")}.
+            These chapters look like {editing.suggestedStories!.length} stories:{" "}
+            {editing.suggestedStories!.map((m) => m.title).join(", ")}.
           </p>
           <button
             type="button"
             className="book-index__suggestion-accept"
-            onClick={() => onApplyStories(suggestedStories)}
+            onClick={() => editing.onApplyStories!(editing.suggestedStories!)}
           >
             Divide the book
           </button>
@@ -189,22 +202,26 @@ export const BookIndex = ({
               {/* Named once, above the chapter that opens it. Rendered inside
                 the row rather than between rows so the list stays a list of
                 chapters and reordering keeps counting in a straight line. */}
-              {opensStory && naming !== chapter.id && (
-                <button
-                  type="button"
-                  className="book-index__story"
-                  onClick={() => setNaming(chapter.id)}
-                >
-                  {chapter.story}
-                  <span className="sr-only"> (rename this story)</span>
-                </button>
-              )}
+              {opensStory &&
+                naming !== chapter.id &&
+                (editing ? (
+                  <button
+                    type="button"
+                    className="book-index__story"
+                    onClick={() => setNaming(chapter.id)}
+                  >
+                    {chapter.story}
+                    <span className="sr-only"> (rename this story)</span>
+                  </button>
+                ) : (
+                  <p className="book-index__story">{chapter.story}</p>
+                ))}
               {naming === chapter.id && (
                 <StoryNameField
                   initial={chapter.story ?? ""}
                   onCommit={(title) => {
                     setNaming(null);
-                    onSetStory(chapter.id, title === "" ? null : title);
+                    editing?.onSetStory(chapter.id, title === "" ? null : title);
                   }}
                   onCancel={() => setNaming(null)}
                 />
@@ -246,69 +263,71 @@ export const BookIndex = ({
                   {displayTitleOf(chapter)}
                 </span>
               </button>
-              <div className="book-index__controls">
-                <button
-                  type="button"
-                  className="book-index__move"
-                  ref={registerButton(chapter.id, -1)}
-                  disabled={index === 0}
-                  aria-label={`Move ${name} up`}
-                  onClick={() => move(index, -1)}
-                >
-                  <span aria-hidden="true">↑</span>
-                </button>
-                <button
-                  type="button"
-                  className="book-index__move"
-                  ref={registerButton(chapter.id, 1)}
-                  disabled={index === chapters.length - 1}
-                  aria-label={`Move ${name} down`}
-                  onClick={() => move(index, 1)}
-                >
-                  <span aria-hidden="true">↓</span>
-                </button>
-                {/* A prologue is not chapter one. Marking it here takes it out
+              {editing && (
+                <div className="book-index__controls">
+                  <button
+                    type="button"
+                    className="book-index__move"
+                    ref={registerButton(chapter.id, -1)}
+                    disabled={index === 0}
+                    aria-label={`Move ${name} up`}
+                    onClick={() => move(index, -1)}
+                  >
+                    <span aria-hidden="true">↑</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="book-index__move"
+                    ref={registerButton(chapter.id, 1)}
+                    disabled={index === chapters.length - 1}
+                    aria-label={`Move ${name} down`}
+                    onClick={() => move(index, 1)}
+                  >
+                    <span aria-hidden="true">↓</span>
+                  </button>
+                  {/* A prologue is not chapter one. Marking it here takes it out
                   of the count so the chapters after it keep the numbers the
                   author gave them. */}
-                <button
-                  type="button"
-                  className="book-index__move book-index__numbering"
-                  aria-pressed={numbered}
-                  aria-label={`Number ${name}`}
-                  onClick={() => onSetNumbered(chapter.id, !numbered)}
-                >
-                  <span aria-hidden="true">#</span>
-                </button>
-                {/* Not guarded by a confirmation. This takes the chapter out of
+                  <button
+                    type="button"
+                    className="book-index__move book-index__numbering"
+                    aria-pressed={numbered}
+                    aria-label={`Number ${name}`}
+                    onClick={() => editing?.onSetNumbered(chapter.id, !numbered)}
+                  >
+                    <span aria-hidden="true">#</span>
+                  </button>
+                  {/* Not guarded by a confirmation. This takes the chapter out of
                   the running order and leaves the note itself in the library,
                   so the worst case is retyping a position, and a prompt on
                   every row would make tidying a book tiresome. The label says
                   "from this book" for exactly that reason. */}
-                {/* An anthology starts a new story part way down the book, and
+                  {/* An anthology starts a new story part way down the book, and
                   its numbering starts again with it. Pressed means this
                   chapter is where one begins. */}
-                <button
-                  type="button"
-                  className="book-index__move book-index__story-toggle"
-                  aria-pressed={opensStory}
-                  aria-label={`Start a story at ${name}`}
-                  onClick={() =>
-                    opensStory
-                      ? onSetStory(chapter.id, null)
-                      : setNaming(chapter.id)
-                  }
-                >
-                  <span aria-hidden="true">¶</span>
-                </button>
-                <button
-                  type="button"
-                  className="book-index__move book-index__remove"
-                  aria-label={`Remove ${name} from this book`}
-                  onClick={() => onRemoveChapter(chapter.id)}
-                >
-                  <span aria-hidden="true">×</span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    className="book-index__move book-index__story-toggle"
+                    aria-pressed={opensStory}
+                    aria-label={`Start a story at ${name}`}
+                    onClick={() =>
+                      opensStory
+                        ? editing?.onSetStory(chapter.id, null)
+                        : setNaming(chapter.id)
+                    }
+                  >
+                    <span aria-hidden="true">¶</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="book-index__move book-index__remove"
+                    aria-label={`Remove ${name} from this book`}
+                    onClick={() => editing?.onRemoveChapter(chapter.id)}
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+              )}
             </li>
           );
         })}

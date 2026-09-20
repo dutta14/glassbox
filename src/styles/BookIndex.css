@@ -126,10 +126,13 @@
   color: var(--color-text-muted);
 }
 
+/* A contents is for reading the titles, so a long one wraps rather than being
+   cut off. Uniform row heights are worth less than knowing what chapter 6 is
+   called. The number keeps its place against the first line because the row
+   aligns on the baseline. */
 .book-index__title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .book-index__title--missing {

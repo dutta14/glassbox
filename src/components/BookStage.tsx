@@ -14,7 +14,7 @@ import { notePath } from "../engine/routes";
 import { readingTime } from "../utils/readingTime";
 import { groupChapters, suggestStories } from "../utils/chapterNumbering";
 import { BookIndex } from "./BookIndex";
-import type { BookIndexChapter } from "./BookIndex";
+import type { BookIndexChapter, BookIndexEditing } from "./BookIndex";
 import { BookContentsPanel } from "./BookContentsPanel";
 import "../styles/BookStage.css";
 
@@ -231,6 +231,17 @@ export const BookStage = ({
   const suggestedStories =
     (book.stories?.length ?? 0) === 0 ? suggestStories(titled) : [];
 
+  /* Gathered once and shared by both copies of the contents, though only the
+     one on the page takes it. */
+  const editing: BookIndexEditing = {
+    onReorder,
+    onRemoveChapter,
+    onSetNumbered,
+    onSetStory,
+    suggestedStories,
+    onApplyStories,
+  };
+
   const missing = new Set(
     book.chapterIds.filter((_, i) => chapters[i] === null),
   );
@@ -307,13 +318,8 @@ export const BookStage = ({
               <BookIndex
                 chapters={indexChapters}
                 currentChapterId={currentChapterId}
-                onReorder={onReorder}
                 onJump={handleJump}
-                onRemoveChapter={onRemoveChapter}
-                onSetNumbered={onSetNumbered}
-                onSetStory={onSetStory}
-                suggestedStories={suggestedStories}
-                onApplyStories={onApplyStories}
+                editing={editing}
               />
             </div>
 
@@ -448,13 +454,7 @@ export const BookStage = ({
         chapters={indexChapters}
         currentChapterId={currentChapterId}
         onClose={() => setContentsOpen(false)}
-        onReorder={onReorder}
         onJump={handleJump}
-        onRemoveChapter={onRemoveChapter}
-        onSetNumbered={onSetNumbered}
-        onSetStory={onSetStory}
-        suggestedStories={suggestedStories}
-        onApplyStories={onApplyStories}
       />
     </section>
   );
