@@ -14,10 +14,19 @@ export interface BookIndexChapter {
   missing: boolean;
 }
 
+/**
+ * What the row should read. A chapter whose whole title was its number has
+ * nothing left once the number is lifted out, so it borrows the number back
+ * here. The reading column can drop to a single grey line in that case; a
+ * contents cannot, because a column of bare digits names nothing.
+ */
+const displayTitleOf = (chapter: BookIndexChapter): string =>
+  chapter.title ||
+  (chapter.number === null ? "" : `Chapter ${chapter.number}`);
+
 /** Something to call a chapter in a label, whatever it is short of. */
 const nameOf = (chapter: BookIndexChapter): string =>
-  chapter.title ||
-  (chapter.number === null ? "this chapter" : `chapter ${chapter.number}`);
+  displayTitleOf(chapter) || "this chapter";
 
 interface BookIndexProps {
   chapters: BookIndexChapter[];
@@ -124,6 +133,9 @@ export const BookIndex = ({
         {chapters.map((chapter, index) => {
           const name = nameOf(chapter);
           const numbered = chapter.number !== null;
+          /* Blank rather than repeated when the title is already the number.
+             "3  Chapter 3" says the same thing twice in one row. */
+          const gutter = !numbered ? "–" : chapter.title ? chapter.number : "";
           return (
           <li key={chapter.id} className="book-index__row">
             <button
@@ -146,9 +158,9 @@ export const BookIndex = ({
                 }
                 aria-hidden="true"
               >
-                {/* A dash rather than a blank, so the titles of front matter
+                {/* A dash rather than a blank for front matter, so the titles
                     stay on the same left edge as every other chapter. */}
-                {numbered ? chapter.number : "–"}
+                {gutter}
               </span>{" "}
               <span
                 className={
@@ -157,7 +169,7 @@ export const BookIndex = ({
                     : "book-index__title"
                 }
               >
-                {chapter.title}
+                {displayTitleOf(chapter)}
               </span>
             </button>
             <div className="book-index__controls">

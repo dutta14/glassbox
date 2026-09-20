@@ -194,10 +194,30 @@ describe("BookIndex — numbering", () => {
 
   /**
    * A chapter called nothing but "Chapter 3" has no title once the number is
-   * lifted out of it, and a control read aloud as "3" is not something anyone
-   * can act on. It borrows the number for its name instead.
+   * lifted out of it. The reading column can show a single grey line there,
+   * but a contents cannot: a whole book of those lists nothing but digits.
    */
-  it("names controls after the number when the chapter has no title", async () => {
+  it("spells out the number as the title when the chapter has no other", () => {
+    render(
+      <Harness initial={[{ id: "a", title: "", number: 3, missing: false }]} />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Go to Chapter 3" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not print the number twice on the same row", () => {
+    render(
+      <Harness initial={[{ id: "a", title: "", number: 3, missing: false }]} />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Go to Chapter 3" }).textContent,
+    ).toBe(" Chapter 3");
+  });
+
+  it("names the other controls after the number too", async () => {
     const onRemoveChapter = vi.fn();
     render(
       <Harness
@@ -206,11 +226,8 @@ describe("BookIndex — numbering", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("button", { name: "Go to chapter 3" }),
-    ).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: "Remove chapter 3 from this book" }),
+      screen.getByRole("button", { name: "Remove Chapter 3 from this book" }),
     );
     expect(onRemoveChapter).toHaveBeenCalledWith("a");
   });
