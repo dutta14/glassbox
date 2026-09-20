@@ -3,7 +3,7 @@ import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { BookStage } from "./BookStage";
-import type { Book, Note } from "../types";
+import type { Book, Note, StoryMark } from "../types";
 
 const makeNote = (over: Partial<Note> & { id: string }): Note => ({
   title: "",
@@ -31,6 +31,7 @@ interface StageOverrides {
   onRemoveChapter?: (id: string) => void;
   onSetNumbered?: (id: string, numbered: boolean) => void;
   onSetStory?: (id: string, title: string | null) => void;
+  onApplyStories?: (stories: StoryMark[]) => void;
   onRename?: (title: string) => void;
   resumeChapterId?: string | null;
   onReadChapter?: (id: string) => void;
@@ -46,6 +47,7 @@ const renderStage = (over: StageOverrides = {}) =>
         onReorder={over.onReorder ?? noop}
         onSetNumbered={over.onSetNumbered ?? noop}
         onSetStory={over.onSetStory ?? noop}
+        onApplyStories={over.onApplyStories ?? noop}
         onRemoveChapter={over.onRemoveChapter ?? noop}
         onRename={over.onRename ?? noop}
         resumeChapterId={over.resumeChapterId ?? null}
@@ -695,5 +697,68 @@ describe("BookStage — anthologies", () => {
     const breaks = container.querySelectorAll(".book-story");
     expect(breaks[0]).toHaveClass("book-story--first");
     expect(breaks[1]).not.toHaveClass("book-story--first");
+  });
+});
+
+describe("BookStage — offering to divide a book", () => {
+  const imported = () => ({
+    book: makeBook(["n1", "n2", "n3", "n4"]),
+    chapters: [
+      makeNote({ id: "n1", title: "Echoes – Chapter 1" }),
+      makeNote({ id: "n2", title: "Echoes – Chapter 2" }),
+      makeNote({ id: "n3", title: "Fracture – Chapter 1" }),
+      makeNote({ id: "n4", title: "Fracture – Chapter 2" }),
+    ],
+  });
+
+  it("names the stories it has found in the chapter titles", () => {
+    renderStage(imported());
+
+    expect(
+      screen.getByText(
+        /These chapters look like 2 stories: Echoes, Fracture\./,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("divides the book only when the offer is accepted", async () => {
+    const onApplyStories = vi.fn();
+    renderStage({ ...imported(), onApplyStories });
+
+    expect(onApplyStories).not.toHaveBeenCalled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Divide the book" }),
+    );
+
+    expect(onApplyStories).toHaveBeenCalledWith([
+      { startsAt: "n1", title: "Echoes" },
+      { startsAt: "n3", title: "Fracture" },
+    ]);
+  });
+
+  it("makes no offer once the book has been divided", () => {
+    const base = imported();
+    renderStage({
+      ...base,
+      book: { ...base.book, stories: [{ startsAt: "n1", title: "Echoes" }] },
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Divide the book" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("makes no offer when the titles name no stories", () => {
+    renderStage({
+      book: makeBook(["n1", "n2"]),
+      chapters: [
+        makeNote({ id: "n1", title: "Chapter 1" }),
+        makeNote({ id: "n2", title: "Chapter 2" }),
+      ],
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Divide the book" }),
+    ).not.toBeInTheDocument();
   });
 });

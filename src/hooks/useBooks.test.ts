@@ -616,3 +616,71 @@ describe('useBooks — stories', () => {
     expect(b1.stories).toEqual([{ startsAt: 'n2', title: 'Echoes' }]);
   });
 });
+
+describe('useBooks — setStories', () => {
+  it('replaces every division at once', async () => {
+    const store = fakeStore([
+      { ...mkBook('b1', ['n1', 'n2', 'n3']), stories: [{ startsAt: 'n1', title: 'Old' }] },
+    ]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.setStories('b1', [
+        { startsAt: 'n1', title: 'Echoes' },
+        { startsAt: 'n3', title: 'Fracture' },
+      ]);
+    });
+
+    expect(result.current.books[0].stories).toEqual([
+      { startsAt: 'n1', title: 'Echoes' },
+      { startsAt: 'n3', title: 'Fracture' },
+    ]);
+  });
+
+  it('drops a mark naming a chapter the book does not hold', async () => {
+    // What is stored should always be something the reader could have
+    // arrived at by hand, so a mark anchored to nothing is not kept.
+    const store = fakeStore([mkBook('b1', ['n1', 'n2'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.setStories('b1', [
+        { startsAt: 'n1', title: 'Echoes' },
+        { startsAt: 'gone', title: 'Nowhere' },
+      ]);
+    });
+
+    expect(result.current.books[0].stories).toEqual([{ startsAt: 'n1', title: 'Echoes' }]);
+  });
+
+  it('keeps the marks in reading order whatever order they arrive in', async () => {
+    const store = fakeStore([mkBook('b1', ['n1', 'n2', 'n3'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.setStories('b1', [
+        { startsAt: 'n3', title: 'Second' },
+        { startsAt: 'n1', title: 'First' },
+      ]);
+    });
+
+    expect(result.current.books[0].stories?.map(m => m.title)).toEqual(['First', 'Second']);
+  });
+
+  it('clears every division when given none', async () => {
+    const store = fakeStore([
+      { ...mkBook('b1', ['n1']), stories: [{ startsAt: 'n1', title: 'Echoes' }] },
+    ]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.setStories('b1', []);
+    });
+
+    expect(result.current.books[0].stories).toEqual([]);
+  });
+});

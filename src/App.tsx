@@ -8,7 +8,14 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import type { Answer, Book, Conversation, Note, NoteFormat } from "./types";
+import type {
+  Answer,
+  Book,
+  Conversation,
+  Note,
+  NoteFormat,
+  StoryMark,
+} from "./types";
 import { useNotes } from "./hooks/useNotes";
 import { useConversations } from "./hooks/useConversations";
 import { useBooks } from "./hooks/useBooks";
@@ -180,6 +187,7 @@ interface BookStageRouteProps {
   onRemoveChapter: (bookId: string, noteId: string) => void;
   onSetNumbered: (bookId: string, noteId: string, numbered: boolean) => void;
   onSetStory: (bookId: string, noteId: string, title: string | null) => void;
+  onApplyStories: (bookId: string, stories: StoryMark[]) => void;
   onRename: (bookId: string, title: string) => void;
   /** Where reading stopped in each book, so a book reopens where it was left. */
   positionFor: (bookId: string) => string | null;
@@ -194,6 +202,7 @@ const BookStageRoute = ({
   onRemoveChapter,
   onSetNumbered,
   onSetStory,
+  onApplyStories,
   onRename,
   positionFor,
   onReadChapter,
@@ -237,6 +246,7 @@ const BookStageRoute = ({
         onSetNumbered(book.id, noteId, numbered)
       }
       onSetStory={(noteId, title) => onSetStory(book.id, noteId, title)}
+      onApplyStories={(stories) => onApplyStories(book.id, stories)}
       onRename={(title) => onRename(book.id, title)}
       resumeChapterId={positionFor(book.id)}
       onReadChapter={handleReadChapter}
@@ -328,6 +338,7 @@ export const AppReady = ({
     removeChapter,
     setChapterNumbered,
     setStoryStart,
+    setStories,
     reorderChapters,
     deleteBook,
     renameBook,
@@ -881,6 +892,7 @@ export const AppReady = ({
                       onRemoveChapter={removeChapter}
                       onSetNumbered={setChapterNumbered}
                       onSetStory={setStoryStart}
+                      onApplyStories={setStories}
                       onRename={(bookId, title) => {
                         void renameBook(bookId, title);
                       }}

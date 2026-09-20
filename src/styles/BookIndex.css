@@ -230,3 +230,43 @@
     transition: none;
   }
 }
+
+/* The book's offer to divide itself along the story names in its chapter
+   titles. Set apart from the contents because it is a question, not a row. */
+.book-index__suggestion {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+}
+
+.book-index__suggestion-text {
+  flex: 1;
+  min-width: 12rem;
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--color-text-secondary);
+}
+
+.book-index__suggestion-accept {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--fw-medium);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.book-index__suggestion-accept:hover {
+  border-color: var(--color-text-secondary);
+}

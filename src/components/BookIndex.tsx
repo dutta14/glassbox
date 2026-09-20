@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import type { StoryMark } from "../types";
 import "../styles/BookIndex.css";
 
 export interface BookIndexChapter {
@@ -46,6 +47,12 @@ interface BookIndexProps {
    * already starting here, or with null takes the division away.
    */
   onSetStory: (chapterId: string, title: string | null) => void;
+  /**
+   * The stories the book has read out of the chapter titles, and the way to
+   * accept them. Empty when there is nothing to propose.
+   */
+  suggestedStories?: StoryMark[];
+  onApplyStories?: (stories: StoryMark[]) => void;
   /* Set only when something outside needs to name itself after this heading.
      Left undefined on the page copy so that two mounted indexes, the one at
      the front of the book and the one in the panel, cannot collide on an id. */
@@ -71,6 +78,8 @@ export const BookIndex = ({
   onRemoveChapter,
   onSetNumbered,
   onSetStory,
+  suggestedStories = [],
+  onApplyStories,
   headingId,
 }: BookIndexProps) => {
   /* Which row is having its story named. Held here rather than in each row so
@@ -140,6 +149,26 @@ export const BookIndex = ({
       <h3 className="book-index__heading" id={headingId}>
         Contents
       </h3>
+      {/* An imported book arrives with its structure written into the chapter
+          titles and nowhere else. Marking five stories by hand is tedious
+          enough that nobody would, so the book offers. It is an offer rather
+          than something done on load, because the book is the reader's and a
+          shape they did not ask for is worse than no shape. */}
+      {onApplyStories && suggestedStories.length > 0 && (
+        <div className="book-index__suggestion">
+          <p className="book-index__suggestion-text">
+            These chapters look like {suggestedStories.length} stories:{" "}
+            {suggestedStories.map((m) => m.title).join(", ")}.
+          </p>
+          <button
+            type="button"
+            className="book-index__suggestion-accept"
+            onClick={() => onApplyStories(suggestedStories)}
+          >
+            Divide the book
+          </button>
+        </div>
+      )}
       <ol className="book-index__list">
         {chapters.map((chapter, index) => {
           const name = nameOf(chapter);

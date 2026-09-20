@@ -31,7 +31,8 @@ export const isFrontMatterTitle = (title: string): boolean =>
    Digits only, no roman numerals. "Chapter IV" is rare in practice, and the
    set of roman letters is broad enough that "Chapter Mild Winter" would match
    it, which is a worse failure than not stripping at all. */
-const SELF_NUMBER = /^(?:#\s*|(?:chapters?|chap|ch|parts?)\.?\s+)\d+\s*(?:[–—\-:.)]+\s*)?/i;
+const SELF_NUMBER =
+  /^(?:#\s*|(?:chapters?|chap|ch|parts?)\.?\s+)\d+\s*(?:[–—\-:.)]+\s*)?/i;
 
 /**
  * The title with the author's own chapter number taken off the front.
@@ -98,7 +99,9 @@ export const splitStoryTitle = (
   title: string,
 ): { story: string | null; rest: string } => {
   const m = STORY_SPLIT.exec(title.trim());
-  return m ? { story: m[1].trim(), rest: m[2].trim() } : { story: null, rest: title.trim() };
+  return m
+    ? { story: m[1].trim(), rest: m[2].trim() }
+    : { story: null, rest: title.trim() };
 };
 
 /** Where a story begins within a book's single flat run of chapters. */
@@ -135,8 +138,10 @@ export const groupChapters = (
 ): StorySection[] => {
   const opens = new Map(stories.map((s) => [s.startsAt, s.title]));
 
-  const sections: { title: string | null; raw: { id: string; title: string }[] }[] =
-    [];
+  const sections: {
+    title: string | null;
+    raw: { id: string; title: string }[];
+  }[] = [];
   for (const chapter of chapters) {
     if (opens.has(chapter.id) || sections.length === 0) {
       sections.push({
@@ -161,4 +166,50 @@ export const groupChapters = (
       unnumbered,
     ).map((label, i) => ({ ...label, id: raw[i].id })),
   }));
+};
+
+/**
+ * Reads the stories out of the chapters' own titles.
+ *
+ * A book imported from a pile of files arrives with its structure written
+ * into the titles and nowhere else: five "Borrowed Weather – Chapter N" in a
+ * row, then five "Echoes – Chapter N". Marking each of those by hand is
+ * tedious enough that nobody would, so the book offers to read them.
+ *
+ * A story is proposed only where a run of chapters shares a prefix and the
+ * run is contiguous. A prefix that appears once is ignored: a lone chapter
+ * carrying a name is more likely a chapter with a long title than a story of
+ * one. A prefix that returns after another has intervened opens a second
+ * story of the same name rather than reaching backwards, because the order
+ * on the page is the order the reader will meet them in, and a story cannot
+ * be in two places.
+ */
+export const suggestStories = (
+  chapters: readonly { id: string; title: string }[],
+): StoryMark[] => {
+  const runs: { title: string; ids: string[] }[] = [];
+  /* Set by any chapter that names no story. It stops "Echoes 1, an
+     interlude, Echoes 2" being read as one unbroken run of Echoes, because
+     a story the reader has already stepped out of has ended. */
+  let broken = true;
+
+  for (const { id, title } of chapters) {
+    const { story } = splitStoryTitle(title);
+    if (story === null) {
+      broken = true;
+      continue;
+    }
+
+    const last = runs[runs.length - 1];
+    if (!broken && last && last.title.toLowerCase() === story.toLowerCase()) {
+      last.ids.push(id);
+    } else {
+      runs.push({ title: story, ids: [id] });
+    }
+    broken = false;
+  }
+
+  return runs
+    .filter((run) => run.ids.length > 1)
+    .map((run) => ({ startsAt: run.ids[0], title: run.title }));
 };

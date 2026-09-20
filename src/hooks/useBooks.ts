@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Book } from '../types';
+import type { Book, StoryMark } from '../types';
 import { isFrontMatterTitle } from '../utils/chapterNumbering';
 import type { BookStore } from '../storage/types';
 import { createId } from '../storage/notes';
@@ -41,6 +41,8 @@ export interface UseBooksResult {
     chapterId: string,
     title: string | null
   ) => Promise<void>;
+  /** Replaces every story division in a book at once. */
+  setStories: (bookId: string, stories: StoryMark[]) => Promise<void>;
   reorderChapters: (bookId: string, chapterIds: string[]) => Promise<void>;
   renameBook: (bookId: string, title: string) => Promise<void>;
   deleteBook: (bookId: string) => Promise<void>;
@@ -240,6 +242,27 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
     [mutate]
   );
 
+  /**
+   * Replaces every story division in one go, for accepting a set the book has
+   * worked out from the chapter titles.
+   *
+   * Marks that name a chapter the book does not hold are dropped rather than
+   * kept and ignored, so that what is stored is always something the reader
+   * could have arrived at by hand.
+   */
+  const setStories = useCallback(
+    async (bookId: string, stories: StoryMark[]): Promise<void> => {
+      await mutate(bookId, (book) => {
+        const order = book.chapterIds;
+        const kept = stories
+          .filter((m) => order.includes(m.startsAt))
+          .sort((a, b) => order.indexOf(a.startsAt) - order.indexOf(b.startsAt));
+        return { ...book, stories: kept };
+      });
+    },
+    [mutate]
+  );
+
   const reorderChapters = useCallback(
     async (bookId: string, chapterIds: string[]): Promise<void> => {
       await mutate(bookId, (book) => ({ ...book, chapterIds: [...chapterIds] }));
@@ -304,6 +327,7 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
     setChapterNumbered,
     removeChapter,
     setStoryStart,
+    setStories,
     reorderChapters,
     renameBook,
     deleteBook,

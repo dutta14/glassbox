@@ -8,11 +8,11 @@ import {
   useState,
 } from "react";
 import { Link } from "react-router-dom";
-import type { Book, Note } from "../types";
+import type { Book, Note, StoryMark } from "../types";
 import { COPY } from "../engine/copy";
 import { notePath } from "../engine/routes";
 import { readingTime } from "../utils/readingTime";
-import { groupChapters } from "../utils/chapterNumbering";
+import { groupChapters, suggestStories } from "../utils/chapterNumbering";
 import { BookIndex } from "./BookIndex";
 import type { BookIndexChapter } from "./BookIndex";
 import { BookContentsPanel } from "./BookContentsPanel";
@@ -31,6 +31,8 @@ interface BookStageProps {
   onSetNumbered: (noteId: string, numbered: boolean) => void;
   /** Starts, renames or removes a story division at a chapter. */
   onSetStory: (noteId: string, title: string | null) => void;
+  /** Replaces every story division at once, for accepting the book's offer. */
+  onApplyStories: (stories: StoryMark[]) => void;
   onRename: (title: string) => void;
   /** The chapter to open at, or null to start at the front of the book. */
   resumeChapterId: string | null;
@@ -69,6 +71,7 @@ export const BookStage = ({
   onRemoveChapter,
   onSetNumbered,
   onSetStory,
+  onApplyStories,
   onRename,
   resumeChapterId,
   onReadChapter,
@@ -215,14 +218,18 @@ export const BookStage = ({
     () => new Set(book.unnumberedIds ?? []),
     [book.unnumberedIds],
   );
-  const sections = groupChapters(
-    book.chapterIds.map((id, i) => {
-      const note = chapters[i];
-      return { id, title: note ? titleOf(note) : "Missing chapter" };
-    }),
-    unnumbered,
-    book.stories,
-  );
+  const titled = book.chapterIds.map((id, i) => {
+    const note = chapters[i];
+    return { id, title: note ? titleOf(note) : "Missing chapter" };
+  });
+
+  const sections = groupChapters(titled, unnumbered, book.stories);
+
+  /* Only offered to a book that has not been divided yet. Once the reader has
+     said what the stories are, the titles are no longer a better guess than
+     the answer already given. */
+  const suggestedStories =
+    (book.stories?.length ?? 0) === 0 ? suggestStories(titled) : [];
 
   const missing = new Set(
     book.chapterIds.filter((_, i) => chapters[i] === null),
@@ -305,6 +312,8 @@ export const BookStage = ({
                 onRemoveChapter={onRemoveChapter}
                 onSetNumbered={onSetNumbered}
                 onSetStory={onSetStory}
+                suggestedStories={suggestedStories}
+                onApplyStories={onApplyStories}
               />
             </div>
 
@@ -444,6 +453,8 @@ export const BookStage = ({
         onRemoveChapter={onRemoveChapter}
         onSetNumbered={onSetNumbered}
         onSetStory={onSetStory}
+        suggestedStories={suggestedStories}
+        onApplyStories={onApplyStories}
       />
     </section>
   );
