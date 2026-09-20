@@ -11,6 +11,8 @@ export interface BookIndexChapter {
   title: string;
   /** Position among the numbered chapters, or null for front matter. */
   number: number | null;
+  /** The story this chapter belongs to, or null when it stands outside one. */
+  story: string | null;
   missing: boolean;
 }
 
@@ -21,8 +23,7 @@ export interface BookIndexChapter {
  * contents cannot, because a column of bare digits names nothing.
  */
 const displayTitleOf = (chapter: BookIndexChapter): string =>
-  chapter.title ||
-  (chapter.number === null ? "" : `Chapter ${chapter.number}`);
+  chapter.title || (chapter.number === null ? "" : `Chapter ${chapter.number}`);
 
 /** Something to call a chapter in a label, whatever it is short of. */
 const nameOf = (chapter: BookIndexChapter): string =>
@@ -40,6 +41,11 @@ interface BookIndexProps {
   onRemoveChapter: (chapterId: string) => void;
   /** Moves a chapter into or out of the numbering. */
   onSetNumbered: (chapterId: string, numbered: boolean) => void;
+  /**
+   * Starts a story at this chapter under the given name, renames the one
+   * already starting here, or with null takes the division away.
+   */
+  onSetStory: (chapterId: string, title: string | null) => void;
   /* Set only when something outside needs to name itself after this heading.
      Left undefined on the page copy so that two mounted indexes, the one at
      the front of the book and the one in the panel, cannot collide on an id. */
@@ -64,8 +70,13 @@ export const BookIndex = ({
   onJump,
   onRemoveChapter,
   onSetNumbered,
+  onSetStory,
   headingId,
 }: BookIndexProps) => {
+  /* Which row is having its story named. Held here rather than in each row so
+     that opening a second field closes the first, which stops two half-typed
+     names being in play at once. */
+  const [naming, setNaming] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
 
   const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -92,7 +103,7 @@ export const BookIndex = ({
       return;
     }
     const opposite = buttonRefs.current.get(
-      keyFor(pending.id, (pending.dir * -1) as Direction)
+      keyFor(pending.id, (pending.dir * -1) as Direction),
     );
     opposite?.focus();
   }, [chapters]);
@@ -111,7 +122,7 @@ export const BookIndex = ({
     // back from the DOM, so a non-sighted user hears that the press did
     // something and where the chapter now sits.
     setAnnouncement(
-      `Moved ${movedName} to position ${target + 1} of ${chapters.length}`
+      `Moved ${movedName} to position ${target + 1} of ${chapters.length}`,
     );
     onReorder(ids);
   };
@@ -136,90 +147,132 @@ export const BookIndex = ({
           /* Blank rather than repeated when the title is already the number.
              "3  Chapter 3" says the same thing twice in one row. */
           const gutter = !numbered ? "–" : chapter.title ? chapter.number : "";
+          const opensStory =
+            chapter.story !== null &&
+            chapter.story !== chapters[index - 1]?.story;
           return (
-          <li key={chapter.id} className="book-index__row">
-            <button
-              type="button"
-              className="book-index__jump"
-              aria-current={
-                chapter.id === currentChapterId ? "true" : undefined
-              }
-              /* Named outright because a chapter with no title of its own has
+            <li key={chapter.id} className="book-index__row">
+              {/* Named once, above the chapter that opens it. Rendered inside
+                the row rather than between rows so the list stays a list of
+                chapters and reordering keeps counting in a straight line. */}
+              {opensStory && naming !== chapter.id && (
+                <button
+                  type="button"
+                  className="book-index__story"
+                  onClick={() => setNaming(chapter.id)}
+                >
+                  {chapter.story}
+                  <span className="sr-only"> (rename this story)</span>
+                </button>
+              )}
+              {naming === chapter.id && (
+                <StoryNameField
+                  initial={chapter.story ?? ""}
+                  onCommit={(title) => {
+                    setNaming(null);
+                    onSetStory(chapter.id, title === "" ? null : title);
+                  }}
+                  onCancel={() => setNaming(null)}
+                />
+              )}
+              <button
+                type="button"
+                className="book-index__jump"
+                aria-current={
+                  chapter.id === currentChapterId ? "true" : undefined
+                }
+                /* Named outright because a chapter with no title of its own has
                  nothing in it but a number, and "1" alone is not a thing
                  anyone can act on when it is read aloud. */
-              aria-label={`Go to ${name}`}
-              onClick={() => onJump(chapter.id)}
-            >
-              <span
-                className={
-                  numbered
-                    ? "book-index__number"
-                    : "book-index__number book-index__number--none"
-                }
-                aria-hidden="true"
+                aria-label={`Go to ${name}`}
+                onClick={() => onJump(chapter.id)}
               >
-                {/* A dash rather than a blank for front matter, so the titles
+                <span
+                  className={
+                    numbered
+                      ? "book-index__number"
+                      : "book-index__number book-index__number--none"
+                  }
+                  aria-hidden="true"
+                >
+                  {/* A dash rather than a blank for front matter, so the titles
                     stay on the same left edge as every other chapter. */}
-                {gutter}
-              </span>{" "}
-              <span
-                className={
-                  chapter.missing
-                    ? "book-index__title book-index__title--missing"
-                    : "book-index__title"
-                }
-              >
-                {displayTitleOf(chapter)}
-              </span>
-            </button>
-            <div className="book-index__controls">
-              <button
-                type="button"
-                className="book-index__move"
-                ref={registerButton(chapter.id, -1)}
-                disabled={index === 0}
-                aria-label={`Move ${name} up`}
-                onClick={() => move(index, -1)}
-              >
-                <span aria-hidden="true">↑</span>
+                  {gutter}
+                </span>{" "}
+                <span
+                  className={
+                    chapter.missing
+                      ? "book-index__title book-index__title--missing"
+                      : "book-index__title"
+                  }
+                >
+                  {displayTitleOf(chapter)}
+                </span>
               </button>
-              <button
-                type="button"
-                className="book-index__move"
-                ref={registerButton(chapter.id, 1)}
-                disabled={index === chapters.length - 1}
-                aria-label={`Move ${name} down`}
-                onClick={() => move(index, 1)}
-              >
-                <span aria-hidden="true">↓</span>
-              </button>
-              {/* A prologue is not chapter one. Marking it here takes it out
+              <div className="book-index__controls">
+                <button
+                  type="button"
+                  className="book-index__move"
+                  ref={registerButton(chapter.id, -1)}
+                  disabled={index === 0}
+                  aria-label={`Move ${name} up`}
+                  onClick={() => move(index, -1)}
+                >
+                  <span aria-hidden="true">↑</span>
+                </button>
+                <button
+                  type="button"
+                  className="book-index__move"
+                  ref={registerButton(chapter.id, 1)}
+                  disabled={index === chapters.length - 1}
+                  aria-label={`Move ${name} down`}
+                  onClick={() => move(index, 1)}
+                >
+                  <span aria-hidden="true">↓</span>
+                </button>
+                {/* A prologue is not chapter one. Marking it here takes it out
                   of the count so the chapters after it keep the numbers the
                   author gave them. */}
-              <button
-                type="button"
-                className="book-index__move book-index__numbering"
-                aria-pressed={numbered}
-                aria-label={`Number ${name}`}
-                onClick={() => onSetNumbered(chapter.id, !numbered)}
-              >
-                <span aria-hidden="true">#</span>
-              </button>
-              {/* Not guarded by a confirmation. This takes the chapter out of
+                <button
+                  type="button"
+                  className="book-index__move book-index__numbering"
+                  aria-pressed={numbered}
+                  aria-label={`Number ${name}`}
+                  onClick={() => onSetNumbered(chapter.id, !numbered)}
+                >
+                  <span aria-hidden="true">#</span>
+                </button>
+                {/* Not guarded by a confirmation. This takes the chapter out of
                   the running order and leaves the note itself in the library,
                   so the worst case is retyping a position, and a prompt on
                   every row would make tidying a book tiresome. The label says
                   "from this book" for exactly that reason. */}
-              <button
-                type="button"
-                className="book-index__move book-index__remove"
-                aria-label={`Remove ${name} from this book`}
-                onClick={() => onRemoveChapter(chapter.id)}
-              >
-                <span aria-hidden="true">×</span>
-              </button>
-            </div>
-          </li>
+                {/* An anthology starts a new story part way down the book, and
+                  its numbering starts again with it. Pressed means this
+                  chapter is where one begins. */}
+                <button
+                  type="button"
+                  className="book-index__move book-index__story-toggle"
+                  aria-pressed={opensStory}
+                  aria-label={`Start a story at ${name}`}
+                  onClick={() =>
+                    opensStory
+                      ? onSetStory(chapter.id, null)
+                      : setNaming(chapter.id)
+                  }
+                >
+                  <span aria-hidden="true">¶</span>
+                </button>
+                <button
+                  type="button"
+                  className="book-index__move book-index__remove"
+                  aria-label={`Remove ${name} from this book`}
+                  onClick={() => onRemoveChapter(chapter.id)}
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
+              </div>
+            </li>
           );
         })}
       </ol>
@@ -227,5 +280,48 @@ export const BookIndex = ({
         {announcement}
       </div>
     </nav>
+  );
+};
+
+/**
+ * The field for naming a story, shown in place until it is committed.
+ *
+ * Enter commits and Escape abandons. Blur abandons too rather than saving,
+ * which is the opposite of the book's own title field: that one edits
+ * something that already exists, where losing the keystrokes is the worse
+ * outcome, while this one creates a division that was not there before and
+ * should not appear because a click landed somewhere else.
+ */
+const StoryNameField = ({
+  initial,
+  onCommit,
+  onCancel,
+}: {
+  initial: string;
+  onCommit: (title: string) => void;
+  onCancel: () => void;
+}) => {
+  const [draft, setDraft] = useState(initial);
+
+  return (
+    <input
+      className="book-index__story-input"
+      autoFocus
+      value={draft}
+      aria-label="Story name"
+      placeholder="Name this story"
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={onCancel}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onCommit(draft.trim());
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+    />
   );
 };

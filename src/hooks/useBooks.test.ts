@@ -483,3 +483,136 @@ describe('useBooks — a note belongs to one book', () => {
     expect(result.current.bookByNoteId.get('n1')?.id).toBe('b2');
   });
 });
+
+describe('useBooks — stories', () => {
+  const withStories = (id: string, chapterIds: string[], stories: Book['stories']): Book => ({
+    ...mkBook(id, chapterIds),
+    stories,
+  });
+
+  it('starts a story at a chapter', async () => {
+    const store = fakeStore([mkBook('b1', ['n1', 'n2'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.setStoryStart('b1', 'n2', 'Echoes');
+    });
+
+    expect(result.current.books[0].stories).toEqual([{ startsAt: 'n2', title: 'Echoes' }]);
+  });
+
+  it('renames the story already starting at that chapter instead of adding a second', async () => {
+    const store = fakeStore([withStories('b1', ['n1'], [{ startsAt: 'n1', title: 'Echoes' }])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.setStoryStart('b1', 'n1', 'Fracture');
+    });
+
+    expect(result.current.books[0].stories).toEqual([{ startsAt: 'n1', title: 'Fracture' }]);
+  });
+
+  it('takes the division away when the title is null', async () => {
+    const store = fakeStore([withStories('b1', ['n1', 'n2'], [{ startsAt: 'n2', title: 'Echoes' }])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.setStoryStart('b1', 'n2', null);
+    });
+
+    expect(result.current.books[0].stories).toEqual([]);
+  });
+
+  /* Anything walking the marks should meet them in the order the reader will. */
+  it('keeps the marks in reading order however they were added', async () => {
+    const store = fakeStore([mkBook('b1', ['n1', 'n2', 'n3'])]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.setStoryStart('b1', 'n3', 'Third');
+    });
+    await act(async () => {
+      await result.current.setStoryStart('b1', 'n1', 'First');
+    });
+
+    expect(result.current.books[0].stories?.map((m) => m.startsAt)).toEqual(['n1', 'n3']);
+  });
+
+  /**
+   * The story survives losing the chapter that opened it. Deleting the mark
+   * would silently merge it into whatever came before, which is a bigger
+   * change than the one the reader asked for.
+   */
+  it('moves a story to the next chapter when the one opening it is removed', async () => {
+    const store = fakeStore([
+      withStories('b1', ['n1', 'n2', 'n3'], [{ startsAt: 'n2', title: 'Echoes' }]),
+    ]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.removeChapter('b1', 'n2');
+    });
+
+    expect(result.current.books[0].stories).toEqual([{ startsAt: 'n3', title: 'Echoes' }]);
+  });
+
+  it('drops a story whose last chapter is removed', async () => {
+    const store = fakeStore([
+      withStories('b1', ['n1', 'n2'], [{ startsAt: 'n2', title: 'Echoes' }]),
+    ]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.removeChapter('b1', 'n2');
+    });
+
+    expect(result.current.books[0].stories).toEqual([]);
+  });
+
+  /**
+   * Two marks on one chapter would be two stories starting in the same place,
+   * which is not a thing a book can do.
+   */
+  it('does not stack a story onto a chapter that already opens one', async () => {
+    const store = fakeStore([
+      withStories(
+        'b1',
+        ['n1', 'n2'],
+        [
+          { startsAt: 'n1', title: 'Echoes' },
+          { startsAt: 'n2', title: 'Fracture' },
+        ]
+      ),
+    ]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.removeChapter('b1', 'n1');
+    });
+
+    expect(result.current.books[0].stories).toEqual([{ startsAt: 'n2', title: 'Fracture' }]);
+  });
+
+  it('takes a story with it when the note moves to another book', async () => {
+    const store = fakeStore([
+      withStories('b1', ['n1', 'n2'], [{ startsAt: 'n1', title: 'Echoes' }]),
+      mkBook('b2', []),
+    ]);
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    await act(async () => {
+      await result.current.addChapter('b2', 'n1', 'A Chapter');
+    });
+
+    const b1 = result.current.books.find((b) => b.id === 'b1')!;
+    expect(b1.stories).toEqual([{ startsAt: 'n2', title: 'Echoes' }]);
+  });
+});

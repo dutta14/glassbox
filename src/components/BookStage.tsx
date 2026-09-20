@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -11,7 +12,7 @@ import type { Book, Note } from "../types";
 import { COPY } from "../engine/copy";
 import { notePath } from "../engine/routes";
 import { readingTime } from "../utils/readingTime";
-import { labelChapters } from "../utils/chapterNumbering";
+import { groupChapters } from "../utils/chapterNumbering";
 import { BookIndex } from "./BookIndex";
 import type { BookIndexChapter } from "./BookIndex";
 import { BookContentsPanel } from "./BookContentsPanel";
@@ -28,6 +29,8 @@ interface BookStageProps {
   onReorder: (chapterIds: string[]) => void;
   onRemoveChapter: (noteId: string) => void;
   onSetNumbered: (noteId: string, numbered: boolean) => void;
+  /** Starts, renames or removes a story division at a chapter. */
+  onSetStory: (noteId: string, title: string | null) => void;
   onRename: (title: string) => void;
   /** The chapter to open at, or null to start at the front of the book. */
   resumeChapterId: string | null;
@@ -65,6 +68,7 @@ export const BookStage = ({
   onReorder,
   onRemoveChapter,
   onSetNumbered,
+  onSetStory,
   onRename,
   resumeChapterId,
   onReadChapter,
@@ -211,20 +215,31 @@ export const BookStage = ({
     () => new Set(book.unnumberedIds ?? []),
     [book.unnumberedIds],
   );
-  const labels = labelChapters(
+  const sections = groupChapters(
     book.chapterIds.map((id, i) => {
       const note = chapters[i];
       return { id, title: note ? titleOf(note) : "Missing chapter" };
     }),
     unnumbered,
+    book.stories,
   );
 
-  const indexChapters: BookIndexChapter[] = book.chapterIds.map((id, i) => ({
-    id,
-    title: labels[i].title,
-    number: labels[i].number,
-    missing: chapters[i] === null,
-  }));
+  const missing = new Set(
+    book.chapterIds.filter((_, i) => chapters[i] === null),
+  );
+
+  /* Flat, even though the book is divided, because reordering works on
+     positions across the whole book and a nested list would have to flatten
+     itself again to do it. The divisions ride along as a name on each row. */
+  const indexChapters: BookIndexChapter[] = sections.flatMap((section) =>
+    section.chapters.map((c) => ({
+      id: c.id,
+      title: c.title,
+      number: c.number,
+      story: section.title,
+      missing: missing.has(c.id),
+    })),
+  );
 
   const isEmpty = book.chapterIds.length === 0;
   const minutes = chapters.reduce(
@@ -289,107 +304,131 @@ export const BookStage = ({
                 onJump={handleJump}
                 onRemoveChapter={onRemoveChapter}
                 onSetNumbered={onSetNumbered}
+                onSetStory={onSetStory}
               />
             </div>
 
             <div className="book-stage__chapters">
-              {book.chapterIds.map((id, i) => {
-                const note = chapters[i];
-                const { number, title } = labels[i];
-                /* The grey line carries the number when there is one, and the
+              {sections.map((section, si) => (
+                <Fragment key={section.title === null ? "__none" : `s${si}`}>
+                  {/* A story is announced once, above the chapter that opens
+                      it. Chapters standing outside any story get nothing, so
+                      a book that is not an anthology reads exactly as it did
+                      before stories existed. */}
+                  {section.title !== null && (
+                    <div
+                      className={
+                        si === 0 ? "book-story book-story--first" : "book-story"
+                      }
+                    >
+                      <h3 className="book-story__title">{section.title}</h3>
+                    </div>
+                  )}
+                  {section.chapters.map(({ id, number, title }, ci) => {
+                    const i = book.chapterIds.indexOf(id);
+                    const note = chapters[i];
+                    /* The grey line carries the number when there is one, and the
                    chapter's own name when there is not. A prologue says
                    PROLOGUE and stops; it does not say "Chapter 1", which is
                    the number it must not take, nor repeat its name twice. */
-                const eyebrow = number === null ? title : `Chapter ${number}`;
-                /* Empty when the chapter had no title beyond its number, in
+                    const eyebrow =
+                      number === null ? title : `Chapter ${number}`;
+                    /* Empty when the chapter had no title beyond its number, in
                    which case the grey line is the whole heading. */
-                const display = number === null ? "" : title;
+                    const display = number === null ? "" : title;
 
-                return (
-                  <article
-                    key={id}
-                    className={
-                      note ? "book-chapter" : "book-chapter book-chapter--missing"
-                    }
-                    data-chapter-id={id}
-                    ref={setChapterRef(id)}
-                  >
-                    {/* Between chapters, never above the first: the ornament
+                    return (
+                      <article
+                        key={id}
+                        className={
+                          note
+                            ? "book-chapter"
+                            : "book-chapter book-chapter--missing"
+                        }
+                        data-chapter-id={id}
+                        ref={setChapterRef(id)}
+                      >
+                        {/* Between chapters, never above the first: the ornament
                         is a join, and one at the top would divide the opening
                         chapter from the contents it already follows. */}
-                    {i > 0 && (
-                      <div className="book-chapter__ornament" aria-hidden="true">
-                        <span className="book-chapter__ornament-mark" />
-                      </div>
-                    )}
+                        {ci > 0 && (
+                          <div
+                            className="book-chapter__ornament"
+                            aria-hidden="true"
+                          >
+                            <span className="book-chapter__ornament-mark" />
+                          </div>
+                        )}
 
-                    <h3 className="book-chapter__heading">
-                      {!note ? (
-                        <>
-                          <span className="book-chapter__number">
-                            {eyebrow}
-                          </span>{" "}
-                          <span className="book-chapter__title book-chapter__title--missing">
-                            Missing chapter
-                          </span>
-                        </>
-                      ) : display ? (
-                        <>
-                          <span className="book-chapter__number">
-                            {eyebrow}
-                          </span>{" "}
-                          {/* The title is the way into the note. It replaced a
+                        <h3 className="book-chapter__heading">
+                          {!note ? (
+                            <>
+                              <span className="book-chapter__number">
+                                {eyebrow}
+                              </span>{" "}
+                              <span className="book-chapter__title book-chapter__title--missing">
+                                Missing chapter
+                              </span>
+                            </>
+                          ) : display ? (
+                            <>
+                              <span className="book-chapter__number">
+                                {eyebrow}
+                              </span>{" "}
+                              {/* The title is the way into the note. It replaced a
                               pair of buttons under every chapter, which on a
                               book of any length turned the reading column into
                               a column of controls. */}
-                          <Link
-                            className="book-chapter__title"
-                            to={notePath(id)}
-                          >
-                            {display}
-                          </Link>
-                        </>
-                      ) : (
-                        /* Nothing but the grey line to show, so the grey line
+                              <Link
+                                className="book-chapter__title"
+                                to={notePath(id)}
+                              >
+                                {display}
+                              </Link>
+                            </>
+                          ) : (
+                            /* Nothing but the grey line to show, so the grey line
                            has to be the way into the note. Leaving it as plain
                            text would strand the chapter with no route back to
                            what it is made of. */
-                        <Link
-                          className="book-chapter__number book-chapter__number--sole"
-                          to={notePath(id)}
-                        >
-                          {eyebrow}
-                        </Link>
-                      )}
-                    </h3>
+                            <Link
+                              className="book-chapter__number book-chapter__number--sole"
+                              to={notePath(id)}
+                            >
+                              {eyebrow}
+                            </Link>
+                          )}
+                        </h3>
 
-                    {!note && (
-                      <p className="book-chapter__missing">
-                        This chapter's note was deleted or moved. Remove it from
-                        the contents to tidy the book.
-                      </p>
-                    )}
+                        {!note && (
+                          <p className="book-chapter__missing">
+                            This chapter's note was deleted or moved. Remove it
+                            from the contents to tidy the book.
+                          </p>
+                        )}
 
-                    {note &&
-                      ((note.format ?? "prose") === "verse" ? (
-                        // pre-wrap keeps the line breaks the poem was written
-                        // with. Rendering it as prose paragraphs would fuse the
-                        // lines and destroy the shape of the verse.
-                        <div className="book-chapter__body book-chapter__body--verse">
-                          {note.body}
-                        </div>
-                      ) : (
-                        <div className="book-chapter__body">
-                          {proseParagraphs(note.body).map((para, p) => (
-                            <p key={p} className="book-chapter__paragraph">
-                              {para}
-                            </p>
+                        {note &&
+                          ((note.format ?? "prose") === "verse" ? (
+                            // pre-wrap keeps the line breaks the poem was written
+                            // with. Rendering it as prose paragraphs would fuse the
+                            // lines and destroy the shape of the verse.
+                            <div className="book-chapter__body book-chapter__body--verse">
+                              {note.body}
+                            </div>
+                          ) : (
+                            <div className="book-chapter__body">
+                              {proseParagraphs(note.body).map((para, p) => (
+                                <p key={p} className="book-chapter__paragraph">
+                                  {para}
+                                </p>
+                              ))}
+                            </div>
                           ))}
-                        </div>
-                      ))}
-                  </article>
-                );
-              })}
+                      </article>
+                    );
+                  })}
+                </Fragment>
+              ))}
             </div>
           </>
         )}
@@ -404,6 +443,7 @@ export const BookStage = ({
         onJump={handleJump}
         onRemoveChapter={onRemoveChapter}
         onSetNumbered={onSetNumbered}
+        onSetStory={onSetStory}
       />
     </section>
   );

@@ -200,6 +200,33 @@
    and a chapter break there are visibly the same gesture. Duplicated rather
    than shared because each component owns its own stylesheet in this project;
    if a third place needs it, it should move to a shared rule. */
+/* A book may hold several stories. The break between two of them is heavier
+   than the ornament between chapters, because crossing it means starting
+   something new rather than turning a page. */
+.book-story {
+  margin: var(--space-20) 0 var(--space-12);
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--color-border);
+  text-align: center;
+}
+
+/* Opening the book on a story needs no separation from what is above it. */
+.book-story--first {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.book-story__title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
 .book-chapter__ornament {
   display: flex;
   align-items: center;

@@ -31,18 +31,40 @@ const isBook = (value: unknown): value is Book => {
 const sortByUpdatedAtDesc = (books: Book[]): Book[] =>
   [...books].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
+const isStoryMarkArray = (value: unknown): boolean =>
+  Array.isArray(value) &&
+  value.every(
+    (m) =>
+      typeof m === 'object' &&
+      m !== null &&
+      typeof (m as Record<string, unknown>).startsAt === 'string' &&
+      typeof (m as Record<string, unknown>).title === 'string'
+  );
+
 /**
- * Drops numbering data that is not a list of ids, keeping the book.
+ * Drops numbering and story data that is the wrong shape, keeping the book.
  *
  * A corrupt chapterIds is fatal above, because a book whose order is broken
- * renders nothing. A corrupt unnumberedIds costs only the numbering, and
- * throwing away someone's book over it would be the greater loss.
+ * renders nothing. These two cost only the numbering and the story divisions,
+ * and throwing away someone's book over either would be the greater loss.
  */
 const normalizeBook = (book: Book): Book => {
-  const raw: unknown = (book as unknown as Record<string, unknown>).unnumberedIds;
-  if (raw === undefined || isStringArray(raw)) return book;
-  const { unnumberedIds: _corrupt, ...rest } = book;
-  return rest;
+  const fields = book as unknown as Record<string, unknown>;
+  let next = book;
+
+  const unnumbered: unknown = fields.unnumberedIds;
+  if (unnumbered !== undefined && !isStringArray(unnumbered)) {
+    const { unnumberedIds: _corrupt, ...rest } = next;
+    next = rest;
+  }
+
+  const stories: unknown = fields.stories;
+  if (stories !== undefined && !isStoryMarkArray(stories)) {
+    const { stories: _corrupt, ...rest } = next;
+    next = rest;
+  }
+
+  return next;
 };
 
 export const createFolderBookStore = (root: FileSystemDirectoryHandle): BookStore => {

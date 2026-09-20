@@ -103,6 +103,13 @@ export interface Conversation {
  * outside the app. A dangling id is rendered as a missing chapter, never a
  * crash.
  */
+/** Where a story begins within a book's single flat run of chapters. */
+export interface StoryMark {
+  /** The chapter that opens the story. */
+  startsAt: string;
+  title: string;
+}
+
 export interface Book {
   id: string;
   title: string;
@@ -118,6 +125,17 @@ export interface Book {
    * Optional, because books written before numbering existed do not have it.
    */
   unnumberedIds?: string[];
+  /**
+   * Where each story begins, for a book that collects several of them.
+   * Numbering restarts at one with every story, so an anthology has as many
+   * chapter ones as it has stories.
+   *
+   * A story is marked by the chapter that opens it rather than by listing
+   * what it holds. That makes a story contiguous by construction: there is no
+   * arrangement of this data that interleaves two of them, which is a thing a
+   * book cannot be.
+   */
+  stories?: StoryMark[];
   createdAt: string;
   updatedAt: string;
 }

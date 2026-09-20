@@ -6,10 +6,10 @@ import { BookIndex } from "./BookIndex";
 import type { BookIndexChapter } from "./BookIndex";
 
 const CHAPTERS: BookIndexChapter[] = [
-  { id: "a", title: "The Maid", number: 1, missing: false },
-  { id: "b", title: "The Garden", number: 2, missing: false },
-  { id: "c", title: "The Storm", number: 3, missing: false },
-  { id: "d", title: "The Return", number: 4, missing: false },
+  { id: "a", title: "The Maid", number: 1, story: null, missing: false },
+  { id: "b", title: "The Garden", number: 2, story: null, missing: false },
+  { id: "c", title: "The Storm", number: 3, story: null, missing: false },
+  { id: "d", title: "The Return", number: 4, story: null, missing: false },
 ];
 
 /**
@@ -25,6 +25,7 @@ const Harness = ({
   onJump = vi.fn(),
   onRemoveChapter = vi.fn(),
   onSetNumbered = vi.fn(),
+  onSetStory = vi.fn(),
 }: {
   initial?: BookIndexChapter[];
   currentChapterId?: string | null;
@@ -32,6 +33,7 @@ const Harness = ({
   onJump?: (id: string) => void;
   onRemoveChapter?: (id: string) => void;
   onSetNumbered?: (id: string, numbered: boolean) => void;
+  onSetStory?: (id: string, title: string | null) => void;
 }) => {
   const [chapters, setChapters] = useState(initial);
   const handleReorder = (ids: string[]) => {
@@ -46,6 +48,7 @@ const Harness = ({
       onJump={onJump}
       onRemoveChapter={onRemoveChapter}
       onSetNumbered={onSetNumbered}
+      onSetStory={onSetStory}
     />
   );
 };
@@ -112,7 +115,7 @@ describe("BookIndex", () => {
     render(<Harness />);
     await user.click(moveDown("The Maid"));
     expect(screen.getByRole("status")).toHaveTextContent(
-      "Moved The Maid to position 2 of 4"
+      "Moved The Maid to position 2 of 4",
     );
   });
 
@@ -125,18 +128,19 @@ describe("BookIndex", () => {
     const user = userEvent.setup();
     const onJump = vi.fn();
     render(<Harness onJump={onJump} />);
-    await user.click(screen.getByRole("button", { name: /^Go to The Garden$/ }));
+    await user.click(
+      screen.getByRole("button", { name: /^Go to The Garden$/ }),
+    );
     expect(onJump).toHaveBeenCalledWith("b");
   });
 
   it("marks the current chapter and no other", () => {
     render(<Harness currentChapterId="c" />);
-    expect(screen.getByRole("button", { name: /^Go to The Storm$/ })).toHaveAttribute(
-      "aria-current",
-      "true"
-    );
     expect(
-      screen.getByRole("button", { name: /^Go to The Maid$/ })
+      screen.getByRole("button", { name: /^Go to The Storm$/ }),
+    ).toHaveAttribute("aria-current", "true");
+    expect(
+      screen.getByRole("button", { name: /^Go to The Maid$/ }),
     ).not.toHaveAttribute("aria-current");
   });
 
@@ -151,8 +155,8 @@ describe("BookIndex", () => {
 
 describe("BookIndex — numbering", () => {
   const UNCOUNTED: BookIndexChapter[] = [
-    { id: "p", title: "Prologue", number: null, missing: false },
-    { id: "a", title: "The Maid", number: 1, missing: false },
+    { id: "p", title: "Prologue", number: null, story: null, missing: false },
+    { id: "a", title: "The Maid", number: 1, story: null, missing: false },
   ];
 
   /**
@@ -199,7 +203,11 @@ describe("BookIndex — numbering", () => {
    */
   it("spells out the number as the title when the chapter has no other", () => {
     render(
-      <Harness initial={[{ id: "a", title: "", number: 3, missing: false }]} />,
+      <Harness
+        initial={[
+          { id: "a", title: "", number: 3, story: null, missing: false },
+        ]}
+      />,
     );
 
     expect(
@@ -209,7 +217,11 @@ describe("BookIndex — numbering", () => {
 
   it("does not print the number twice on the same row", () => {
     render(
-      <Harness initial={[{ id: "a", title: "", number: 3, missing: false }]} />,
+      <Harness
+        initial={[
+          { id: "a", title: "", number: 3, story: null, missing: false },
+        ]}
+      />,
     );
 
     expect(
@@ -221,7 +233,9 @@ describe("BookIndex — numbering", () => {
     const onRemoveChapter = vi.fn();
     render(
       <Harness
-        initial={[{ id: "a", title: "", number: 3, missing: false }]}
+        initial={[
+          { id: "a", title: "", number: 3, story: null, missing: false },
+        ]}
         onRemoveChapter={onRemoveChapter}
       />,
     );
@@ -235,12 +249,182 @@ describe("BookIndex — numbering", () => {
   it("falls back to a bare name when a chapter has neither title nor number", () => {
     render(
       <Harness
-        initial={[{ id: "p", title: "", number: null, missing: false }]}
+        initial={[
+          { id: "p", title: "", number: null, story: null, missing: false },
+        ]}
       />,
     );
 
     expect(
       screen.getByRole("button", { name: "Go to this chapter" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("BookIndex stories", () => {
+  const anthology = [
+    { id: "a", title: "Chapter 1", number: 1, story: "Echoes", missing: false },
+    { id: "b", title: "Chapter 2", number: 2, story: "Echoes", missing: false },
+    {
+      id: "c",
+      title: "Chapter 1",
+      number: 1,
+      story: "Fracture",
+      missing: false,
+    },
+  ];
+
+  it("names each story once, above the chapter that opens it", () => {
+    render(<Harness initial={anthology} />);
+
+    expect(screen.getAllByRole("button", { name: /Echoes/ })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Fracture/ })).toHaveLength(1);
+  });
+
+  it("hides the rename hint from the page", () => {
+    render(<Harness initial={anthology} />);
+
+    // jsdom has no styling, so the only way to catch the hint leaking into
+    // the visible heading is to pin the class that takes it off the page.
+    const heading = screen.getByRole("button", { name: /Echoes/ });
+    expect(heading.querySelector(".sr-only")).toHaveTextContent(
+      "(rename this story)",
+    );
+  });
+
+  it("does not name a story above chapters that only continue it", () => {
+    render(<Harness initial={anthology} />);
+
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[1]).not.toHaveTextContent("Echoes");
+  });
+
+  it("marks the chapter that opens a story as pressed", () => {
+    render(<Harness initial={anthology} />);
+
+    const toggles = screen.getAllByRole("button", {
+      name: /^Start a story at/,
+    });
+    expect(toggles[0]).toHaveAttribute("aria-pressed", "true");
+    expect(toggles[1]).toHaveAttribute("aria-pressed", "false");
+    expect(toggles[2]).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("starts a story at a chapter once the name is entered", async () => {
+    const onSetStory = vi.fn();
+    render(
+      <Harness
+        initial={[
+          { id: "a", title: "One", number: 1, story: null, missing: false },
+        ]}
+        onSetStory={onSetStory}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Start a story at/ }),
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Story name" }),
+      "Echoes{Enter}",
+    );
+
+    expect(onSetStory).toHaveBeenCalledWith("a", "Echoes");
+  });
+
+  it("takes the division away when the chapter already opens a story", async () => {
+    const onSetStory = vi.fn();
+    render(<Harness initial={anthology} onSetStory={onSetStory} />);
+
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /^Start a story at/ })[0],
+    );
+
+    expect(onSetStory).toHaveBeenCalledWith("a", null);
+    expect(
+      screen.queryByRole("textbox", { name: "Story name" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renames a story from its heading", async () => {
+    const onSetStory = vi.fn();
+    render(<Harness initial={anthology} onSetStory={onSetStory} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Echoes/ }));
+    const field = screen.getByRole("textbox", { name: "Story name" });
+    expect(field).toHaveValue("Echoes");
+
+    await userEvent.clear(field);
+    await userEvent.type(field, "Echo{Enter}");
+    expect(onSetStory).toHaveBeenCalledWith("a", "Echo");
+  });
+
+  it("removes the division when the name is emptied", async () => {
+    const onSetStory = vi.fn();
+    render(<Harness initial={anthology} onSetStory={onSetStory} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Echoes/ }));
+    await userEvent.clear(screen.getByRole("textbox", { name: "Story name" }));
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Story name" }),
+      "{Enter}",
+    );
+
+    expect(onSetStory).toHaveBeenCalledWith("a", null);
+  });
+
+  it("abandons the name on Escape", async () => {
+    const onSetStory = vi.fn();
+    render(<Harness initial={anthology} onSetStory={onSetStory} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /Fracture/ }));
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Story name" }),
+      "Something{Escape}",
+    );
+
+    expect(onSetStory).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("textbox", { name: "Story name" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("abandons the name when the field loses focus", async () => {
+    const onSetStory = vi.fn();
+    render(
+      <Harness
+        initial={[
+          { id: "a", title: "One", number: 1, story: null, missing: false },
+        ]}
+        onSetStory={onSetStory}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Start a story at/ }),
+    );
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Story name" }),
+      "Half",
+    );
+    await userEvent.tab();
+
+    expect(onSetStory).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("textbox", { name: "Story name" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens only one naming field at a time", async () => {
+    render(<Harness initial={anthology} onSetStory={vi.fn()} />);
+
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /^Start a story at/ })[1],
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Fracture/ }));
+
+    expect(screen.getAllByRole("textbox", { name: "Story name" })).toHaveLength(
+      1,
+    );
   });
 });

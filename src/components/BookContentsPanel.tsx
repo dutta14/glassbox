@@ -13,6 +13,7 @@ interface BookContentsPanelProps {
   onJump: (chapterId: string) => void;
   onRemoveChapter: (chapterId: string) => void;
   onSetNumbered: (chapterId: string, numbered: boolean) => void;
+  onSetStory: (chapterId: string, title: string | null) => void;
 }
 
 const FOCUSABLE =
@@ -39,6 +40,7 @@ export const BookContentsPanel = ({
   onJump,
   onRemoveChapter,
   onSetNumbered,
+  onSetStory,
 }: BookContentsPanelProps) => {
   const panelRef = useRef<HTMLDivElement>(null);
   // Where focus was before the sheet opened, so closing returns the keyboard
@@ -51,7 +53,9 @@ export const BookContentsPanel = ({
     restoreRef.current = document.activeElement as HTMLElement | null;
     const root = panelRef.current;
     if (root) {
-      const focusables = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+      const focusables = Array.from(
+        root.querySelectorAll<HTMLElement>(FOCUSABLE),
+      );
       focusables[0]?.focus();
     }
     return () => {
@@ -133,6 +137,7 @@ export const BookContentsPanel = ({
             onReorder={onReorder}
             onRemoveChapter={onRemoveChapter}
             onSetNumbered={onSetNumbered}
+            onSetStory={onSetStory}
             headingId={headingId}
             /* Closing on jump is the whole point of the sheet: it is a way
                through to a chapter, so leaving it open would cover the place

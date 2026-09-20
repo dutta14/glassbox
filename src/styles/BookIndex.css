@@ -30,6 +30,58 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* A story name takes a whole line of its own above the chapter that opens
+     the story, so the row has to be allowed to become two lines. */
+  flex-wrap: wrap;
+}
+
+/* The story a set of chapters belongs to, named once above the first of them.
+   A button, because clicking it renames the story. */
+.book-index__story {
+  flex-basis: 100%;
+  margin-top: var(--space-5);
+  padding: 0 var(--space-3) var(--space-1);
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+/* Nothing sits above the first row, so it needs no separating space. */
+.book-index__row:first-child .book-index__story {
+  margin-top: 0;
+}
+
+.book-index__story:hover {
+  color: var(--color-text);
+}
+
+.book-index__story-input {
+  flex-basis: 100%;
+  margin-top: var(--space-5);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-accent);
+}
+
+.book-index__row:first-child .book-index__story-input {
+  margin-top: 0;
+}
+
+.book-index__story-toggle[aria-pressed="true"] {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
 }
 
 .book-index__jump {

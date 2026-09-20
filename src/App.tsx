@@ -179,6 +179,7 @@ interface BookStageRouteProps {
   onReorder: (bookId: string, chapterIds: string[]) => void;
   onRemoveChapter: (bookId: string, noteId: string) => void;
   onSetNumbered: (bookId: string, noteId: string, numbered: boolean) => void;
+  onSetStory: (bookId: string, noteId: string, title: string | null) => void;
   onRename: (bookId: string, title: string) => void;
   /** Where reading stopped in each book, so a book reopens where it was left. */
   positionFor: (bookId: string) => string | null;
@@ -192,6 +193,7 @@ const BookStageRoute = ({
   onReorder,
   onRemoveChapter,
   onSetNumbered,
+  onSetStory,
   onRename,
   positionFor,
   onReadChapter,
@@ -234,6 +236,7 @@ const BookStageRoute = ({
       onSetNumbered={(noteId, numbered) =>
         onSetNumbered(book.id, noteId, numbered)
       }
+      onSetStory={(noteId, title) => onSetStory(book.id, noteId, title)}
       onRename={(title) => onRename(book.id, title)}
       resumeChapterId={positionFor(book.id)}
       onReadChapter={handleReadChapter}
@@ -324,6 +327,7 @@ export const AppReady = ({
     addChapter,
     removeChapter,
     setChapterNumbered,
+    setStoryStart,
     reorderChapters,
     deleteBook,
     renameBook,
@@ -516,7 +520,10 @@ export const AppReady = ({
     (id: string) => {
       const note = notes.find((n) => n.id === id);
       if (!note) return;
-      setNoteFormat(id, (note.format ?? "prose") === "verse" ? "prose" : "verse");
+      setNoteFormat(
+        id,
+        (note.format ?? "prose") === "verse" ? "prose" : "verse",
+      );
     },
     [notes, setNoteFormat],
   );
@@ -664,7 +671,8 @@ export const AppReady = ({
       // the new prompt start a new conversation instead of extending the old
       // one. Passing null as the explicit target tells append to mint fresh
       // rather than trust its own possibly-stale activeId.
-      const wasDraft = newDraftPendingRef.current || activeConversationId === null;
+      const wasDraft =
+        newDraftPendingRef.current || activeConversationId === null;
       newDraftPendingRef.current = false;
       const id = append(text, answer, wasDraft ? null : undefined);
       if (wasDraft) {
@@ -757,7 +765,9 @@ export const AppReady = ({
             noteTitle={addToBookNote?.title.trim() || COPY.untitled}
             books={books}
             currentBookId={
-              addToBookNote ? (bookByNoteId.get(addToBookNote.id)?.id ?? null) : null
+              addToBookNote
+                ? (bookByNoteId.get(addToBookNote.id)?.id ?? null)
+                : null
             }
             onClose={() => setAddToBookNoteId(null)}
             onAddToBook={handleAddToBook}
@@ -870,6 +880,7 @@ export const AppReady = ({
                       onReorder={reorderChapters}
                       onRemoveChapter={removeChapter}
                       onSetNumbered={setChapterNumbered}
+                      onSetStory={setStoryStart}
                       onRename={(bookId, title) => {
                         void renameBook(bookId, title);
                       }}

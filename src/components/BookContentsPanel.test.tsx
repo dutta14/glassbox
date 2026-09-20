@@ -6,9 +6,9 @@ import { BookContentsPanel } from "./BookContentsPanel";
 import type { BookIndexChapter } from "./BookIndex";
 
 const CHAPTERS: BookIndexChapter[] = [
-  { id: "a", title: "The Maid", number: 1, missing: false },
-  { id: "b", title: "The Garden", number: 2, missing: false },
-  { id: "c", title: "The Storm", number: 3, missing: false },
+  { id: "a", title: "The Maid", number: 1, story: null, missing: false },
+  { id: "b", title: "The Garden", number: 2, story: null, missing: false },
+  { id: "c", title: "The Storm", number: 3, story: null, missing: false },
 ];
 
 interface PanelOverrides {
@@ -32,6 +32,7 @@ const renderPanel = (over: PanelOverrides = {}) =>
       onReorder={over.onReorder ?? noop}
       onJump={over.onJump ?? noop}
       onSetNumbered={vi.fn()}
+    onSetStory={vi.fn()}
     onRemoveChapter={over.onRemoveChapter ?? noop}
     />,
   );
@@ -66,6 +67,7 @@ const Opener = ({ onJump = vi.fn() }: { onJump?: (id: string) => void }) => {
         onReorder={noop}
         onJump={onJump}
         onSetNumbered={vi.fn()}
+    onSetStory={vi.fn()}
     onRemoveChapter={noop}
       />
     </>
@@ -83,6 +85,7 @@ describe("BookContentsPanel", () => {
         onReorder={noop}
         onJump={noop}
         onSetNumbered={vi.fn()}
+    onSetStory={vi.fn()}
     onRemoveChapter={noop}
       />,
     );

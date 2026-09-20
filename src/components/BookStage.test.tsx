@@ -30,6 +30,7 @@ interface StageOverrides {
   onReorder?: (ids: string[]) => void;
   onRemoveChapter?: (id: string) => void;
   onSetNumbered?: (id: string, numbered: boolean) => void;
+  onSetStory?: (id: string, title: string | null) => void;
   onRename?: (title: string) => void;
   resumeChapterId?: string | null;
   onReadChapter?: (id: string) => void;
@@ -44,6 +45,7 @@ const renderStage = (over: StageOverrides = {}) =>
         chapters={over.chapters ?? []}
         onReorder={over.onReorder ?? noop}
         onSetNumbered={over.onSetNumbered ?? noop}
+        onSetStory={over.onSetStory ?? noop}
         onRemoveChapter={over.onRemoveChapter ?? noop}
         onRename={over.onRename ?? noop}
         resumeChapterId={over.resumeChapterId ?? null}
@@ -84,7 +86,8 @@ const installFakeObserver = () => {
       return [];
     }
   }
-  window.IntersectionObserver = FakeIO as unknown as typeof IntersectionObserver;
+  window.IntersectionObserver =
+    FakeIO as unknown as typeof IntersectionObserver;
 
   return {
     /** Reports `el` as intersecting to whichever observer is watching it. */
@@ -129,8 +132,16 @@ describe("BookStage — chapters", () => {
     // and not by createdAt (Alpha 2010, Gamma 2015, Beta 2020). If any of those
     // orders showed instead, the reader would be handed a different book.
     const beta = makeNote({ id: "n1", title: "Beta", createdAt: "2020-01-01" });
-    const alpha = makeNote({ id: "n2", title: "Alpha", createdAt: "2010-01-01" });
-    const gamma = makeNote({ id: "n3", title: "Gamma", createdAt: "2015-01-01" });
+    const alpha = makeNote({
+      id: "n2",
+      title: "Alpha",
+      createdAt: "2010-01-01",
+    });
+    const gamma = makeNote({
+      id: "n3",
+      title: "Gamma",
+      createdAt: "2015-01-01",
+    });
     renderStage({
       book: makeBook(["n1", "n3", "n2"]),
       chapters: [beta, gamma, alpha],
@@ -149,7 +160,9 @@ describe("BookStage — chapters", () => {
       book: makeBook(["n1", "gone", "n3"]),
       chapters: [first, null, last],
     });
-    expect(screen.getByText(/This chapter's note was deleted/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/This chapter's note was deleted/),
+    ).toBeInTheDocument();
     const headings = chapterHeadings();
     // Still three chapters, and the survivors keep their positions around the
     // gap. Silently dropping the missing one would leave a two-chapter book
@@ -211,7 +224,9 @@ describe("BookStage — chapters", () => {
     });
     // Two chapters means one join between them. An ornament above the first
     // would divide the opening chapter from the contents it already follows.
-    expect(container.querySelectorAll(".book-chapter__ornament")).toHaveLength(1);
+    expect(container.querySelectorAll(".book-chapter__ornament")).toHaveLength(
+      1,
+    );
     expect(
       articleFor("Chapter 1 One").querySelector(".book-chapter__ornament"),
     ).toBeNull();
@@ -221,16 +236,20 @@ describe("BookStage — chapters", () => {
 describe("BookStage — front matter", () => {
   it("shows an empty state that says how to add a chapter", () => {
     renderStage({ book: makeBook([]), chapters: [] });
-    expect(screen.getByText(/This book has no chapters yet/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/This book has no chapters yet/),
+    ).toBeInTheDocument();
     // No contents and no chapters, so nothing pretends the book has content.
     expect(screen.queryByRole("navigation", { name: "Contents" })).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "Contents" }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Contents" })).toBeNull();
   });
 
   it("counts the chapters and the time to read them", () => {
-    const long = makeNote({ id: "n1", title: "Long", body: "word ".repeat(460) });
+    const long = makeNote({
+      id: "n1",
+      title: "Long",
+      body: "word ".repeat(460),
+    });
     const short = makeNote({ id: "n2", title: "Short", body: "a few words" });
     renderStage({ book: makeBook(["n1", "n2"]), chapters: [long, short] });
     // 460 words is two minutes at 230wpm, plus the one-minute floor for the
@@ -573,5 +592,108 @@ describe("BookStage — numbering", () => {
       "Chapter 2 Missing chapter",
       "Chapter 3 Third",
     ]);
+  });
+});
+
+describe("BookStage — anthologies", () => {
+  const anthology = () => ({
+    book: {
+      ...makeBook(["n1", "n2", "n3"]),
+      stories: [
+        { startsAt: "n1", title: "Echoes" },
+        { startsAt: "n3", title: "Fracture" },
+      ],
+    },
+    chapters: [
+      makeNote({ id: "n1", title: "Echoes – Chapter 1", body: "One." }),
+      makeNote({ id: "n2", title: "Echoes – Chapter 2", body: "Two." }),
+      makeNote({ id: "n3", title: "Fracture – Chapter 1", body: "Three." }),
+    ],
+  });
+
+  it("announces each story above the chapter that opens it", () => {
+    const { container } = renderStage(anthology());
+
+    const breaks = Array.from(
+      container.querySelectorAll(".book-story__title"),
+    ).map((el) => el.textContent);
+    expect(breaks).toEqual(["Echoes", "Fracture"]);
+  });
+
+  it("starts the numbering again in each story", () => {
+    renderStage(anthology());
+
+    const numbers = Array.from(
+      document.querySelectorAll(".book-chapter__number"),
+    ).map((el) => el.textContent);
+    expect(numbers).toEqual(["Chapter 1", "Chapter 2", "Chapter 1"]);
+  });
+
+  it("drops a chapter's story prefix when it agrees with the story", () => {
+    renderStage(anthology());
+
+    expect(screen.queryByText(/Echoes – Chapter/)).not.toBeInTheDocument();
+  });
+
+  it("keeps a prefix that names a different story, so a misfiled chapter shows", () => {
+    const base = anthology();
+    renderStage({
+      ...base,
+      chapters: [
+        base.chapters[0],
+        makeNote({ id: "n2", title: "Fracture – Chapter 2", body: "Two." }),
+        base.chapters[2],
+      ],
+    });
+
+    expect(
+      screen.getByRole("link", { name: /Fracture – Chapter 2/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("puts no ornament above the chapter that opens a story", () => {
+    const { container } = renderStage(anthology());
+
+    // Three chapters, but two of them open a story, so only the middle one
+    // is separated from what came before by an ornament.
+    expect(container.querySelectorAll(".book-chapter__ornament")).toHaveLength(
+      1,
+    );
+  });
+
+  it("names the stories in the contents as well as the page", () => {
+    renderStage(anthology());
+
+    // The contents is the only place a reader can see the whole shape of an
+    // anthology at once, so the divisions have to reach it.
+    expect(screen.getAllByRole("button", { name: /Echoes/ })).not.toHaveLength(
+      0,
+    );
+    expect(
+      screen.getAllByRole("button", { name: /Fracture/ }),
+    ).not.toHaveLength(0);
+  });
+
+  it("leaves a book with no stories reading as it always did", () => {
+    const { container } = renderStage({
+      book: makeBook(["n1", "n2"]),
+      chapters: [
+        makeNote({ id: "n1", title: "One" }),
+        makeNote({ id: "n2", title: "Two" }),
+      ],
+    });
+
+    expect(container.querySelectorAll(".book-story")).toHaveLength(0);
+    expect(container.querySelectorAll(".book-chapter__ornament")).toHaveLength(
+      1,
+    );
+  });
+
+  it("does not separate a story that opens the book from what is above it", () => {
+    const { container } = renderStage(anthology());
+
+    const breaks = container.querySelectorAll(".book-story");
+    expect(breaks[0]).toHaveClass("book-story--first");
+    expect(breaks[1]).not.toHaveClass("book-story--first");
   });
 });

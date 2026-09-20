@@ -36,6 +36,11 @@ export interface UseBooksResult {
     numbered: boolean
   ) => Promise<void>;
   removeChapter: (bookId: string, noteId: string) => Promise<void>;
+  setStoryStart: (
+    bookId: string,
+    chapterId: string,
+    title: string | null
+  ) => Promise<void>;
   reorderChapters: (bookId: string, chapterIds: string[]) => Promise<void>;
   renameBook: (bookId: string, title: string) => Promise<void>;
   deleteBook: (bookId: string) => Promise<void>;
@@ -57,11 +62,26 @@ export interface UseBooksResult {
  * about that chapter taken out too. Left behind, they would come back to life
  * if the note were ever added again.
  */
-const withoutChapter = (book: Book, noteId: string): Book => ({
-  ...book,
-  chapterIds: book.chapterIds.filter((id) => id !== noteId),
-  unnumberedIds: (book.unnumberedIds ?? []).filter((id) => id !== noteId),
-});
+const withoutChapter = (book: Book, noteId: string): Book => {
+  const chapterIds = book.chapterIds.filter((id) => id !== noteId);
+  const stories = book.stories ?? [];
+  return {
+    ...book,
+    chapterIds,
+    unnumberedIds: (book.unnumberedIds ?? []).filter((id) => id !== noteId),
+    /* A story anchored to the departing chapter moves to whatever now comes
+       first in it, rather than being deleted. The story is still there; it
+       has only lost the chapter that used to open it. It is dropped only when
+       nothing follows, because then the story has no chapters left at all. */
+    stories: stories.flatMap((mark) => {
+      if (mark.startsAt !== noteId) return [mark];
+      const next = book.chapterIds[book.chapterIds.indexOf(noteId) + 1];
+      return next === undefined || stories.some((m) => m.startsAt === next)
+        ? []
+        : [{ ...mark, startsAt: next }];
+    }),
+  };
+};
 
 export const useBooks = (store: BookStore | null): UseBooksResult => {
   const [books, setBooks] = useState<Book[]>([]);
@@ -197,6 +217,29 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
   );
 
 
+  /**
+   * Starts a story at a chapter, renames the one already starting there, or
+   * with a null title takes the division away and folds those chapters back
+   * into the story before them.
+   */
+  const setStoryStart = useCallback(
+    async (bookId: string, chapterId: string, title: string | null): Promise<void> => {
+      await mutate(bookId, (book) => {
+        const stories = book.stories ?? [];
+        const without = stories.filter((m) => m.startsAt !== chapterId);
+        if (title === null) return { ...book, stories: without };
+        /* Kept in reading order so that anything walking the marks meets them
+           in the order the reader will. */
+        const order = book.chapterIds;
+        const next = [...without, { startsAt: chapterId, title }].sort(
+          (a, b) => order.indexOf(a.startsAt) - order.indexOf(b.startsAt)
+        );
+        return { ...book, stories: next };
+      });
+    },
+    [mutate]
+  );
+
   const reorderChapters = useCallback(
     async (bookId: string, chapterIds: string[]): Promise<void> => {
       await mutate(bookId, (book) => ({ ...book, chapterIds: [...chapterIds] }));
@@ -260,6 +303,7 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
     addChapter,
     setChapterNumbered,
     removeChapter,
+    setStoryStart,
     reorderChapters,
     renameBook,
     deleteBook,

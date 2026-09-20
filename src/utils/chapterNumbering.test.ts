@@ -237,6 +237,18 @@ describe("splitStoryTitle", () => {
     });
   });
 
+  /**
+   * A dash with nothing either side of it is punctuation inside a word, not a
+   * division between a story and its chapter. "Echoes-Chapter 1" reads as one
+   * compound title, and guessing a story out of it would be inventing one.
+   */
+  it("needs space around the dash before it will split there", () => {
+    expect(splitStoryTitle("Echoes-Chapter 1")).toEqual({
+      story: null,
+      rest: "Echoes-Chapter 1",
+    });
+  });
+
   /** "Chapter" has to be numbering something, or it is just a word. */
   it("leaves a title alone when the word chapter is part of the prose", () => {
     expect(splitStoryTitle("Rain – Chapter of Errors")).toEqual({
