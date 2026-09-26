@@ -236,11 +236,16 @@ export const NoteSearchModal = ({
                   {note.id === selectedNoteId && (
                     <span className="note-search__current-badge">Open</span>
                   )}
+                  {/* createdAt, not updatedAt, matching the foot of the note
+                      and the order of the rail. A poem from 2011 that was
+                      re-saved this afternoon is still a poem from 2011, and
+                      labelling it "Today" here made every touched note look
+                      new while hiding the one fact that identifies it. */}
                   <time
                     className="note-search__option-date"
-                    dateTime={note.updatedAt}
+                    dateTime={note.createdAt}
                   >
-                    {formatRelative(note.updatedAt)}
+                    {formatRelative(note.createdAt)}
                   </time>
                 </span>
                 {previewFromBody(note.body) && (

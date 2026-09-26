@@ -449,7 +449,29 @@ describe("NoteSearchModal", () => {
       };
     };
 
-    it("labels a note updated today as Today", () => {
+    it("dates a result by when it was written, not when it was last saved", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-10T12:00:00.000Z"));
+
+      setup({
+        notes: [
+          {
+            id: "old",
+            title: "Dated",
+            body: "",
+            tags: [],
+            createdAt: new Date(2011, 1, 8, 12).toISOString(),
+            updatedAt: new Date("2026-03-10T11:00:00.000Z").toISOString(),
+          },
+        ],
+      });
+
+      const time = options()[0].querySelector("time");
+      expect(time).toHaveTextContent("2011");
+      expect(time).not.toHaveTextContent("Today");
+    });
+
+    it("labels a note written today as Today", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-03-10T12:00:00.000Z"));
       const note = atOffsetDays(0);
@@ -458,10 +480,10 @@ describe("NoteSearchModal", () => {
 
       const time = options()[0].querySelector("time");
       expect(time).toHaveTextContent("Today");
-      expect(time).toHaveAttribute("datetime", note.updatedAt);
+      expect(time).toHaveAttribute("datetime", note.createdAt);
     });
 
-    it("labels a note updated the previous day as Yesterday", () => {
+    it("labels a note written the previous day as Yesterday", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-03-10T12:00:00.000Z"));
 

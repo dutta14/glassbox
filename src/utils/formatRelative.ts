@@ -8,6 +8,10 @@
  * rather
  * than by subtracting milliseconds, so "Yesterday" stays correct across
  * daylight-saving shifts.
+ *
+ * Dates outside the current year carry it. These notes go back to 2010, so a
+ * bare "May 25" in a list of search results could mean any of sixteen days.
+ * The year is omitted within the current year because there it is noise.
  */
 export const formatRelative = (iso: string): string => {
   const d = new Date(iso);
@@ -27,5 +31,9 @@ export const formatRelative = (iso: string): string => {
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return `${days} days ago`;
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(d.getFullYear() === now.getFullYear() ? {} : { year: "numeric" }),
+  });
 };
