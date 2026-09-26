@@ -408,11 +408,23 @@ export const NotesRail = ({
               fill="none"
               aria-hidden="true"
             >
+              {/* A bare glyph, like the plus beside it, rather than a ringed or
+                  boxed mark. A question mark in a circle reads as Help wherever
+                  it appears and would promise documentation; one in a rounded
+                  square is very nearly the Books silhouette. Drawn 9.8px tall so
+                  it sits between the plus at 9.5 and the book at 11.5 rather
+                  than looking shrunken beside them. */}
               <path
-                d="M4 2.75h8A1.25 1.25 0 0 1 13.25 4v5A1.25 1.25 0 0 1 12 10.25H6.6L3.75 12.6V10.2A1.25 1.25 0 0 1 2.75 9V4A1.25 1.25 0 0 1 4 2.75Z"
+                d="M5.3 5.9a2.7 2.7 0 1 1 3.75 2.5c-.9.38-1.25.98-1.25 1.74v.35"
                 stroke="currentColor"
                 strokeWidth="1.4"
-                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              <path
+                d="M7.8 13h.01"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
               />
             </svg>
             {COPY.askRow}
@@ -710,11 +722,23 @@ export const NotesRail = ({
               fill="none"
               aria-hidden="true"
             >
+              {/* A bare glyph, like the plus beside it, rather than a ringed or
+                  boxed mark. A question mark in a circle reads as Help wherever
+                  it appears and would promise documentation; one in a rounded
+                  square is very nearly the Books silhouette. Drawn 9.8px tall so
+                  it sits between the plus at 9.5 and the book at 11.5 rather
+                  than looking shrunken beside them. */}
               <path
-                d="M4 2.75h8A1.25 1.25 0 0 1 13.25 4v5A1.25 1.25 0 0 1 12 10.25H6.6L3.75 12.6V10.2A1.25 1.25 0 0 1 2.75 9V4A1.25 1.25 0 0 1 4 2.75Z"
+                d="M5.3 5.9a2.7 2.7 0 1 1 3.75 2.5c-.9.38-1.25.98-1.25 1.74v.35"
                 stroke="currentColor"
                 strokeWidth="1.4"
-                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              <path
+                d="M7.8 13h.01"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
               />
             </svg>
             <RailTip label={COPY.askRow} />
@@ -796,11 +820,23 @@ export const NotesRail = ({
                 fill="none"
                 aria-hidden="true"
               >
+                {/* A bare glyph, like the plus beside it, rather than a ringed or
+                    boxed mark. A question mark in a circle reads as Help wherever
+                    it appears and would promise documentation; one in a rounded
+                    square is very nearly the Books silhouette. Drawn 9.8px tall so
+                    it sits between the plus at 9.5 and the book at 11.5 rather
+                    than looking shrunken beside them. */}
                 <path
-                  d="M4 2.75h8A1.25 1.25 0 0 1 13.25 4v5A1.25 1.25 0 0 1 12 10.25H6.6L3.75 12.6V10.2A1.25 1.25 0 0 1 2.75 9V4A1.25 1.25 0 0 1 4 2.75Z"
+                  d="M5.3 5.9a2.7 2.7 0 1 1 3.75 2.5c-.9.38-1.25.98-1.25 1.74v.35"
                   stroke="currentColor"
                   strokeWidth="1.4"
-                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M7.8 13h.01"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
                 />
               </svg>
             }
