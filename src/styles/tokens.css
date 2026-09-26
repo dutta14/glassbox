@@ -186,11 +186,13 @@
    It is also darker than the ramp it replaces (#100f0d against #161616), and
    because every surface dropped, every foreground gained contrast. Worst case
    across all six surfaces:
-     text 12.07  text-secondary 6.60  text-muted 5.09  text-quote 10.42
-     accent 12.07  positive 6.86  warning 7.11  negative 5.39
+     text 7.54  text-secondary 5.67  text-muted 5.09  text-quote 6.83
+     accent 7.54  positive 6.86  warning 7.11  negative 5.39
      text-on-accent 16.39
-   The previous ramp measured text 10.75, secondary 5.91, muted 4.56,
-   quote 9.35, so nothing regressed. Borders sit at 1.22-1.89:1; they divide
+   Body text is lower than the neutral ramp's 10.75 on purpose; see the note
+   on --color-text. The four foreground steps run 7.54, 5.67, 5.09, 4.66,
+   which is a narrow band, but the floor is fixed by what --color-surface-raised
+   can carry and the ceiling by what is comfortable to read. Borders sit at 1.22-1.89:1; they divide
    content rather than identify controls, so 1.4.11 does not apply. */
 body.dark {
   --color-bg: #100f0d;
@@ -208,24 +210,38 @@ body.dark {
   /* 1.27:1 against the page, 12.89:1 for body text. */
   --color-surface-prompt: #292621;
 
-  --color-text: #f0ede6;
-  --color-text-secondary: #b5b1a8;
+  /* Deliberately not the brightest value this page can carry. Paper-white on
+     near-black measured 16.4:1 against the page, and at that distance a serif
+     at reading size halates: the glyphs bleed into the background and the eye
+     refocuses on every line. This is 10.2:1 on the page, which is quieter
+     than the neutral ramp it replaces and still well past 4.5. The ceiling
+     here is comfort, not compliance. */
+  --color-text: #c2bdb2;
+  --color-text-secondary: #a8a49a;
   --color-text-muted: #9f9b91;
   /* 4.66:1 at its worst, on --color-surface-raised, and 5.91:1 on
      --color-surface. The neutral ramp's faint tone was 3.91:1 on raised and
      had to be scoped to the surfaces it happened to be used on; this one
-     clears 4.5 everywhere, so it cannot fail by being reused. */
+     clears 4.5 everywhere, so it cannot fail by being reused. It also sets
+     the floor for everything above it: with body text down at 7.54:1 worst
+     case, the four steps have only that much room to divide between them. */
   --color-text-faint: #98948a;
   --color-text-on-accent: #100f0d;
-  --color-text-quote: #e1ddd5;
+  /* A step softer than body text, the way light mode's quote tone is a step
+     softer than its ink. It was brighter than the prose it sits inside until
+     body text came down. */
+  --color-text-quote: #b9b4a9;
 
   --color-border: #2b2823;
   --color-border-light: #35322c;
   --color-border-strong: #45413b;
 
-  --accent: #f0ede6;
-  --accent-hover: #ffffff;
-  --accent-light: #f0ede61f;
+  /* Tracks body text. The accent fills buttons and the drop cap, so holding
+     it at paper-white while the prose dimmed would have left those objects
+     glaring by contrast, which is the opposite of the intent. */
+  --accent: #c2bdb2;
+  --accent-hover: #d4cfc5;
+  --accent-light: #c2bdb21f;
   --accent-lighter: #292621;
 
   --color-positive: #4ec9a4;
