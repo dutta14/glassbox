@@ -1,11 +1,10 @@
 import { Fragment, useCallback, useRef, useState } from "react";
-import type { Book, Conversation, Note, NoteFormat } from "../types";
+import type { Book, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { BookListItem } from "./BookListItem";
 import { BookChapterList } from "./BookChapterList";
 import { NewNoteMenu } from "./NewNoteMenu";
 import { OrganizeMenu } from "./OrganizeMenu";
-import { ConversationItem } from "./ConversationItem";
 import { NoteSearchModal } from "./NoteSearchModal";
 import { RailFlyout } from "./RailFlyout";
 import { RailTip } from "./RailTip";
@@ -27,13 +26,12 @@ const SECTIONS_KEY = "glassbox.railSections.v1";
    generated and this is not. */
 const ORGANIZE_MENU_ID = "organize-notes";
 
-type SectionName = "chats" | "books" | "notes";
+type SectionName = "books" | "notes";
 type SectionState = Record<SectionName, boolean>;
 
 /** All open is the state the rail has always had, so a first-time reader
     sees no change. */
 const DEFAULT_SECTIONS: SectionState = {
-  chats: true,
   books: true,
   notes: true,
 };
@@ -48,10 +46,6 @@ const readSections = (): SectionState => {
     // Read field by field rather than trusting the blob, so a hand-edited or
     // half-written value cannot collapse a section with no way back.
     return {
-      chats:
-        typeof record.chats === "boolean"
-          ? record.chats
-          : DEFAULT_SECTIONS.chats,
       // A reader who saved their sections before books existed has no `books`
       // key. Falling back to the default opens it, which is what someone
       // meeting a new section should get.
@@ -117,10 +111,7 @@ const writeCollapsed = (collapsed: boolean): void => {
 
 interface NotesRailProps {
   notes: Note[];
-  conversations: Conversation[];
   books: Book[];
-  /** Null while a draft chat is open, which is its own kind of current. */
-  activeConversationId: string | null;
   selectedNoteId: string | null;
   /** Null unless a book is the thing currently open. */
   selectedBookId: string | null;
@@ -133,9 +124,6 @@ interface NotesRailProps {
   connectError: string | null;
   onSelect: (id: string) => void;
   onCreate: (format: NoteFormat) => void;
-  onNewChat: () => void;
-  onSelectConversation: (id: string) => void;
-  onDeleteConversation: (id: string) => void;
   onSelectBook: (id: string) => void;
   /** Opens the Books page, the only way into a book while the rail keeps
       notes in one list. */
@@ -144,7 +132,6 @@ interface NotesRailProps {
   onOpenChapter: (bookId: string, noteId: string) => void;
   onDeleteBook: (id: string) => void;
   onAddNoteToBook: (id: string) => void;
-  chatActive: boolean;
   onDeleteNote: (id: string) => void;
   onToggleNoteFormat: (id: string) => void;
   onDeleteSamples: () => void;
@@ -159,9 +146,7 @@ interface NotesRailProps {
 
 export const NotesRail = ({
   notes,
-  conversations,
   books,
-  activeConversationId,
   selectedNoteId,
   selectedBookId,
   hasSampleNotes,
@@ -171,15 +156,11 @@ export const NotesRail = ({
   connectError,
   onSelect,
   onCreate,
-  onNewChat,
-  onSelectConversation,
-  onDeleteConversation,
   onSelectBook,
   onOpenBooks,
   onOpenChapter,
   onDeleteBook,
   onAddNoteToBook,
-  chatActive,
   onDeleteNote,
   onToggleNoteFormat,
   onDeleteSamples,
@@ -197,7 +178,6 @@ export const NotesRail = ({
   /** Only one flyout at a time: two panels open beside a one-icon-wide rail
       would overlap each other. */
   const [openFlyout, setOpenFlyout] = useState<SectionName | null>(null);
-  const chatsOpen = sections.chats;
   const booksOpen = sections.books;
   const notesOpen = sections.notes;
 
@@ -211,8 +191,6 @@ export const NotesRail = ({
   /** Held here rather than per row, so opening one menu closes any other. */
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
-  const [pendingChatDelete, setPendingChatDelete] =
-    useState<Conversation | null>(null);
   const [pendingBookDelete, setPendingBookDelete] = useState<Book | null>(null);
   /* A set rather than a single id: every book costs a fixed five rows when
      open, so there is no reason to shut one to look at another. Per session,
@@ -228,10 +206,10 @@ export const NotesRail = ({
       return next;
     });
   }, []);
-  /* Nothing reads as open while the chat is showing. Otherwise the rail marks
-     two rows current at once, the chat entry and whichever note was last
-     opened, and aria-current stops meaning anything. */
-  const currentNoteId = chatActive ? null : selectedNoteId;
+  /* Ask is a pane beside the note now rather than a place the rail can send
+     you, so nothing competes with the open note for aria-current and this is
+     simply whichever note is open. */
+  const currentNoteId = selectedNoteId;
 
   const byBook = organizeMode === "book";
 
@@ -255,14 +233,9 @@ export const NotesRail = ({
     book.chapterIds
       .map((id) => noteById.get(id))
       .filter((note): note is Note => note !== undefined);
-  /* A draft is current only when the chat is showing and no saved thread is
-     open. Without this the Ask row and a conversation row would both
-     claim aria-current. */
-  const draftActive = chatActive && activeConversationId === null;
-
   const searchToggleRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  useScrollFades(listRef, [notes.length, conversations.length, collapsed]);
+  useScrollFades(listRef, [notes.length, collapsed]);
 
   /** Focus goes back to the glyph that opened the modal, never to the body. */
   const closeSearch = useCallback(() => {
@@ -290,22 +263,6 @@ export const NotesRail = ({
 
   /* Mirrors the note dialog. Focus goes back to the row menu trigger that
      opened it, because the row is still there when you cancel. */
-  const cancelChatDelete = useCallback(() => {
-    const id = pendingChatDelete?.id ?? null;
-    setPendingChatDelete(null);
-    if (id === null) return;
-    requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(`[data-menu-for="${id}"]`)?.focus();
-    });
-  }, [pendingChatDelete]);
-
-  const confirmChatDelete = useCallback(() => {
-    if (pendingChatDelete === null) return;
-    const id = pendingChatDelete.id;
-    setPendingChatDelete(null);
-    onDeleteConversation(id);
-  }, [pendingChatDelete, onDeleteConversation]);
-
   const toggleCollapsed = useCallback(() => {
     setCollapsed((current) => {
       const next = !current;
@@ -392,44 +349,6 @@ export const NotesRail = ({
 
       {!collapsed && (
         <>
-          {/* The rail is the only way into the chat now that the Chat/Editor
-              tablist is gone, so this reads as the current view rather than as
-              an action. aria-current matches how the note rows mark theirs. */}
-          <button
-            type="button"
-            className={`notes-rail__entry${draftActive ? " notes-rail__entry--active" : ""}`}
-            onClick={onNewChat}
-            aria-current={draftActive ? "true" : undefined}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              {/* A bare glyph, like the plus beside it, rather than a ringed or
-                  boxed mark. A question mark in a circle reads as Help wherever
-                  it appears and would promise documentation; one in a rounded
-                  square is very nearly the Books silhouette. Drawn 9.8px tall so
-                  it sits between the plus at 9.5 and the book at 11.5 rather
-                  than looking shrunken beside them. */}
-              <path
-                d="M5.3 5.9a2.7 2.7 0 1 1 3.75 2.5c-.9.38-1.25.98-1.25 1.74v.35"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-              <path
-                d="M7.8 13h.01"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-            {COPY.askRow}
-          </button>
-
           <NewNoteMenu onCreate={onCreate} />
 
           {/* In one list the shelf is a place to go, not a section of the
@@ -476,62 +395,9 @@ export const NotesRail = ({
             </button>
           )}
 
-          {/* One scroll area for both lists, so the rail scrolls as a single
-              column instead of two boxes that run out of room independently.
-              Two navs inside it rather than one, because a single landmark
-              covering chats and notes could not be named honestly. */}
+          {/* One scroll area for the lists, so the rail scrolls as a single
+              column instead of boxes that run out of room independently. */}
           <div ref={listRef} className="notes-rail__list scroll-fades">
-            {/* Heading wrapping a button is the accordion pattern that keeps
-                both roles: the outline still has a heading to land on, and the
-                control is still a button. Swapping the h2 for a button would
-                have cost the outline entry. */}
-            <div className="notes-rail__section notes-rail__section--sticky">
-              <h2 className="notes-rail__title" id="rail-chats-heading">
-                <button
-                  type="button"
-                  className="notes-rail__title-toggle"
-                  onClick={() => toggleSection("chats")}
-                  aria-expanded={chatsOpen}
-                  aria-controls="rail-chats-list"
-                >
-                  {COPY.questionsHeading}
-                  <Chevron open={chatsOpen} />
-                </button>
-              </h2>
-            </div>
-
-            <nav
-              id="rail-chats-list"
-              aria-labelledby="rail-chats-heading"
-              hidden={!chatsOpen}
-            >
-              {conversations.length === 0 ? (
-                <div className="notes-rail__empty">
-                  <p className="notes-rail__empty-body">
-                    {COPY.emptyChatsSidebar}
-                  </p>
-                </div>
-              ) : (
-                <ul>
-                  {conversations.map((conversation) => (
-                    <ConversationItem
-                      key={conversation.id}
-                      conversation={conversation}
-                      isSelected={
-                        chatActive && conversation.id === activeConversationId
-                      }
-                      menuOpen={openMenuId === conversation.id}
-                      onSelect={() => onSelectConversation(conversation.id)}
-                      onMenuOpenChange={(open) =>
-                        setOpenMenuId(open ? conversation.id : null)
-                      }
-                      onRequestDelete={() => setPendingChatDelete(conversation)}
-                    />
-                  ))}
-                </ul>
-              )}
-            </nav>
-
             {byBook && (
               <div className="notes-rail__section notes-rail__section--sticky">
                 <h2 className="notes-rail__title" id="rail-books-heading">
@@ -703,46 +569,11 @@ export const NotesRail = ({
         </>
       )}
 
-      {/* Collapsed, the rail keeps every action it had, as icons. The two
-          lists cannot shrink to an icon without losing their contents, so
-          each hands its rows to a flyout that opens beside it. */}
+      {/* Collapsed, the rail keeps every action it had, as icons. A list
+          cannot shrink to an icon without losing its contents, so it hands its
+          rows to a flyout that opens beside it. */}
       {collapsed && (
         <div className="notes-rail__icons">
-          <button
-            type="button"
-            className="rail-flyout__trigger rail-tip-host"
-            onClick={onNewChat}
-            aria-label={COPY.askRow}
-            aria-current={draftActive ? "true" : undefined}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              {/* A bare glyph, like the plus beside it, rather than a ringed or
-                  boxed mark. A question mark in a circle reads as Help wherever
-                  it appears and would promise documentation; one in a rounded
-                  square is very nearly the Books silhouette. Drawn 9.8px tall so
-                  it sits between the plus at 9.5 and the book at 11.5 rather
-                  than looking shrunken beside them. */}
-              <path
-                d="M5.3 5.9a2.7 2.7 0 1 1 3.75 2.5c-.9.38-1.25.98-1.25 1.74v.35"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-              />
-              <path
-                d="M7.8 13h.01"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-            <RailTip label={COPY.askRow} />
-          </button>
 
           <button
             type="button"
@@ -804,62 +635,6 @@ export const NotesRail = ({
           </button>
 
           <div className="notes-rail__icons-divider" />
-
-          <RailFlyout
-            label={COPY.questionsHeading}
-            heading={COPY.questionsHeading}
-            open={openFlyout === "chats"}
-            onOpenChange={(next) => setOpenFlyout(next ? "chats" : null)}
-            isEmpty={conversations.length === 0}
-            emptyText={COPY.emptyChatsSidebar}
-            icon={
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
-              >
-                {/* A bare glyph, like the plus beside it, rather than a ringed or
-                    boxed mark. A question mark in a circle reads as Help wherever
-                    it appears and would promise documentation; one in a rounded
-                    square is very nearly the Books silhouette. Drawn 9.8px tall so
-                    it sits between the plus at 9.5 and the book at 11.5 rather
-                    than looking shrunken beside them. */}
-                <path
-                  d="M5.3 5.9a2.7 2.7 0 1 1 3.75 2.5c-.9.38-1.25.98-1.25 1.74v.35"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M7.8 13h.01"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
-              </svg>
-            }
-          >
-            <ul>
-              {conversations.map((conversation) => (
-                <ConversationItem
-                  key={conversation.id}
-                  conversation={conversation}
-                  isSelected={conversation.id === activeConversationId}
-                  menuOpen={openMenuId === conversation.id}
-                  onSelect={() => {
-                    onSelectConversation(conversation.id);
-                    setOpenFlyout(null);
-                  }}
-                  onMenuOpenChange={(open) =>
-                    setOpenMenuId(open ? conversation.id : null)
-                  }
-                  onRequestDelete={() => setPendingChatDelete(conversation)}
-                />
-              ))}
-            </ul>
-          </RailFlyout>
 
           <RailFlyout
             label="Books"
@@ -989,16 +764,6 @@ export const NotesRail = ({
       {/* Names the conversation so the two dialogs in this rail are never
           confusable, and says plainly that notes are unaffected. Deleting a
           transcript that quoted a note must not read as deleting the note. */}
-      <ConfirmDialog
-        open={pendingChatDelete !== null}
-        title={`Delete "${pendingChatDelete?.title.trim() || COPY.untitledChat}"?`}
-        description="This deletes this conversation. Your notes stay unchanged."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        destructive
-        onConfirm={confirmChatDelete}
-        onCancel={cancelChatDelete}
-      />
 
       <ConfirmDialog
         open={pendingDelete !== null}

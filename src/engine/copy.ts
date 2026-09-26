@@ -40,6 +40,36 @@ export const COPY = {
   chatRegion: 'Conversation',
   emptyChatsSidebar: 'Ask a question to start one.',
 
+  /* The pane. Ask is no longer a place you navigate to, it is something you
+     open while reading, so these name a control and a container rather than a
+     destination. */
+
+  /* On the floating button. The button shows only a question mark, so this is
+     the whole of its accessible name and has to say what opens. */
+  askOpen: 'Ask your notes',
+  askClose: 'Close Ask',
+  /* Names the pane itself for anyone moving by landmark. It is a complementary
+     region beside the note, not a dialog: the note stays readable and
+     interactive alongside it, and calling it a dialog would tell a screen
+     reader user the rest of the page had gone away when it had not. */
+  askPaneRegion: 'Ask',
+  /* The drawer of past questions inside the pane. "Questions" alone is the
+     rail's old word; this says where it is, because it opens over the
+     conversation rather than beside it. */
+  askHistoryOpen: 'Past questions',
+  askHistoryClose: 'Back to the conversation',
+  askHistoryRegion: 'Past questions',
+  askNewQuestion: 'New question',
+  /* The drag handle between the note and the pane. Named as the thing it does
+     rather than what it is, since "separator" is already announced by role. */
+  askResize: 'Resize the Ask pane',
+
+  /* Shown at '/' when there is nothing to open. Ask used to fill this space,
+     so the app had something to say to a new reader before they had written
+     anything. Now the first move is theirs, and this says what it is. */
+  emptyLibraryTitle: 'Nothing here yet',
+  emptyLibraryBody: 'Write your first note and it will appear in the list.',
+
   /* Distinct from the other two for the same reason they are distinct from
      each other: three lists share the rail, and an unnamed row in one must
      never be mistaken for an unnamed row in another. */
@@ -109,7 +139,7 @@ export const COPY = {
   /* Deliberately not the same words as askTitle above it. The heading states
      the promise; the field has to invite a question, and an input echoing the
      heading it sits under reads like a stutter. */
-  placeholderChat: 'Ask about something you wrote',
+  placeholderChat: 'Ask something',
   placeholderChatEmpty: 'Add a note first',
 
   tooltipConfidence: 'How closely the passage matched your question. 1.00 is a perfect match.',

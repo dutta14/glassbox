@@ -42,12 +42,6 @@ const renderRail = (
       connectError={null}
       onSelect={vi.fn()}
       onCreate={vi.fn()}
-      conversations={[]}
-      activeConversationId={null}
-      onNewChat={vi.fn()}
-      onSelectConversation={vi.fn()}
-      onDeleteConversation={vi.fn()}
-      chatActive={false}
       onDeleteNote={vi.fn()}
       onToggleNoteFormat={vi.fn()}
       onDeleteSamples={vi.fn()}
@@ -169,20 +163,31 @@ describe("NotesRail collapse", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps both list sections reachable while collapsed, as flyout triggers", async () => {
+  it("keeps the notes list reachable while collapsed, as a flyout trigger", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(collapseButton());
 
-    expect(screen.getByRole("button", { name: COPY.questionsHeading })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
     expect(screen.getByRole("button", { name: "Notes" })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
+  });
+
+  /* Ask left the rail for a pane of its own, so nothing in the collapsed strip
+     should still offer it. Asserted as an absence because a leftover trigger
+     would look harmless while doing nothing. */
+  it("offers no way into Ask from the collapsed strip", async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(collapseButton());
+
+    expect(screen.queryByRole("button", { name: COPY.askRow })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: COPY.questionsHeading }),
+    ).toBeNull();
   });
 
   it("opens the collapsed Notes flyout onto the notes themselves", async () => {

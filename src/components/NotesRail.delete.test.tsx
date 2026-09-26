@@ -34,12 +34,6 @@ const renderRail = (onDeleteNote = vi.fn()) => {
       connectError={null}
       onSelect={vi.fn()}
       onCreate={vi.fn()}
-      conversations={[]}
-      activeConversationId={null}
-      onNewChat={vi.fn()}
-      onSelectConversation={vi.fn()}
-      onDeleteConversation={vi.fn()}
-      chatActive={false}
       onDeleteNote={onDeleteNote}
       onToggleNoteFormat={vi.fn()}
       onDeleteSamples={vi.fn()}

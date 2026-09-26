@@ -14,7 +14,7 @@
 
 .quote__body {
   margin: 0;
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   line-height: var(--leading-relaxed);
   color: var(--color-text-quote);
   font-weight: var(--fw-normal);

@@ -16,7 +16,6 @@ import type {
 } from "./types";
 import type {
   BookStore,
-  ConversationListResult,
   ConversationStore,
   NotesStore,
 } from "./storage/types";
@@ -97,10 +96,6 @@ const makeNotesStore = (initial: Note[]): NotesStore => {
   };
 };
 
-interface DeferredConversationStore extends ConversationStore {
-  resolveList: (result: ConversationListResult) => void;
-}
-
 /* In memory rather than the real localStorage store: this file never clears
    localStorage between tests, so a book written by one test would still be
    there for the next one and the failure would look like a routing bug. */
@@ -131,30 +126,6 @@ const makeConversationStore = (initial: Conversation[]): ConversationStore => {
     async remove(id) {
       disk.delete(id);
     },
-  };
-};
-
-/** A conversation store whose first list() hangs until the test releases it. */
-const makeDeferredConversationStore = (): DeferredConversationStore => {
-  const disk = new Map<string, Conversation>();
-  let release!: (result: ConversationListResult) => void;
-  const gate = new Promise<ConversationListResult>((res) => {
-    release = res;
-  });
-  return {
-    kind: "local",
-    async list() {
-      const result = await gate;
-      for (const c of result.conversations) disk.set(c.id, c);
-      return result;
-    },
-    async put(conversation) {
-      disk.set(conversation.id, conversation);
-    },
-    async remove(id) {
-      disk.delete(id);
-    },
-    resolveList: release,
   };
 };
 
@@ -205,10 +176,25 @@ const renderApp = (initialEntries: string[], options: RenderOptions = {}) => {
 const pathname = () => screen.getByTestId("pathname").textContent;
 
 beforeEach(() => {
+  /* Cleared, not just seeded. '/' now resolves through a remembered note id in
+     localStorage, so a test that opens a note leaves a fact behind that
+     changes where the next test lands. Without this the file passes or fails
+     by running order. */
+  localStorage.clear();
   // Skip sample seeding so each test controls exactly which notes exist.
   markSeeded();
   testNavigate = null;
 });
+
+/* The Ask button is on every ready screen and on no loading one, which makes
+   it the honest "the app has finished starting" signal now that '/' no longer
+   parks on a composer. */
+const ready = () => screen.findByRole("button", { name: COPY.askOpen });
+
+const openAsk = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await ready());
+  return screen.findByRole("textbox", { name: "Ask a question" });
+};
 
 describe("deep links open the right thing (AC 1)", () => {
   it("opens the note named in /note/<id> on first load", async () => {
@@ -221,28 +207,93 @@ describe("deep links open the right thing (AC 1)", () => {
     );
   });
 
-  it("opens the conversation named in /chat/<id> on first load", async () => {
+  /* Conversations no longer have addresses. A link someone saved or a tab
+     they left open must still land somewhere sensible rather than on a dead
+     route, so it falls through home and home resolves to a note. */
+  it("sends an old /chat/<id> link home instead of to a dead end", async () => {
     renderApp(["/chat/c1"], {
+      notes: [makeNote("n1", ISO, "First note")],
       conversations: [makeConversation("c1", "My chat", "hello there")],
     });
-    expect(await screen.findByText("hello there")).toBeInTheDocument();
+
+    await waitFor(() => expect(pathname()).toBe("/note/n1"));
   });
 
-  it("opens a new chat draft at / with nothing selected", async () => {
-    renderApp(["/"], { notes: [makeNote("n1", ISO, "First note")] });
+  it("opens the newest note at / when nothing has been read before", async () => {
+    renderApp(["/"], {
+      notes: [
+        makeNote("n1", "2020-01-01T00:00:00.000Z", "Older note"),
+        makeNote("n2", "2024-01-01T00:00:00.000Z", "Newer note"),
+      ],
+    });
+
+    await waitFor(() => expect(pathname()).toBe("/note/n2"));
+  });
+
+  it("reopens the note that was last read", async () => {
+    localStorage.setItem("glassbox.lastNote.v1", "n1");
+    renderApp(["/"], {
+      notes: [
+        makeNote("n1", "2020-01-01T00:00:00.000Z", "Older note"),
+        makeNote("n2", "2024-01-01T00:00:00.000Z", "Newer note"),
+      ],
+    });
+
+    await waitFor(() => expect(pathname()).toBe("/note/n1"));
+  });
+
+  /* A note deleted on another machine leaves a remembered id pointing at
+     nothing. Falling through to the newest note is what stops every load
+     landing on a not-found the reader cannot clear. */
+  it("falls back to the newest note when the remembered one is gone", async () => {
+    localStorage.setItem("glassbox.lastNote.v1", "deleted-elsewhere");
+    renderApp(["/"], {
+      notes: [makeNote("n2", "2024-01-01T00:00:00.000Z", "Newer note")],
+    });
+
+    await waitFor(() => expect(pathname()).toBe("/note/n2"));
+  });
+
+  it("says so plainly at / when there is nothing to open", async () => {
+    renderApp(["/"], { notes: [] });
+
     expect(
-      await screen.findByRole("heading", { name: COPY.askTitle }),
+      await screen.findByText(COPY.emptyLibraryTitle),
     ).toBeInTheDocument();
+    expect(pathname()).toBe("/");
   });
 });
 
 describe("selecting from the rail sets the URL and adds one history entry (AC 2, 3, 4, 14)", () => {
   it("selecting a note navigates to /note/<id> and back returns to where you were", async () => {
-    renderApp(["/"], {
-      notes: [makeNote("n1", ISO, "Alpha note")],
+    renderApp(["/note/n1"], {
+      notes: [makeNote("n1", ISO, "Alpha note"), makeNote("n2", ISO, "Beta note")],
     });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: COPY.askTitle });
+    await ready();
+
+    await user.click(screen.getByRole("button", { name: "Beta note" }));
+    await waitFor(() => expect(pathname()).toBe("/note/n2"));
+
+    act(() => {
+      testNavigate?.(-1);
+    });
+    await waitFor(() => expect(pathname()).toBe("/note/n1"));
+  });
+
+  /* The hop from '/' to a note is a replace, not a push. If it pushed, back
+     from the first note would return to '/', which would immediately send the
+     reader forward again: a trap with no way out of the app. */
+  it("does not leave / in history when it resolves to a note", async () => {
+    renderApp(["/"], {
+      notes: [
+        makeNote("n1", "2020-01-01T00:00:00.000Z", "Alpha note"),
+        makeNote("n2", "2024-01-01T00:00:00.000Z", "Beta note"),
+      ],
+    });
+    const user = userEvent.setup();
+    await ready();
+    await waitFor(() => expect(pathname()).toBe("/note/n2"));
 
     await user.click(screen.getByRole("button", { name: "Alpha note" }));
     await waitFor(() => expect(pathname()).toBe("/note/n1"));
@@ -250,40 +301,22 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
     act(() => {
       testNavigate?.(-1);
     });
-    await waitFor(() => expect(pathname()).toBe("/"));
+    await waitFor(() => expect(pathname()).toBe("/note/n2"));
   });
 
-  it("selecting a chat navigates to /chat/<id> and back returns to where you were", async () => {
-    renderApp(["/"], {
-      notes: [makeNote("n1", ISO, "Alpha note")],
-      conversations: [makeConversation("c1", "Chat one", "question one")],
-    });
-    const user = userEvent.setup();
-    await screen.findByRole("heading", { name: COPY.askTitle });
-
-    await user.click(screen.getByRole("button", { name: "Chat one" }));
-    await waitFor(() => expect(pathname()).toBe("/chat/c1"));
-
-    act(() => {
-      testNavigate?.(-1);
-    });
-    await waitFor(() => expect(pathname()).toBe("/"));
-  });
-
-  it("Ask from a note navigates to / and back returns to the note", async () => {
+  /* Ask is a pane beside the note rather than a place to go. Opening it must
+     leave the address bar exactly as it was, or back would start closing
+     panes instead of leaving the note. */
+  it("opening Ask leaves the URL alone, so back still exits the note", async () => {
     renderApp(["/note/n1"], {
-      notes: [makeNote("n1", ISO, "Alpha note")],
+      notes: [makeNote("n0", ISO, "Zero note"), makeNote("n1", ISO, "Alpha note")],
     });
     const user = userEvent.setup();
     await screen.findByRole("region", { name: "Note editor" });
 
-    await user.click(screen.getByRole("button", { name: COPY.askRow }));
-    await waitFor(() => expect(pathname()).toBe("/"));
+    await openAsk(user);
 
-    act(() => {
-      testNavigate?.(-1);
-    });
-    await waitFor(() => expect(pathname()).toBe("/note/n1"));
+    expect(pathname()).toBe("/note/n1");
   });
 
   it("selecting the note already open does not stack a duplicate history entry", async () => {
@@ -308,9 +341,9 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
 
 describe("creating a note navigates to it (AC 6)", () => {
   it("New note pushes /note/<new-id> and shows an empty editor", async () => {
-    renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
+    renderApp(["/note/n1"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: COPY.askTitle });
+    await ready();
 
     await user.click(screen.getByRole("button", { name: "New note" }));
 
@@ -320,9 +353,9 @@ describe("creating a note navigates to it (AC 6)", () => {
   });
 
   it("New note still opens a prose note, so the default did not move", async () => {
-    renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
+    renderApp(["/note/n1"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: COPY.askTitle });
+    await ready();
 
     await user.click(screen.getByRole("button", { name: "New note" }));
 
@@ -334,9 +367,9 @@ describe("creating a note navigates to it (AC 6)", () => {
     // The end-to-end proof, and the only test that would catch the format
     // being dropped somewhere between the menu and the created note. The
     // component test can only show the right argument leaving the menu.
-    renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
+    renderApp(["/note/n1"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: COPY.askTitle });
+    await ready();
 
     await user.click(screen.getByRole("button", { name: "New note options" }));
     await user.click(screen.getByRole("menuitem", { name: "Verse" }));
@@ -347,55 +380,39 @@ describe("creating a note navigates to it (AC 6)", () => {
   });
 });
 
-describe("the first message in a draft replaces / with /chat/<id> (AC 7)", () => {
-  it("submitting a prompt on the draft swaps the URL and keeps the thread when going back", async () => {
-    renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
+describe("asking a question leaves the address bar alone (AC 7)", () => {
+  /* The first prompt used to replace '/' with '/chat/<id>', which is what made
+     the submit path race an async hashchange. The pane has no URL, so the note
+     stays open and stays addressed. */
+  it("submitting a prompt keeps the URL on the note and shows the thread", async () => {
+    renderApp(["/note/n1"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: COPY.askTitle });
+    await screen.findByRole("region", { name: "Note editor" });
 
-    const input = screen.getByRole("textbox", { name: "Ask a question" });
+    const input = await openAsk(user);
     await user.type(input, "what did I write about bread");
     await user.keyboard("{Enter}");
 
-    // The draft became a real conversation with its own URL.
-    await waitFor(() => expect(pathname()).toMatch(/^\/chat\/.+/));
-    const chatUrl = pathname();
-    const transcript = screen.getByRole("list", { name: "Conversation" });
+    const transcript = await screen.findByRole("list", { name: "Conversation" });
     expect(
       within(transcript).getByText("what did I write about bread"),
     ).toBeInTheDocument();
-
-    // Because the swap was a replace, back does not return to an empty draft;
-    // it leaves the fresh conversation URL in place.
-    act(() => {
-      testNavigate?.(-1);
-    });
-    await waitFor(() => expect(pathname()).toBe(chatUrl));
-    expect(
-      within(screen.getByRole("list", { name: "Conversation" })).getByText(
-        "what did I write about bread",
-      ),
-    ).toBeInTheDocument();
+    expect(pathname()).toBe("/note/n1");
   });
 
-  it("keeps the first answer's reasoning panel auto-expanded through the draft-to-chat swap", async () => {
-    // Regression guard. The draft submit sets activeId and navigates in two
-    // separate commits, so there is a render where the route still reads '/'
-    // while a real conversation is active. If the route-to-state sync resets
-    // that transient to a draft, it wipes the conversation and the one-time
-    // reasoning expansion append had set, and the panel mounts collapsed. This
-    // asserts the expansion survives, which only holds while the fresh-id guard
-    // in the sync effect is intact.
-    renderApp(["/"], { notes: [makeNote("n1", ISO, "Alpha note")] });
+  /* The first answer opens its reasoning panel once, so a reader sees what the
+     retrieval did before deciding whether to trust it. That expansion is set
+     during append and would be lost to a remount. */
+  it("keeps the first answer's reasoning panel auto-expanded", async () => {
+    renderApp(["/note/n1"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: COPY.askTitle });
+    await screen.findByRole("region", { name: "Note editor" });
 
-    const input = screen.getByRole("textbox", { name: "Ask a question" });
+    const input = await openAsk(user);
     await user.type(input, "what did I write about bread");
     await user.keyboard("{Enter}");
 
-    await waitFor(() => expect(pathname()).toMatch(/^\/chat\/.+/));
-    const transcript = screen.getByRole("list", { name: "Conversation" });
+    const transcript = await screen.findByRole("list", { name: "Conversation" });
     const panel = within(transcript)
       .getAllByRole("button")
       .find((b) => /confidence|No match/i.test(b.textContent ?? ""));
@@ -404,28 +421,24 @@ describe("the first message in a draft replaces / with /chat/<id> (AC 7)", () =>
   });
 });
 
-describe("the composer survives the draft/chat transition (remount regression)", () => {
-  it("keeps text typed into the composer when Ask flips the route from a chat to the draft", async () => {
-    // The '/' and '/chat/:id' routes must render the same component type so the
-    // outlet preserves one ChatPanel instance across the flip. When they did
-    // not, "New chat" remounted the composer and dropped whatever the user was
-    // mid-typing, so the very next Enter submitted an empty prompt and started
-    // no new conversation. This types, navigates, and asserts the draft is
-    // reached with the text intact, which can only hold if the input was never
-    // torn down.
-    renderApp(["/chat/c1"], {
-      notes: [makeNote("n1", ISO, "Alpha note")],
-      conversations: [makeConversation("c1", "Bread", "hello there")],
+describe("the composer survives moving around the app", () => {
+  /* The old guard against this was keeping '/' and '/chat/:id' on the same
+     component type so the outlet would not swap the ChatPanel. The pane is
+     mounted outside the router now, so the protection is structural: this
+     asserts the structure, not the trick it replaced. */
+  it("keeps text typed into the composer when the note behind it changes", async () => {
+    renderApp(["/note/n1"], {
+      notes: [makeNote("n1", ISO, "Alpha note"), makeNote("n2", ISO, "Beta note")],
     });
     const user = userEvent.setup();
-    await screen.findByText("hello there");
+    await screen.findByRole("region", { name: "Note editor" });
 
-    const input = screen.getByRole("textbox", { name: "Ask a question" });
+    const input = await openAsk(user);
     await user.type(input, "six hours");
 
-    await user.click(screen.getByRole("button", { name: COPY.askRow }));
+    await user.click(screen.getByRole("button", { name: "Beta note" }));
+    await waitFor(() => expect(pathname()).toBe("/note/n2"));
 
-    await waitFor(() => expect(pathname()).toBe("/"));
     expect(
       screen.getByRole("textbox", { name: "Ask a question" }),
     ).toHaveValue("six hours");
@@ -433,31 +446,35 @@ describe("the composer survives the draft/chat transition (remount regression)",
 });
 
 describe("deleting the open thread replaces the URL (AC 8)", () => {
-  it("deleting the open conversation replaces the URL with the neighbour", async () => {
-    renderApp(["/chat/c1"], {
+  /* With conversations out of the address bar there is no URL left to fix, so
+     what matters is that the reader is moved onto the neighbour rather than
+     left looking at a thread that no longer exists. */
+  it("deleting the open conversation shows the neighbour and leaves the URL alone", async () => {
+    renderApp(["/note/n1"], {
+      notes: [makeNote("n1", ISO, "Alpha note")],
       conversations: [
         makeConversation("c1", "Chat one", "question one"),
         makeConversation("c2", "Chat two", "question two"),
       ],
     });
     const user = userEvent.setup();
-    await screen.findByText("question one");
+    await screen.findByRole("region", { name: "Note editor" });
+    await openAsk(user);
 
     await user.click(
-      screen.getByRole("button", { name: "More actions for Chat one" }),
+      screen.getByRole("button", { name: COPY.askHistoryOpen }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "More actions for Chat one" }),
     );
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
-    // c1 is gone; the URL moved to the neighbour rather than staying dead.
-    await waitFor(() => expect(pathname()).toBe("/chat/c2"));
-
-    // The replace means back does not return to the deleted /chat/c1.
-    act(() => {
-      testNavigate?.(-1);
-    });
-    await waitFor(() => expect(pathname()).not.toBe("/chat/c1"));
+    expect(
+      screen.queryByRole("button", { name: "More actions for Chat one" }),
+    ).toBeNull();
+    expect(pathname()).toBe("/note/n1");
   });
 
   it("deleting the open note replaces the URL, landing on / when it was the last note", async () => {
@@ -491,80 +508,46 @@ describe("dead links show a calm not-found (AC 9)", () => {
     ).toHaveAttribute("href", "/");
   });
 
-  it("a /chat/<id> that does not exist shows the chat not-found message", async () => {
-    renderApp(["/chat/missing"], {
-      conversations: [makeConversation("c1", "Chat one", "question one")],
-    });
-    expect(
-      await screen.findByText(/That chat doesn.t exist/i),
-    ).toBeInTheDocument();
-  });
-
-  it("a path that matches no route redirects home to the draft rather than erroring", async () => {
+  it("a path that matches no route redirects home rather than erroring", async () => {
     renderApp(["/totally-made-up"], {
       notes: [makeNote("n1", ISO, "Alpha note")],
     });
-    // The catch-all <Navigate to="/" replace /> sends an unrecognised path home,
-    // matching the finance app. A dead /note/<id> or /chat/<id> still resolves
-    // to a calm not-found inside its own route; only truly unmatched shapes
-    // land here.
-    await waitFor(() => expect(pathname()).toBe("/"));
+    /* The catch-all sends an unrecognised path home, and home resolves to a
+       note. A dead /note/<id> still shows a calm not-found inside its own
+       route; only truly unmatched shapes land here. */
+    await waitFor(() => expect(pathname()).toBe("/note/n1"));
     expect(
-      await screen.findByRole("heading", { name: COPY.askTitle }),
+      await screen.findByRole("region", { name: "Note editor" }),
     ).toBeInTheDocument();
-  });
-});
-
-describe("route validation waits for loading before judging a deep link (AC 11)", () => {
-  it("holds on a loading state for /chat/<id> until conversations finish loading, then opens it", async () => {
-    const store = makeDeferredConversationStore();
-    renderApp(["/chat/c1"], {
-      notes: [makeNote("n1", ISO, "Alpha note")],
-      conversationStore: store,
-    });
-
-    // Notes are ready but conversations are still loading, so the deep link
-    // must not have bounced to a not-found yet.
-    expect(await screen.findByText("Loading your chats…")).toBeInTheDocument();
-    expect(screen.queryByText(/That chat doesn.t exist/i)).toBeNull();
-    expect(pathname()).toBe("/chat/c1");
-
-    act(() => {
-      store.resolveList({
-        conversations: [makeConversation("c1", "Chat one", "question one")],
-        skipped: 0,
-      });
-    });
-
-    expect(await screen.findByText("question one")).toBeInTheDocument();
-    expect(pathname()).toBe("/chat/c1");
   });
 });
 
 describe("editing a note does not touch history (AC 12)", () => {
   it("typing in the note body leaves the URL untouched so back still exits the note", async () => {
-    renderApp(["/"], {
-      notes: [makeNote("n1", ISO, "Alpha note", "")],
+    renderApp(["/note/n1"], {
+      notes: [
+        makeNote("n1", ISO, "Alpha note", ""),
+        makeNote("n2", ISO, "Beta note", ""),
+      ],
     });
     const user = userEvent.setup();
-    await screen.findByRole("heading", { name: COPY.askTitle });
+    await ready();
 
-    await user.click(screen.getByRole("button", { name: "Alpha note" }));
-    await waitFor(() => expect(pathname()).toBe("/note/n1"));
+    await user.click(screen.getByRole("button", { name: "Beta note" }));
+    await waitFor(() => expect(pathname()).toBe("/note/n2"));
 
     const body = screen.getByLabelText("Note body");
     await user.type(body, "some new words");
-    expect(pathname()).toBe("/note/n1");
+    expect(pathname()).toBe("/note/n2");
 
     act(() => {
       testNavigate?.(-1);
     });
-    await waitFor(() => expect(pathname()).toBe("/"));
+    await waitFor(() => expect(pathname()).toBe("/note/n1"));
   });
 });
 
-describe("the document title reflects what is open (AC 15)", () => {
-  it("shows the note title, the chat title, and falls back to Glassbox on a draft", async () => {
+describe("the document title reflects what is open (AC 15)", () => {  it("names the open note, and says only Glassbox when none is open", async () => {
     renderApp(["/note/n1"], {
       notes: [makeNote("n1", ISO, "Sourdough log")],
       conversations: [makeConversation("c1", "Bread questions", "why flat")],
@@ -573,16 +556,18 @@ describe("the document title reflects what is open (AC 15)", () => {
       expect(document.title).toBe("Sourdough log · Glassbox"),
     );
 
-    act(() => {
-      testNavigate?.("/chat/c1");
-    });
-    await waitFor(() =>
-      expect(document.title).toBe("Bread questions · Glassbox"),
-    );
+    /* A question is asked beside the note rather than instead of it, so the
+       title must not follow the conversation. The note is still where the
+       reader is. */
+    const user = userEvent.setup();
+    await openAsk(user);
+    expect(document.title).toBe("Sourdough log · Glassbox");
+  });
 
-    act(() => {
-      testNavigate?.("/");
-    });
-    await waitFor(() => expect(document.title).toBe("Glassbox"));
+  it("falls back to the bare app name when the library is empty", async () => {
+    renderApp(["/"], { notes: [] });
+
+    await screen.findByText(COPY.emptyLibraryTitle);
+    expect(document.title).toBe("Glassbox");
   });
 });

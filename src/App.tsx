@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import {
   Routes,
   Route,
@@ -11,7 +10,6 @@ import {
 import type {
   Answer,
   Book,
-  Conversation,
   Note,
   NoteFormat,
   StoryMark,
@@ -25,11 +23,15 @@ import { useTheme } from "./hooks/useTheme";
 import { useNoteOrganize } from "./hooks/useNoteOrganize";
 import { createIndex, route } from "./engine/router";
 import type { TfIdfIndex } from "./engine/tfidf";
-import { notePath, chatPath, bookPath } from "./engine/routes";
+import { notePath, bookPath } from "./engine/routes";
 import { COPY } from "./engine/copy";
 import { NotesRail } from "./components/NotesRail";
 import { AddToBookModal } from "./components/AddToBookModal";
 import { BookStage } from "./components/BookStage";
+import { AskFab } from "./components/AskFab";
+import { AskPane } from "./components/AskPane";
+import { AskResizer } from "./components/AskResizer";
+import { useAskPane } from "./hooks/useAskPane";
 import { BooksPage } from "./components/BooksPage";
 import { useNoteNeighbours } from "./hooks/useNoteNeighbours";
 import { NoteEditor } from "./components/NoteEditor";
@@ -85,48 +87,55 @@ const App = () => {
   );
 };
 
-interface ChatStageProps {
-  conversationsLoaded: boolean;
-  conversations: Conversation[];
-  children: ReactNode;
+/* Which note to open when someone lands on '/'.
+   Ask used to live here, so the app opened into a question. It is an accessory
+   to the notes now, which leaves the front door to the notes themselves, and
+   the most useful note to show is the one they were last reading. */
+/* One id, shared by the pane, the resizer and the button, so each can say what
+   it controls without three of them inventing their own. */
+const ASK_PANE_ID = "ask-pane";
+
+const LAST_NOTE_KEY = "glassbox.lastNote.v1";
+
+export const rememberLastNote = (id: string): void => {
+  try {
+    localStorage.setItem(LAST_NOTE_KEY, id);
+  } catch {
+    /* A full or blocked store costs the resume, nothing more. */
+  }
+};
+
+const readLastNote = (): string | null => {
+  try {
+    return localStorage.getItem(LAST_NOTE_KEY);
+  } catch {
+    return null;
+  }
+};
+
+interface HomeRouteProps {
+  notes: Note[];
 }
 
-/* The stage for /chat/:id. The id is read with useParams, so react-router does
-   the decoding and the encode-on-write in chatPath is the whole contract: an id
-   that carried a slash or a space when the link was built arrives here whole.
-
-   It waits for conversationsLoaded on purpose. Chats load on their own clock,
-   and before that first list resolves an id that is not in the set yet is
-   unproven rather than invalid. Judging it early is the bounce that loses every
-   chat deep link on refresh, so until then we hold on a loading state. */
-const ChatStage = ({
-  conversationsLoaded,
-  conversations,
-  children,
-}: ChatStageProps) => {
-  const { id } = useParams();
-  // The draft route '/' has no id and is always valid, so it renders the panel
-  // straight through. Crucially both '/' and '/chat/:id' resolve to this same
-  // ChatStage component, which is what lets react-router keep one ChatPanel
-  // instance mounted as the route flips between them. If the two routes
-  // rendered different element types, the outlet would swap them, React would
-  // remount the composer, and any prompt typed during that flip, exactly what
-  // happens when a user hits "Ask" and immediately types, would be lost
-  // to an emptied input. Keeping the type stable keeps the composer alive.
-  if (!id) {
-    return <>{children}</>;
-  }
-  if (!conversationsLoaded) {
+/* Resolved at render rather than in an effect, so there is no frame where the
+   reader sees an empty stage before being sent on. The remembered id is
+   checked against the library because a note deleted on another machine would
+   otherwise send every load to a "not found". */
+const HomeRoute = ({ notes }: HomeRouteProps) => {
+  if (notes.length === 0) {
     return (
-      <div className="app__loading" role="status" aria-live="polite">
-        Loading your chats…
+      <div className="stage__empty">
+        <p className="stage__empty-title">{COPY.emptyLibraryTitle}</p>
+        <p className="stage__empty-body">{COPY.emptyLibraryBody}</p>
       </div>
     );
   }
-  if (!conversations.some((c) => c.id === id)) {
-    return <NotFound what="chat" />;
-  }
-  return <>{children}</>;
+  const remembered = readLastNote();
+  const target =
+    remembered !== null && notes.some((n) => n.id === remembered)
+      ? remembered
+      : notes[0].id;
+  return <Navigate to={notePath(target)} replace />;
 };
 
 interface NoteStageProps {
@@ -302,15 +311,16 @@ export const AppReady = ({
   // chat draft, and reviving that effect would send every empty draft into a
   // note instead.
   const noteMatch = useMatch("/note/:id");
-  const chatMatch = useMatch("/chat/:id");
   const bookMatch = useMatch("/book/:id");
   const selectedNoteId = noteMatch?.params.id ?? null;
+
+  /* Remembered on every visit rather than on close, because the app is more
+     often quit than closed politely, and a tab that dies still leaves the
+     reader where they were. */
+  useEffect(() => {
+    if (selectedNoteId !== null) rememberLastNote(selectedNoteId);
+  }, [selectedNoteId]);
   const selectedBookId = bookMatch?.params.id ?? null;
-  const chatRouteId = chatMatch?.params.id ?? null;
-  // Draft is the absence of both matches, which is the index path and, for the
-  // blink before the catch-all redirect lands, any unrecognised path too.
-  const isDraftRoute = noteMatch === null && chatMatch === null;
-  const activeTab = noteMatch ? "editor" : "chat";
 
   const {
     notes,
@@ -331,9 +341,16 @@ export const AppReady = ({
   const storageAvailable = storeKind === "local" ? store.isAvailable() : true;
 
   const {
+    open: askOpen,
+    width: askWidth,
+    openPane,
+    closePane,
+    setWidth: setAskWidth,
+  } = useAskPane();
+
+  const {
     conversations,
     activeId: activeConversationId,
-    loaded: conversationsLoaded,
     messages,
     startDraft,
     select: selectConversation,
@@ -383,23 +400,6 @@ export const AppReady = ({
   const [pendingFocus, setPendingFocus] = useState<PendingFocus>(null);
   const seenConflictIdsRef = useRef<Set<string>>(new Set());
 
-  // The id of a conversation just minted from a draft, held only for the blink
-  // between append setting activeId and the replace-navigate landing. append's
-  // setActiveId and navigate() do not commit together, so there is a render
-  // where the route still reads '/' but a real conversation is already active.
-  // Without this the route-to-state sync below would see draft + active and
-  // "helpfully" reset to a draft, throwing away the conversation the user just
-  // created and, with it, the one-time reasoning expansion append had set. This
-  // is the exact race the design warns about; the ref is what defuses it.
-  const freshConversationIdRef = useRef<string | null>(null);
-
-  // Set by "Ask", read and cleared by the next submit. It forces that
-  // submit to mint a brand new conversation even when the async hashchange from
-  // navigate('/') has not landed yet, so typing straight after "Ask" never
-  // appends to the thread just left. Being a ref, it is immune to the route and
-  // activeId timing that a click-then-type sequence can otherwise outrun.
-  const newDraftPendingRef = useRef(false);
-
   /* Built when a question is asked, not when the notes change.
      
      The retrieval index has exactly one reader, the route() call in
@@ -422,98 +422,22 @@ export const AppReady = ({
     return indexCache.current.index;
   }, [notes]);
 
-  /* The route drives the open conversation, not the other way around. Back and
-     forward, a refresh, and a hand-typed /chat/<id> all move through here, so
-     the sync lives in one effect keyed on the route rather than being scattered
-     across the click handlers, which only cover the cases the user reaches by
-     clicking.
-
-     It waits for conversationsLoaded on purpose. Before the store's first list
-     resolves the set is empty for reasons that have nothing to do with the URL,
-     and selecting or invalidating a route against that empty set is the bounce
-     that loses every deep link on refresh. */
-  useEffect(() => {
-    if (!conversationsLoaded) return;
-    if (chatRouteId !== null) {
-      const exists = conversations.some((c) => c.id === chatRouteId);
-      if (exists && activeConversationId !== chatRouteId) {
-        selectConversation(chatRouteId);
-      } else if (activeConversationId === chatRouteId) {
-        // Release the fresh-id guard only once the route AND the active
-        // conversation have both settled onto the same id. A HashRouter lands
-        // its navigation on an async hashchange, so this effect can run in a
-        // torn moment where the route already reads /chat/<new> but activeId
-        // has not caught up. Clearing the guard on the mere sight of a chat
-        // route would drop the protection in exactly that window, and a
-        // reordered draft render could then wipe the conversation just made.
-        // Waiting for activeId to match keeps the guard until it is truly spent.
-        freshConversationIdRef.current = null;
-      }
-    } else if (isDraftRoute) {
-      // Reset to an empty draft when something is still open, which is how back
-      // and forward onto '/' clear the stage. The one case this must not touch
-      // is the blink after a draft submit, where activeId already points at the
-      // brand new conversation but the replace-navigate has not landed yet. The
-      // ref marks that id so we leave it alone; resetting here would call
-      // startDraft() at the worst possible moment and wipe what was just made.
-      if (
-        activeConversationId !== null &&
-        activeConversationId !== freshConversationIdRef.current
-      ) {
-        startDraft();
-      }
-    }
-  }, [
-    chatRouteId,
-    isDraftRoute,
-    conversationsLoaded,
-    conversations,
-    activeConversationId,
-    selectConversation,
-    startDraft,
-  ]);
-
   /* The tab title is the browser's own record of where you are. Back-button
      menus and a wall of tabs are unreadable when every one says "Glassbox", so
-     it reflects the open note or chat by name and falls back to the bare app
-     name for a draft or a dead link. */
+     it names the open note and falls back to the bare app name otherwise.
+
+     Conversations no longer appear here. A question is asked beside whatever
+     you are reading rather than instead of it, so the note is still the honest
+     answer to "where am I", and a title that flipped to the question would
+     misreport the tab the moment the pane opened. */
   useEffect(() => {
     let title = "Glassbox";
     if (selectedNoteId !== null) {
       const note = notes.find((n) => n.id === selectedNoteId);
       if (note) title = `${note.title || "Untitled"} · Glassbox`;
-    } else if (chatRouteId !== null) {
-      const conversation = conversations.find((c) => c.id === chatRouteId);
-      if (conversation) title = `${conversation.title} · Glassbox`;
     }
     document.title = title;
-  }, [selectedNoteId, chatRouteId, notes, conversations]);
-
-  /* Always a fresh draft. Returning to whatever thread was last open would
-     make the row ambiguous: it would sometimes resume and sometimes start
-     over, depending on history the user cannot see. */
-  const handleNewChat = useCallback(() => {
-    // Selecting the thing already open must not stack a duplicate history
-    // entry, so a click while already on the draft is a no-op.
-    if (isDraftRoute) return;
-    // Mark the next submit as a fresh draft synchronously. A HashRouter lands
-    // navigate('/') on an async hashchange, so isDraftRoute and activeId can
-    // both still read the previous chat when a prompt is typed immediately
-    // after this click. Without this ref that prompt would append to the thread
-    // we just left instead of starting a new one. A ref is used rather than
-    // nulling activeId here, because nulling it while the chat route is still
-    // current makes the route-to-state sync re-select the old thread.
-    newDraftPendingRef.current = true;
-    navigate("/");
-  }, [isDraftRoute, navigate]);
-
-  const handleSelectConversation = useCallback(
-    (id: string) => {
-      if (chatRouteId === id) return;
-      navigate(chatPath(id));
-    },
-    [chatRouteId, navigate],
-  );
+  }, [selectedNoteId, notes]);
 
   const handleCreateNote = useCallback(
     (format: NoteFormat = "prose") => {
@@ -699,18 +623,15 @@ export const AppReady = ({
     [deleteNote, removeNoteFromAllBooks, navigate, notes, selectedNoteId],
   );
 
+  /* removeConversation already moves the selection to a neighbour, and the
+     pane reads that selection directly. Deleting the open question used to
+     have to rewrite the URL as well; with conversations out of the address bar
+     there is no second copy of the truth to keep in step. */
   const handleDeleteConversation = useCallback(
     (id: string) => {
-      const wasOpen = chatRouteId === id;
-      const landed = removeConversation(id);
-      // Same rule as notes: replace the URL only when the deleted thread was
-      // the open one, and replace rather than push so its dead address does not
-      // linger in history.
-      if (wasOpen) {
-        navigate(landed ? chatPath(landed) : "/", { replace: true });
-      }
+      removeConversation(id);
     },
-    [chatRouteId, navigate, removeConversation],
+    [removeConversation],
   );
 
   useEffect(() => {
@@ -735,31 +656,15 @@ export const AppReady = ({
   const handleSubmit = useCallback(
     (text: string) => {
       const answer: Answer = route(text, notes, getIndex());
-      // Captured before append, because append is what mints the id and moves
-      // us off the draft. A draft has no URL of its own, so the first prompt
-      // has to swap '/' for '/chat/<id>'. It is a replace, not a push: pushing
-      // would leave the empty draft in history, and back would return to a
-      // blank composer the user can never get a real thread out of again.
-      //
-      // newDraftPendingRef wins over activeConversationId on purpose. Right
-      // after "Ask" the async hashchange may not have landed, so activeId
-      // can still point at the previous thread; honouring the ref is what makes
-      // the new prompt start a new conversation instead of extending the old
-      // one. Passing null as the explicit target tells append to mint fresh
-      // rather than trust its own possibly-stale activeId.
-      const wasDraft =
-        newDraftPendingRef.current || activeConversationId === null;
-      newDraftPendingRef.current = false;
-      const id = append(text, answer, wasDraft ? null : undefined);
-      if (wasDraft) {
-        // Mark this id as freshly minted so the route-to-state sync leaves it
-        // alone during the render where the route still reads '/' but activeId
-        // has already advanced. See freshConversationIdRef where it is declared.
-        freshConversationIdRef.current = id;
-        navigate(chatPath(id), { replace: true });
-      }
+      /* A draft mints a new conversation, anything else extends the open one.
+         This used to need two refs to survive the gap between append setting
+         the active id and a replace-navigate landing on an async hashchange.
+         The pane does not navigate, so activeConversationId is simply true at
+         the moment it is read and the explicit null is enough. */
+      const wasDraft = activeConversationId === null;
+      append(text, answer, wasDraft ? null : undefined);
     },
-    [activeConversationId, append, getIndex, navigate, notes],
+    [activeConversationId, append, getIndex, notes],
   );
 
   const handleExamplePrompt = useCallback(
@@ -812,8 +717,6 @@ export const AppReady = ({
             connectError={connectError}
             onSelect={handleSelectNote}
             onCreate={handleCreateNote}
-            conversations={conversations}
-            activeConversationId={activeConversationId}
             books={books}
             selectedBookId={selectedBookId}
             bookNameByNoteId={bookNameByNoteId}
@@ -822,10 +725,6 @@ export const AppReady = ({
             onOpenChapter={handleOpenChapter}
             onDeleteBook={handleDeleteBook}
             onAddNoteToBook={handleRequestAddToBook}
-            onNewChat={handleNewChat}
-            onSelectConversation={handleSelectConversation}
-            onDeleteConversation={handleDeleteConversation}
-            chatActive={activeTab === "chat"}
             onDeleteNote={handleDeleteNote}
             onToggleNoteFormat={handleToggleNoteFormat}
             onDeleteSamples={deleteSampleNotes}
@@ -907,30 +806,15 @@ export const AppReady = ({
               );
             })}
 
-            <div className="stage__panels" data-active-tab={activeTab}>
+            <div className="stage__panels">
               <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <ChatStage
-                      conversationsLoaded={conversationsLoaded}
-                      conversations={conversations}
-                    >
-                      {chatPanel}
-                    </ChatStage>
-                  }
-                />
-                <Route
-                  path="/chat/:id"
-                  element={
-                    <ChatStage
-                      conversationsLoaded={conversationsLoaded}
-                      conversations={conversations}
-                    >
-                      {chatPanel}
-                    </ChatStage>
-                  }
-                />
+                <Route path="/" element={<HomeRoute notes={notes} />} />
+                {/* Conversations used to be places you could link to. They are
+                    not any more: Ask opens beside whatever you are reading
+                    rather than replacing it, and a pane is not a location.
+                    Old links still resolve rather than dying, they just land
+                    home, and the stored chats themselves are untouched. */}
+                <Route path="/chat/:id" element={<Navigate to="/" replace />} />
                 <Route
                   path="/note/:id"
                   element={
@@ -987,7 +871,40 @@ export const AppReady = ({
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
+
+            {/* Only when the pane is shut. A button that opens something, still
+                sitting on top of that thing once open, was the first flaw the
+                mockups showed. Closing belongs in the pane's own header. */}
+            {!askOpen && <AskFab onOpen={openPane} controls={ASK_PANE_ID} />}
           </main>
+
+          {askOpen && (
+            <>
+              <AskResizer
+                width={askWidth}
+                onWidth={setAskWidth}
+                controls={ASK_PANE_ID}
+              />
+              <AskPane
+                id={ASK_PANE_ID}
+                width={askWidth}
+                conversations={conversations}
+                activeConversationId={activeConversationId}
+                onSelectConversation={selectConversation}
+                onNewQuestion={startDraft}
+                onDeleteConversation={handleDeleteConversation}
+                onClose={closePane}
+              >
+                {/* Mounted here rather than under a Route, which is what used
+                    to make this fragile. The old '/' and '/chat/:id' routes
+                    both had to resolve to the same component or the composer
+                    would remount and eat a prompt typed the instant after
+                    hitting Ask. Outside the router that cannot happen: moving
+                    between notes, books and search never touches this tree. */}
+                {chatPanel}
+              </AskPane>
+            </>
+          )}
         </>
       )}
     </div>

@@ -50,12 +50,6 @@ const renderRail = (
       connectError={null}
       onSelect={onSelect}
       onCreate={onCreate}
-      conversations={overrides.conversations ?? []}
-      activeConversationId={null}
-      onNewChat={vi.fn()}
-      onSelectConversation={vi.fn()}
-      onDeleteConversation={vi.fn()}
-      chatActive={false}
       onDeleteNote={vi.fn()}
       onToggleNoteFormat={vi.fn()}
       onDeleteSamples={vi.fn()}
@@ -240,12 +234,11 @@ describe("NotesRail search wiring", () => {
    * the reader unable to tell chats from books from notes.
    */
   it("gives each empty section wording that no other section repeats", () => {
-    /* Arranged by book, because that is the only arrangement in which all
-       three sections can be empty at once. In one list the Books section is a
+    /* Arranged by book, because that is the only arrangement in which both
+       sections can be empty at once. In one list the Books section is a
        single row into the Books page and has no empty state to read. */
     renderRail({
       notes: [],
-      conversations: [],
       books: [],
       organizeMode: "book",
     });
@@ -258,20 +251,18 @@ describe("NotesRail search wiring", () => {
       return body.textContent?.trim() ?? "";
     };
 
-    const chats = bodyOf("rail-chats-list");
     const books = bodyOf("rail-books-list");
     const notes = bodyOf("rail-notes-list");
 
-    expect(chats).toBeTruthy();
     expect(books).toBeTruthy();
     expect(notes).toBeTruthy();
-    expect(new Set([chats, books, notes]).size).toBe(3);
+    expect(new Set([books, notes]).size).toBe(2);
   });
 
   /* The heading was a second, larger copy of the same message stacked above
      the body, which is what made an empty section outgrow a full one. */
   it("renders an empty section as body copy alone, with no heading above it", () => {
-    renderRail({ notes: [], conversations: [], books: [] });
+    renderRail({ notes: [], books: [] });
 
     expect(document.querySelector(".notes-rail__empty-title")).toBeNull();
     expect(screen.queryByText("No notes yet")).toBeNull();

@@ -1,0 +1,34 @@
+.ask-resizer {
+  flex: none;
+  width: 5px;
+  cursor: col-resize;
+  background: var(--color-border);
+  position: relative;
+
+  /* Dragging across the note would otherwise select its text the whole way. */
+  user-select: none;
+  touch-action: none;
+}
+
+/* The grip mark. Narrower than the hit area on purpose: the target should be
+   easier to hit than the thing it draws. */
+.ask-resizer::after {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 30px;
+  border-radius: 2px;
+  background: var(--color-border-strong);
+}
+
+.ask-resizer:hover {
+  background: var(--color-border-light);
+}
+
+.ask-resizer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}

@@ -3,8 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { NotesRail } from "./NotesRail";
-import { COPY } from "../engine/copy";
-import type { Conversation, Note } from "../types";
+import type { Book, Note } from "../types";
 
 const iso = "2024-01-01T00:00:00.000Z";
 
@@ -17,20 +16,36 @@ const note: Note = {
   updatedAt: iso,
 };
 
-const conversation: Conversation = {
-  id: "c1",
-  title: "Why is it slow",
-  messages: [],
+/* A chapter and a loose note, because in book mode the Notes section lists
+   only what is not already in a book. One note would leave that section empty
+   and the "other section is untouched" assertions would prove nothing. */
+const chapter: Note = {
+  id: "n2",
+  title: "First frost",
+  body: "the cold came early",
+  tags: [],
   createdAt: iso,
   updatedAt: iso,
 };
 
+const book: Book = {
+  id: "b1",
+  title: "Autumn",
+  chapterIds: ["n2"],
+  unnumberedIds: [],
+  createdAt: iso,
+  updatedAt: iso,
+};
+
+/* Rendered in book mode because that is the arrangement with two sections.
+   Questions used to be the second one; Ask has its own pane now and the rail
+   is only ever about notes. */
 const renderRail = (
   overrides: Partial<ComponentProps<typeof NotesRail>> = {},
 ) =>
   render(
     <NotesRail
-      notes={[note]}
+      notes={[note, chapter]}
       selectedNoteId={null}
       hasSampleNotes={false}
       folderState="unsupported"
@@ -38,20 +53,14 @@ const renderRail = (
       connectError={null}
       onSelect={vi.fn()}
       onCreate={vi.fn()}
-      conversations={[conversation]}
-      activeConversationId={null}
-      books={[]}
+      books={[book]}
       selectedBookId={null}
-      bookNameByNoteId={new Map<string, string>()}
+      bookNameByNoteId={new Map([["n2", "Autumn"]])}
       onSelectBook={vi.fn()}
       onOpenBooks={vi.fn()}
       onOpenChapter={vi.fn()}
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
-      onNewChat={vi.fn()}
-      onSelectConversation={vi.fn()}
-      onDeleteConversation={vi.fn()}
-      chatActive={false}
       onDeleteNote={vi.fn()}
       onToggleNoteFormat={vi.fn()}
       onDeleteSamples={vi.fn()}
@@ -60,7 +69,7 @@ const renderRail = (
       onDisconnectFolder={vi.fn()}
       theme="dark"
       onToggleTheme={vi.fn()}
-      organizeMode="list"
+      organizeMode="book"
       onOrganizeChange={vi.fn()}
       {...overrides}
     />,
@@ -80,36 +89,36 @@ describe("NotesRail section accordions", () => {
   it("keeps both sections open on a first visit", () => {
     renderRail();
 
-    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "true");
+    expect(toggle("Books")).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText("Why is it slow")).toBeVisible();
+    expect(screen.getByText("Autumn")).toBeVisible();
     expect(screen.getByText("Postgres tuning")).toBeVisible();
   });
 
   it("keeps the heading role, so the outline still has both sections", () => {
     renderRail();
 
-    expect(screen.getByRole("heading", { name: COPY.questionsHeading })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Books" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
   });
 
-  it("hides the question list when the Questions heading is collapsed", async () => {
+  it("hides the book list when the Books heading is collapsed", async () => {
     const user = userEvent.setup();
     renderRail();
 
-    await user.click(toggle(COPY.questionsHeading));
+    await user.click(toggle("Books"));
 
-    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "false");
+    expect(toggle("Books")).toHaveAttribute("aria-expanded", "false");
     // Not merely "not visible": hidden removes it from the accessibility tree
     // too, which is the part a screen reader depends on.
-    expect(screen.queryByText("Why is it slow")).not.toBeVisible();
+    expect(screen.queryByText("Autumn")).not.toBeVisible();
   });
 
   it("leaves the other section alone when one is collapsed", async () => {
     const user = userEvent.setup();
     renderRail();
 
-    await user.click(toggle(COPY.questionsHeading));
+    await user.click(toggle("Books"));
 
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Postgres tuning")).toBeVisible();
@@ -118,8 +127,8 @@ describe("NotesRail section accordions", () => {
   it("points the toggle at the list it controls", async () => {
     renderRail();
 
-    const controls = toggle(COPY.questionsHeading).getAttribute("aria-controls");
-    expect(controls).toBe("rail-chats-list");
+    const controls = toggle("Books").getAttribute("aria-controls");
+    expect(controls).toBe("rail-books-list");
     expect(document.getElementById(controls!)).not.toBeNull();
   });
 
@@ -143,14 +152,14 @@ describe("NotesRail section accordions", () => {
     renderRail();
 
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "false");
-    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "true");
+    expect(toggle("Books")).toHaveAttribute("aria-expanded", "true");
   });
 
   it("falls back to open when the stored value is not usable", () => {
     localStorage.setItem("glassbox.railSections.v1", "{ not json");
     renderRail();
 
-    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "true");
+    expect(toggle("Books")).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -159,11 +168,11 @@ describe("NotesRail section accordions", () => {
   it("ignores a stored field that is not a boolean", () => {
     localStorage.setItem(
       "glassbox.railSections.v1",
-      JSON.stringify({ chats: "nope", notes: false }),
+      JSON.stringify({ books: "nope", notes: false }),
     );
     renderRail();
 
-    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "true");
+    expect(toggle("Books")).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -174,9 +183,9 @@ describe("NotesRail section accordions", () => {
     });
     renderRail();
 
-    await user.click(toggle(COPY.questionsHeading));
+    await user.click(toggle("Books"));
 
-    expect(toggle(COPY.questionsHeading)).toHaveAttribute("aria-expanded", "false");
+    expect(toggle("Books")).toHaveAttribute("aria-expanded", "false");
   });
 
   it("collapses the sample banner with the notes section it belongs to", async () => {

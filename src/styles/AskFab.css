@@ -1,0 +1,58 @@
+.ask-fab {
+  position: absolute;
+  right: var(--space-5, 20px);
+  bottom: var(--space-5, 20px);
+  z-index: 8;
+
+  /* 48px, comfortably past the 44px minimum in WCAG 2.5.5. */
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: var(--accent);
+  color: var(--color-text-on-accent);
+  cursor: pointer;
+
+  /* The only shadow in the app that lifts something off the page, because this
+     is the only control that floats over content rather than sitting in it. */
+  box-shadow: 0 3px 12px #00000033;
+
+  transition:
+    background-color 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.ask-fab svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ask-fab:hover {
+  background: var(--accent-hover);
+}
+
+.ask-fab:active {
+  transform: scale(0.94);
+}
+
+.ask-fab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Someone who asked not to be moved still needs the press to register, so the
+   colour change stays and only the scale goes. */
+@media (prefers-reduced-motion: reduce) {
+  .ask-fab {
+    transition: background-color 120ms ease-out;
+  }
+
+  .ask-fab:active {
+    transform: none;
+  }
+}

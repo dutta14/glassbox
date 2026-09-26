@@ -27,27 +27,34 @@
   scrollbar-gutter: stable both-edges;
 }
 
-/* The greeting and the composer read as one block sitting together in the
-   middle of the pane rather than a heading adrift above an input pinned to the
-   floor. Auto margins on the first and last item split the free space evenly
-   above and below the pair, which centres the group without the composer
-   having to move in the DOM. It stays a direct child of .chat in both branches
-   so React keeps the same textarea when the first message lands. */
+/* The greeting sits at the top of the pane and the composer stays on the
+   floor, which is where both of them are once a conversation starts. Centring
+   the pair meant the composer slid downwards the moment the first answer
+   landed; holding it still costs nothing and makes the empty pane a preview of
+   the full one rather than a different layout.
+
+   It shares the composer's column and margin so the text starts on the same
+   line as the pill below it. It stays a direct child of .chat in both
+   branches so React keeps the same textarea when the first message lands. */
 .chat__empty {
   flex: 0 0 auto;
-  margin-top: auto;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: var(--space-8);
+  align-items: flex-start;
+  text-align: left;
+  width: min(var(--chat-column), 100% - 2 * var(--chat-gutter));
+  margin-inline: auto;
+  padding-block: var(--space-8) 0;
   gap: var(--space-4);
 }
 
 .chat__empty-title {
   margin: 0;
-  font-size: var(--fs-2xl);
+  /* Two pixels below --fs-2xl, matching the step every other line on this
+     card takes. Written against the token rather than as a literal so it
+     follows if the scale is ever retuned; the scale has no stop between
+     --fs-xl and --fs-2xl, and --fs-xl would drop twice as far. */
+  font-size: calc(var(--fs-2xl) - 0.125rem);
   font-weight: var(--fw-semibold);
   color: var(--color-text);
   line-height: var(--leading-tight);
@@ -58,15 +65,15 @@
    what stops a line made mostly of digits from looking typeset by accident. */
 .chat__empty-archive {
   margin: 0;
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
-  font-feature-settings: 'tnum';
+  font-feature-settings: "tnum";
 }
 
 .chat__empty-body {
   margin: 0;
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   color: var(--color-text-secondary);
   max-width: 44ch;
 }
@@ -77,7 +84,9 @@
    would paint a gradient across the middle of an empty pane. */
 .chat--empty .composer {
   position: static;
-  margin-bottom: auto;
+  /* Takes the free space above it, so the pill sits on the floor of an empty
+     pane exactly as it does under a full log. */
+  margin-top: auto;
   background: none;
   padding-top: var(--space-4);
 }
@@ -91,11 +100,15 @@
 
 .chat__example {
   padding: var(--space-3) var(--space-4);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
+  text-align: left;
   color: var(--color-text-secondary);
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius);
+  /* A true pill, matching the composer they fill in. These are always one
+     short line, so the radius never has to scale down the way the composer's
+     does once its text wraps. */
+  border-radius: var(--radius-pill);
   transition:
     background-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out);

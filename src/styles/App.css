@@ -24,6 +24,9 @@
 
 .stage {
   flex: 1;
+  /* The Ask button floats against this, not the window, so it stays clear of
+     the pane when the pane is open. */
+  position: relative;
   min-width: var(--stage-min);
   min-height: 0;
   display: flex;

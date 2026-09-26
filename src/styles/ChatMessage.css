@@ -32,7 +32,7 @@
   max-width: min(72ch, 80%);
   background: var(--color-surface-prompt);
   color: var(--color-text);
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   line-height: var(--leading-normal);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-lg);
@@ -48,7 +48,7 @@
 
 .msg__text {
   margin: 0;
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   line-height: var(--leading-normal);
   color: var(--color-text);
   white-space: pre-wrap;
@@ -61,7 +61,7 @@
 
 .btn {
   font-family: inherit;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   cursor: pointer;
   border: 0;
   background: none;

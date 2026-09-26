@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { markSeeded } from "./storage/notes";
+import { COPY } from "./engine/copy";
 import type { Note } from "./types";
 import type {
   BookStore,
@@ -95,6 +96,19 @@ const renderApp = (at: string, notes: Note[]) =>
 
 const threeNotes = () => [mkNote(0), mkNote(1), mkNote(2)];
 
+/* Ask lives in a pane that starts closed, so asking begins by opening it. The
+   helper does that only when the button is there, which keeps it usable for a
+   second question in the same test without stacking opens. */
+/* Ask lives in a pane that starts closed, so every question begins by opening
+   it. Waiting for the button rather than assuming it is there is what makes
+   this survive the app's load: the stage renders nothing until the notes
+   resolve. */
+const openAsk = async (user: ReturnType<typeof userEvent.setup>) => {
+  const opener = await screen.findByRole("button", { name: COPY.askOpen });
+  await user.click(opener);
+  return screen.findByRole("textbox", { name: /ask/i });
+};
+
 const ask = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
   const composer = await screen.findByRole("textbox", { name: /ask/i });
   await user.type(composer, text);
@@ -123,8 +137,11 @@ describe("the retrieval index is built only when it is read", () => {
   });
 
   it("does not build the index merely because the app opened", async () => {
+    const user = userEvent.setup();
     renderApp("/", threeNotes());
-    await screen.findByRole("textbox", { name: /ask/i });
+    /* Opening the pane is not asking. The composer is on screen and the index
+       still has not been built, which is the whole point of making it lazy. */
+    await openAsk(user);
 
     expect(spy.builds).toBe(0);
   });
@@ -132,7 +149,7 @@ describe("the retrieval index is built only when it is read", () => {
   it("builds the index when a question is actually asked", async () => {
     const user = userEvent.setup();
     renderApp("/", threeNotes());
-    await screen.findByRole("textbox", { name: /ask/i });
+    await openAsk(user);
 
     spy.builds = 0;
     await ask(user, "what did I write about postgres");
@@ -143,7 +160,7 @@ describe("the retrieval index is built only when it is read", () => {
   it("reuses the index for a second question when no note has changed", async () => {
     const user = userEvent.setup();
     renderApp("/", threeNotes());
-    await screen.findByRole("textbox", { name: /ask/i });
+    await openAsk(user);
 
     spy.builds = 0;
     await ask(user, "what did I write about postgres");
@@ -157,15 +174,15 @@ describe("the retrieval index is built only when it is read", () => {
   it("rebuilds once on the next question after a note is edited", async () => {
     const user = userEvent.setup();
     renderApp("/", threeNotes());
-    await screen.findByRole("textbox", { name: /ask/i });
+    await openAsk(user);
 
     spy.builds = 0;
     await ask(user, "what did I write about postgres");
     expect(spy.builds).toBe(1);
 
-    /* Add a note, which is the cheapest way to move the corpus. The editor
-       replaces the composer, so getting back to a question means going
-       through the rail, exactly as a reader would. */
+    /* Add a note, which is the cheapest way to move the corpus. The pane
+       opens over the editor rather than replacing it, so the note stays put
+       while the question is asked. */
     await user.click(screen.getByRole("button", { name: "New note" }));
     const body = await screen.findByRole("textbox", { name: /body/i });
     await user.type(body, "rye starter notes");
@@ -173,7 +190,6 @@ describe("the retrieval index is built only when it is read", () => {
        seventeen characters, but nobody has asked. */
     expect(spy.builds).toBe(1);
 
-    await user.click(screen.getByRole("button", { name: "Ask" }));
     await ask(user, "what did I write about rye");
     /* Exactly one more. The cache noticed the corpus moved and rebuilt once,
        rather than once per keystroke or not at all. */
