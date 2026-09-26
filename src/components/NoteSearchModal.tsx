@@ -42,6 +42,7 @@ export const NoteSearchModal = ({
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const listId = useId();
   const titleId = useId();
   const optionId = (index: number) => `${listId}-option-${index}`;
@@ -69,6 +70,30 @@ export const NoteSearchModal = ({
       current > results.length - 1 ? 0 : Math.max(0, current),
     );
   }, [results.length]);
+
+  /* Arrow keys move a highlight, not focus: the input keeps focus so the user
+     can keep typing, which means the browser will not scroll the highlighted
+     row into view on its own. "nearest" scrolls only when the row is actually
+     out of view, so hovering a visible row does nothing and the list does not
+     jump under the pointer. */
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    /* "nearest" moves the minimum distance, which at either end of the list
+       stops with the row flush against the edge and the list's own padding
+       still scrolled out of sight. The two ends are scrolled to instead, so
+       reaching the top looks like the top and the bottom like the bottom. */
+    if (activeIndex === 0) {
+      list.scrollTop = 0;
+      return;
+    }
+    if (activeIndex === results.length - 1) {
+      list.scrollTop = list.scrollHeight;
+      return;
+    }
+    const active = list.querySelector<HTMLElement>('[aria-selected="true"]');
+    active?.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex, results.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -213,7 +238,12 @@ export const NoteSearchModal = ({
             </p>
           </div>
         ) : (
-          <ul className="note-search__list" id={listId} role="listbox">
+          <ul
+            ref={listRef}
+            className="note-search__list"
+            id={listId}
+            role="listbox"
+          >
             {results.map((note, index) => (
               <li
                 key={note.id}
@@ -266,18 +296,6 @@ export const NoteSearchModal = ({
             ))}
           </ul>
         )}
-
-        <div className="note-search__footer" aria-hidden="true">
-          <span className="note-search__hint">
-            <kbd>↑↓</kbd> Navigate
-          </span>
-          <span className="note-search__hint">
-            <kbd>↵</kbd> Open
-          </span>
-          <span className="note-search__hint">
-            <kbd>Esc</kbd> Close
-          </span>
-        </div>
       </div>
     </div>,
     document.body,

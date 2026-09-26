@@ -191,7 +191,6 @@ describe("NoteSearchModal", () => {
     it("labels the current note with a badge rather than a CSS pseudo-element", () => {
       setup({ selectedNoteId: "n2" });
 
-      // Scoped to the row: the footer hint also reads "Open".
       expect(within(options()[1]).getByText("Open")).toHaveClass(
         "note-search__current-badge",
       );
@@ -223,6 +222,99 @@ describe("NoteSearchModal", () => {
 
       expect(options()[1]).toHaveAttribute("aria-selected", "true");
       expect(field()).toHaveFocus();
+    });
+
+    /**
+     * The highlight is not focus, so the browser will not reveal it. jsdom has
+     * no scrollIntoView at all, which is why the component calls it optionally
+     * and why this stubs it rather than spying on a real implementation.
+     */
+    describe("keeping the highlight in view", () => {
+      let scrollIntoView: ReturnType<typeof vi.fn>;
+
+      beforeEach(() => {
+        scrollIntoView = vi.fn();
+        Element.prototype.scrollIntoView =
+          scrollIntoView as unknown as Element["scrollIntoView"];
+      });
+
+      afterEach(() => {
+        delete (Element.prototype as Partial<Element>).scrollIntoView;
+      });
+
+      it("reveals the row the arrow key moved the highlight to", async () => {
+        const user = userEvent.setup();
+        setup({});
+        scrollIntoView.mockClear();
+
+        await user.keyboard("{ArrowDown}");
+
+        expect(scrollIntoView).toHaveBeenCalled();
+        expect(scrollIntoView.mock.instances[0]).toBe(options()[1]);
+      });
+
+      /* Both ends are scrolled to rather than revealed, so the list's own
+         padding comes back with them instead of staying clipped. */
+      it("scrolls to the very bottom when the highlight wraps to the last row", async () => {
+        const user = userEvent.setup();
+        setup({});
+        const list = dialog().querySelector(
+          ".note-search__list",
+        ) as HTMLElement;
+        Object.defineProperty(list, "scrollHeight", {
+          value: 400,
+          configurable: true,
+        });
+        scrollIntoView.mockClear();
+
+        await user.keyboard("{ArrowUp}");
+
+        expect(options()[2]).toHaveAttribute("aria-selected", "true");
+        expect(list.scrollTop).toBe(400);
+        expect(scrollIntoView).not.toHaveBeenCalled();
+      });
+
+      it("scrolls by the nearest edge, so a row already in view is left alone", async () => {
+        const user = userEvent.setup();
+        setup({});
+        scrollIntoView.mockClear();
+
+        await user.keyboard("{ArrowDown}");
+
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+      });
+
+      /* The first row is scrolled to rather than revealed, so that the list's
+         top padding comes back with it. */
+      it("returns the list to the very top when the highlight wraps to the first row", async () => {
+        const user = userEvent.setup();
+        setup({});
+        const list = dialog().querySelector(
+          ".note-search__list",
+        ) as HTMLElement;
+        await user.keyboard("{ArrowDown}");
+        list.scrollTop = 120;
+        scrollIntoView.mockClear();
+
+        await user.keyboard("{ArrowUp}");
+
+        expect(list.scrollTop).toBe(0);
+        expect(scrollIntoView).not.toHaveBeenCalled();
+      });
+
+      it("returns to the first row when a new query resets the highlight", async () => {
+        const user = userEvent.setup();
+        setup({});
+        const list = dialog().querySelector(
+          ".note-search__list",
+        ) as HTMLElement;
+        await user.keyboard("{ArrowDown}{ArrowDown}");
+        list.scrollTop = 120;
+
+        await user.type(field(), "sourdough");
+
+        expect(list.scrollTop).toBe(0);
+      });
     });
 
     it("points aria-activedescendant at the highlighted option", async () => {
@@ -499,22 +591,6 @@ describe("NoteSearchModal", () => {
         true,
       );
     });
-  });
-
-  /**
-   * The hints describe the keyboard model for sighted users. A screen reader
-   * already announces the listbox, so repeating them would be noise.
-   */
-  it("hides the keyboard hints from assistive technology", () => {
-    setup({});
-
-    const footer = dialog().querySelector(".note-search__footer");
-
-    // Present for sighted users, but aria-hidden keeps it out of the
-    // accessibility tree. queryByText walks the DOM, not that tree, so it
-    // would find these regardless and cannot be used to assert the exclusion.
-    expect(footer).toHaveTextContent("Navigate");
-    expect(footer).toHaveAttribute("aria-hidden", "true");
   });
 
   it("falls back to a readable label for an untitled note", () => {
