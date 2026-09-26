@@ -9,7 +9,9 @@
    Adopting those names with those values would have regressed an audited app,
    so the names are shared and the values below are the measured ones.
 
-   Surfaces are Finance's warm scheme: an oatmeal page with white panels.
+   Surfaces are Finance's warm scheme, with one change: the panels are paper
+   rather than white. #ffffff was the only neutral value in an otherwise warm
+   ramp, and beside an oatmeal page it read faintly blue.
    Foregrounds are not Finance's. On these exact surfaces Finance's own
    --color-text-muted #6b7280 and --color-negative #dc2626 both measure 4.39:1,
    below the 4.5 body-text threshold, so the values below are used instead.
@@ -18,23 +20,34 @@
    because every coloured accent this app tried read as a link and sent people
    clicking. Colour is reserved for the three semantic states.
 
-   Light mode, worst case across bg, surface, alt and hover:
-     text 16.30  text-secondary 7.21  text-muted 5.63  text-quote 13.58
-     accent 15.66  positive 5.14  warning 5.14  negative 5.95
+   Light mode, worst case across bg, surface, alt, hover and rail:
+     text 15.61  text-secondary 6.91  text-muted 5.39  text-quote 13.00
+     accent 15.00  positive 4.93  warning 4.92  negative 5.70
      text-on-accent 17.21
-   Borders sit at 1.90:1 at their strongest, matching dark's 1.41-1.98. They
+   Every one of these is lower than it was against white panels, because the
+   surfaces moved toward the text. All still clear 4.5. Borders sit at 1.90:1
+   at their strongest, matching dark's 1.41-1.98. They
    divide content rather than identify controls, so 1.4.11 does not apply. */
 :root {
   --color-bg: #f6f5f3;
-  --color-surface: #ffffff;
+  --color-surface: #fbf9f6;
   --color-surface-alt: #f8f7f5;
   --color-surface-hover: #f5f4f2;
   --color-surface-raised: #ebeae8;
   --color-surface-quote: #faf9f7;
 
+  /* The rail sits *below* the page rather than above it. Chrome brighter than
+     the note is backwards for an app whose whole subject is the note, so the
+     writing surface is the lightest thing on screen and the rail steps back
+     from it. Only 1.05:1 against the page, which is near the floor of what a
+     display can resolve; the border carries the edge and the fill carries the
+     plane. Dark mode keeps its panel value here, because there the page is
+     already the darkest surface and the rail recedes by being lifted off it. */
+  --color-rail: #f1efec;
+
   /* The prompt bubble is the one surface that sits on --color-bg rather than
-     on a panel, so it is warm like the page instead of following the cool
-     ramp. At 1.08:1 against the page it reads as a bubble without becoming a
+     on a panel, so it is pitched against the page rather than against a
+     panel. At 1.08:1 against the page it reads as a bubble without becoming a
      second panel; --color-surface-hover managed only 1.03:1 and disappeared.
      Body text holds 15.2:1 on it. */
   --color-surface-prompt: #edece9;
@@ -43,10 +56,11 @@
   --color-text-secondary: #52514f;
   --color-text-muted: #62615f;
   /* One step below muted, for a label that must stay subordinate to the text
-     it annotates. Only ever used on --color-surface and --color-surface-alt,
-     where it measures 4.55:1, so it is still body-text legible under 1.4.3.
-     This is as light as those two surfaces allow; anything lighter fails. */
-  --color-text-faint: #72716f;
+     it annotates. 4.64:1 at its worst, on --color-rail, and 5.07:1 on
+     --color-surface, so it is body-text legible under 1.4.3 wherever it is
+     used. It was #72716f when panels were white; the rail receding took that
+     to 4.25:1 and it had to darken to keep clearing 4.5. */
+  --color-text-faint: #6c6b69;
   --color-text-on-accent: #ffffff;
   --color-text-quote: #282725;
 
@@ -164,44 +178,55 @@
   color-scheme: light;
 }
 
-/* Neutral greys matching finance-tracking's dark ramp (#161616 page, #1e1e1e
-   panel) rather than the blue-tinted scale Glassbox shipped with. Finance
-   collapses --color-text-secondary and --color-text-muted onto one value; the
-   three distinct steps below are kept and neutralised instead.
+/* Warm, not neutral. Light mode is an oatmeal page with white panels, so a
+   perfectly neutral dark ramp made the app warm when lit and cold when dim,
+   which was drift rather than a decision. These are the light surfaces
+   inverted: the same hue, read by lamp instead of daylight.
 
-   Dark mode, worst case across all six surfaces:
-     text 10.75  text-secondary 5.91  text-muted 4.56  text-quote 9.35
-     accent 10.75  positive 6.24  warning 6.47  negative 4.90
-     text-on-accent 15.18 */
+   It is also darker than the ramp it replaces (#100f0d against #161616), and
+   because every surface dropped, every foreground gained contrast. Worst case
+   across all six surfaces:
+     text 12.07  text-secondary 6.60  text-muted 5.09  text-quote 10.42
+     accent 12.07  positive 6.86  warning 7.11  negative 5.39
+     text-on-accent 16.39
+   The previous ramp measured text 10.75, secondary 5.91, muted 4.56,
+   quote 9.35, so nothing regressed. Borders sit at 1.22-1.89:1; they divide
+   content rather than identify controls, so 1.4.11 does not apply. */
 body.dark {
-  --color-bg: #161616;
-  --color-surface: #1e1e1e;
-  --color-surface-alt: #262626;
-  --color-surface-hover: #2e2e2e;
-  --color-surface-raised: #323232;
-  --color-surface-quote: #222222;
+  --color-bg: #100f0d;
+  --color-surface: #191714;
+  --color-surface-alt: #211f1b;
+  --color-surface-hover: #292621;
+  --color-surface-raised: #2e2b25;
+  --color-surface-quote: #1c1a17;
 
-  /* 1.33:1 against the page, 11.39:1 for body text. */
-  --color-surface-prompt: #2e2e2e;
+  /* The panel value, not a darker one. Light mode drops the rail below the
+     page; here the page is already the darkest surface, so the rail recedes
+     by being lifted off it instead. */
+  --color-rail: #191714;
 
-  --color-text: #ebebeb;
-  --color-text-secondary: #b0b0b0;
-  --color-text-muted: #9a9a9a;
-  /* 4.62:1 on --color-surface and --color-surface-alt. Dark mode has far less
-     room here than light: muted itself is only 5.38:1 on these surfaces, so
-     this token separates from it by less than its light-mode counterpart. */
-  --color-text-faint: #8e8e8e;
-  --color-text-on-accent: #161616;
-  --color-text-quote: #dcdcdc;
+  /* 1.27:1 against the page, 12.89:1 for body text. */
+  --color-surface-prompt: #292621;
 
-  --color-border: #303030;
-  --color-border-light: #3a3a3a;
-  --color-border-strong: #4a4a4a;
+  --color-text: #f0ede6;
+  --color-text-secondary: #b5b1a8;
+  --color-text-muted: #9f9b91;
+  /* 4.66:1 at its worst, on --color-surface-raised, and 5.91:1 on
+     --color-surface. The neutral ramp's faint tone was 3.91:1 on raised and
+     had to be scoped to the surfaces it happened to be used on; this one
+     clears 4.5 everywhere, so it cannot fail by being reused. */
+  --color-text-faint: #98948a;
+  --color-text-on-accent: #100f0d;
+  --color-text-quote: #e1ddd5;
 
-  --accent: #ebebeb;
+  --color-border: #2b2823;
+  --color-border-light: #35322c;
+  --color-border-strong: #45413b;
+
+  --accent: #f0ede6;
   --accent-hover: #ffffff;
-  --accent-light: #ebebeb1f;
-  --accent-lighter: #2e2e2e;
+  --accent-light: #f0ede61f;
+  --accent-lighter: #292621;
 
   --color-positive: #4ec9a4;
   --color-warning: #e0b155;
@@ -213,10 +238,13 @@ body.dark {
   --color-search-backdrop: rgba(0, 0, 0, 0.42);
   --color-search-backdrop-fallback: rgba(0, 0, 0, 0.62);
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.3), 0 16px 32px rgba(0, 0, 0, 0.3);
+  /* Deeper than the neutral ramp's. A black shadow on a #161616 page still
+     reads; on #100f0d there is less room beneath the surface, so the opacity
+     has to make up the difference. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.45), 0 16px 32px rgba(0, 0, 0, 0.4);
 
   color-scheme: dark;
 }
