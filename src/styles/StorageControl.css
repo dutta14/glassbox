@@ -1,10 +1,24 @@
 .storage-control {
-  position: relative;
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.storage-control__trigger {
+/* Status on the left, its actions on the right. They wrap onto two lines
+   before the folder name is allowed to truncate, because the name is the
+   thing the reader came to check. */
+.storage-control__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.storage-control__status {
+  margin: 0;
   display: inline-flex;
+  align-self: flex-start;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-1) var(--space-2);
@@ -13,31 +27,15 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: var(--fw-medium) var(--fs-xs) var(--font-sans);
-  cursor: pointer;
-  max-width: 12rem;
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    border-color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out);
+  max-width: 100%;
 }
 
-.storage-control__trigger:hover,
-.storage-control__trigger:focus-visible {
-  color: var(--color-text);
-  border-color: var(--color-border-light);
-  outline: none;
-}
-
-.storage-control__trigger:focus-visible {
-  box-shadow: var(--shadow-focus);
-}
-
-.storage-control__trigger--folder {
+.storage-control__status--folder {
   color: var(--color-text);
   border-color: var(--color-border-light);
 }
 
-.storage-control__trigger--warn {
+.storage-control__status--warn {
   color: var(--color-warning);
   border-color: var(--color-warning);
   background: var(--color-warning-light);
@@ -54,25 +52,6 @@
   white-space: nowrap;
 }
 
-.storage-control__menu {
-  position: absolute;
-  top: calc(100% + var(--space-2));
-  left: 0;
-  right: auto;
-  z-index: 20;
-  min-width: 0;
-  width: max-content;
-  max-width: min(22rem, calc(100vw - var(--space-4) * 2));
-  padding: var(--space-3);
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
 .storage-control__desc {
   margin: 0;
   font: var(--fw-normal) var(--fs-xs) / var(--leading-normal) var(--font-sans);
@@ -80,13 +59,13 @@
 }
 
 .storage-control__action {
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-3);
   background: transparent;
   color: var(--color-text);
   border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-sm);
-  font: var(--fw-medium) var(--fs-sm) var(--font-sans);
+  border-radius: var(--radius-pill);
+  font: var(--fw-medium) var(--fs-xs) var(--font-sans);
+  white-space: nowrap;
   cursor: pointer;
   transition:
     background-color var(--duration-fast) var(--ease-out),
@@ -130,36 +109,22 @@
   border-color: var(--color-negative);
 }
 
+.storage-control__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.storage-control__actions:empty {
+  display: none;
+}
+
+.storage-control__actions:empty {
+  display: none;
+}
+
 .storage-control__error {
   margin: 0;
   font: var(--fw-normal) var(--fs-xs) / var(--leading-normal) var(--font-sans);
   color: var(--color-negative);
-}
-
-/* Settings row at the foot of the notes rail. The menu opens upward because
-   a downward menu at the bottom of the rail is clipped by the viewport. */
-.storage-control[data-variant="settings"] {
-  display: flex;
-  width: 100%;
-}
-
-.storage-control[data-variant="settings"] .storage-control__trigger {
-  width: 100%;
-  max-width: none;
-  justify-content: flex-start;
-  padding: var(--space-2) var(--space-3);
-  border-color: transparent;
-  border-radius: var(--radius);
-  font-size: var(--fs-sm);
-}
-
-.storage-control[data-variant="settings"] .storage-control__trigger:hover {
-  background: var(--color-surface-alt);
-}
-
-.storage-control[data-variant="settings"] .storage-control__menu {
-  top: auto;
-  bottom: calc(100% + var(--space-2));
-  left: 0;
-  right: 0;
 }

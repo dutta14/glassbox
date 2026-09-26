@@ -82,6 +82,14 @@
   align-items: center;
   gap: var(--space-1);
   width: 100%;
+  /* Fills the rail so the settings icon can sit on the floor, the way the
+     settings row does in the expanded rail. */
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.notes-rail__settings-icon {
+  margin-top: auto;
 }
 
 /* Separates the two list flyouts from the actions above them, echoing the gap

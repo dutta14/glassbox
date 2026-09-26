@@ -1,29 +1,44 @@
 .theme-toggle {
   display: flex;
-  align-items: center;
   gap: var(--space-2);
-  width: 100%;
+}
+
+.theme-toggle__option {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
   background: transparent;
   color: var(--color-text-secondary);
-  border: 1px solid transparent;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius);
   font: var(--fw-medium) var(--fs-sm) var(--font-sans);
-  text-align: left;
   cursor: pointer;
   transition:
     color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
     background-color var(--duration-fast) var(--ease-out);
 }
 
-.theme-toggle:hover {
-  background: var(--color-surface-alt);
+.theme-toggle__option:hover {
   color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
-.theme-toggle:focus-visible {
+.theme-toggle__option:focus-visible {
   outline: none;
   box-shadow: var(--shadow-focus);
+}
+
+/* The selected option is marked by weight and border rather than by a fill.
+   The app has no brand hue, so a filled swatch here would read as a link. */
+.theme-toggle__option--active {
+  color: var(--color-text);
+  border-color: var(--color-text-secondary);
+  background: var(--color-surface-hover);
 }
 
 .theme-toggle__icon {
@@ -32,12 +47,6 @@
   color: var(--color-text-muted);
 }
 
-.theme-toggle:hover .theme-toggle__icon {
+.theme-toggle__option--active .theme-toggle__icon {
   color: var(--color-text-secondary);
-}
-
-.theme-toggle__label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }

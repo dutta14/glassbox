@@ -292,6 +292,33 @@
   border-top: 1px solid var(--color-border);
 }
 
+.notes-rail__settings {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 0;
+  border-radius: var(--radius);
+  font: var(--fw-medium) var(--fs-sm) var(--font-sans);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out);
+}
+
+.notes-rail__settings:hover {
+  color: var(--color-text);
+  background: var(--color-surface-alt);
+}
+
+.notes-rail__settings:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
 /* Finance drops its sidebar to zero width rather than to the icon strip on
    small screens, because 56px of chrome is not worth the horizontal space. */
 @media (max-width: 900px) {

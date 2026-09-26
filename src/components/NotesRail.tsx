@@ -10,8 +10,7 @@ import { RailFlyout } from "./RailFlyout";
 import { RailTip } from "./RailTip";
 import { useScrollFades } from "../hooks/useScrollFades";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { StorageControl } from "./StorageControl";
-import { ThemeToggle } from "./ThemeToggle";
+import { SettingsModal } from "./SettingsModal";
 import type { Theme } from "../hooks/useTheme";
 import type { OrganizeMode } from "../hooks/useNoteOrganize";
 import type { FolderState } from "../hooks/useStorageBackend";
@@ -89,6 +88,25 @@ const Chevron = ({ open }: { open: boolean }) => (
       strokeLinecap="round"
       strokeLinejoin="round"
     />
+  </svg>
+);
+
+/** One glyph for the one entry that holds everything the rail used to keep
+    loose in its foot. */
+const GearIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
   </svg>
 );
 
@@ -174,6 +192,7 @@ export const NotesRail = ({
 }: NotesRailProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [sections, setSections] = useState<SectionState>(readSections);
   /** Only one flyout at a time: two panels open beside a one-icon-wide rail
       would overlap each other. */
@@ -555,16 +574,14 @@ export const NotesRail = ({
           </div>
 
           <footer className="notes-rail__footer">
-            <StorageControl
-              folderState={folderState}
-              folderName={folderName}
-              connectError={connectError}
-              onConnect={onConnectFolder}
-              onReconnect={onReconnectFolder}
-              onDisconnect={onDisconnectFolder}
-              variant="settings"
-            />
-            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+            <button
+              type="button"
+              className="notes-rail__settings"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <GearIcon />
+              <span>Settings</span>
+            </button>
           </footer>
         </>
       )}
@@ -574,7 +591,6 @@ export const NotesRail = ({
           rows to a flyout that opens beside it. */}
       {collapsed && (
         <div className="notes-rail__icons">
-
           <button
             type="button"
             className="rail-flyout__trigger rail-tip-host"
@@ -741,6 +757,19 @@ export const NotesRail = ({
               ))}
             </ul>
           </RailFlyout>
+
+          {/* Collapsed, the rail used to drop its footer entirely, so the
+              folder and the theme were unreachable without widening it
+              first. One entry is small enough to keep. */}
+          <button
+            type="button"
+            className="rail-flyout__trigger rail-tip-host notes-rail__settings-icon"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+          >
+            <GearIcon />
+            <RailTip label="Settings" />
+          </button>
         </div>
       )}
 
@@ -773,6 +802,19 @@ export const NotesRail = ({
         destructive
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
+      />
+
+      <SettingsModal
+        open={settingsOpen}
+        folderState={folderState}
+        folderName={folderName}
+        connectError={connectError}
+        theme={theme}
+        onConnectFolder={onConnectFolder}
+        onReconnectFolder={onReconnectFolder}
+        onDisconnectFolder={onDisconnectFolder}
+        onToggleTheme={onToggleTheme}
+        onClose={() => setSettingsOpen(false)}
       />
 
       <NoteSearchModal

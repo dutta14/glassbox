@@ -4,48 +4,67 @@ import userEvent from "@testing-library/user-event";
 import { ThemeToggle } from "./ThemeToggle";
 
 describe("ThemeToggle", () => {
-  it("names the current theme rather than the pending one", () => {
+  it("offers both themes by name rather than one ambiguous toggle", () => {
     render(<ThemeToggle theme="dark" onToggle={vi.fn()} />);
 
-    expect(
-      screen.getByRole("button", { name: /dark mode/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Light" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dark" })).toBeInTheDocument();
   });
 
-  it("describes the destination in the tooltip so the action is unambiguous", () => {
+  it("marks the active theme as pressed and the other as not", () => {
     render(<ThemeToggle theme="dark" onToggle={vi.fn()} />);
 
-    expect(screen.getByRole("button")).toHaveAttribute(
-      "title",
-      "Switch to light mode",
+    expect(screen.getByRole("button", { name: "Dark" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Light" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
     );
   });
 
-  /**
-   * The label alone reads as a statement, not a control state. aria-pressed
-   * gives a screen reader the on/off semantics of a toggle.
-   */
-  it("reports an unpressed toggle while the dark theme is active", () => {
-    render(<ThemeToggle theme="dark" onToggle={vi.fn()} />);
-
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
-  });
-
-  it("reports a pressed toggle while the light theme is active", () => {
+  it("moves the pressed state with the theme", () => {
     render(<ThemeToggle theme="light" onToggle={vi.fn()} />);
 
-    const button = screen.getByRole("button", { name: /light mode/i });
-    expect(button).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Light" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Dark" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 
-  it("calls onToggle once when clicked", async () => {
+  it("switches when the inactive theme is chosen", async () => {
     const onToggle = vi.fn();
     const user = userEvent.setup();
     render(<ThemeToggle theme="dark" onToggle={onToggle} />);
 
-    await user.click(screen.getByRole("button"));
+    await user.click(screen.getByRole("button", { name: "Light" }));
 
     expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The whole point of two buttons over one toggle: pressing the theme you are
+   * already on must not flip you off it.
+   */
+  it("does nothing when the active theme is chosen again", async () => {
+    const onToggle = vi.fn();
+    const user = userEvent.setup();
+    render(<ThemeToggle theme="dark" onToggle={onToggle} />);
+
+    await user.click(screen.getByRole("button", { name: "Dark" }));
+
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it("names the group so the two buttons are not read as loose controls", () => {
+    render(<ThemeToggle theme="dark" onToggle={vi.fn()} />);
+
+    expect(screen.getByRole("group", { name: "Theme" })).toBeInTheDocument();
   });
 
   it("is reachable and operable from the keyboard alone", async () => {
@@ -54,7 +73,7 @@ describe("ThemeToggle", () => {
     render(<ThemeToggle theme="dark" onToggle={onToggle} />);
 
     await user.tab();
-    expect(screen.getByRole("button")).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Light" })).toHaveFocus();
 
     await user.keyboard("{Enter}");
     expect(onToggle).toHaveBeenCalledTimes(1);
