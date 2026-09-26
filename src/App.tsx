@@ -24,6 +24,7 @@ import { useStorageBackend } from "./hooks/useStorageBackend";
 import { useTheme } from "./hooks/useTheme";
 import { useNoteOrganize } from "./hooks/useNoteOrganize";
 import { createIndex, route } from "./engine/router";
+import type { TfIdfIndex } from "./engine/tfidf";
 import { notePath, chatPath, bookPath } from "./engine/routes";
 import { COPY } from "./engine/copy";
 import { NotesRail } from "./components/NotesRail";
@@ -399,7 +400,27 @@ export const AppReady = ({
   // activeId timing that a click-then-type sequence can otherwise outrun.
   const newDraftPendingRef = useRef(false);
 
-  const index = useMemo(() => createIndex(notes), [notes]);
+  /* Built when a question is asked, not when the notes change.
+     
+     The retrieval index has exactly one reader, the route() call in
+     handleSubmit. Holding it in a useMemo keyed on notes meant it was rebuilt
+     every time that array got a new identity, and useNotes mints a new array
+     on every edit, which the editor fires per keystroke. On the library this
+     was built for that is a full pass over 570 notes between one character and
+     the next: measured at 80ms, about five dropped frames, for a value nobody
+     reads until the reader asks something.
+
+     Cached against the array it was built from rather than a counter or a
+     hash. Identity is exactly the right test here: useNotes replaces the array
+     on any change and keeps it otherwise, so this rebuilds when the corpus
+     moves and holds across repeated questions. */
+  const indexCache = useRef<{ source: Note[]; index: TfIdfIndex } | null>(null);
+  const getIndex = useCallback((): TfIdfIndex => {
+    if (indexCache.current?.source !== notes) {
+      indexCache.current = { source: notes, index: createIndex(notes) };
+    }
+    return indexCache.current.index;
+  }, [notes]);
 
   /* The route drives the open conversation, not the other way around. Back and
      forward, a refresh, and a hand-typed /chat/<id> all move through here, so
@@ -713,7 +734,7 @@ export const AppReady = ({
 
   const handleSubmit = useCallback(
     (text: string) => {
-      const answer: Answer = route(text, notes, index);
+      const answer: Answer = route(text, notes, getIndex());
       // Captured before append, because append is what mints the id and moves
       // us off the draft. A draft has no URL of its own, so the first prompt
       // has to swap '/' for '/chat/<id>'. It is a replace, not a push: pushing
@@ -738,7 +759,7 @@ export const AppReady = ({
         navigate(chatPath(id), { replace: true });
       }
     },
-    [activeConversationId, append, index, navigate, notes],
+    [activeConversationId, append, getIndex, navigate, notes],
   );
 
   const handleExamplePrompt = useCallback(
