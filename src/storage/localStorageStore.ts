@@ -37,7 +37,21 @@ export const createLocalStorageStore = (): NotesStore => {
     label: 'This browser',
     isAvailable: isStorageAvailable,
 
-    list: async (): Promise<Note[]> => readAll(),
+    // Reads from memory in one go, so there is no progress to report. The
+    // callback still fires once, so callers that render from batches behave
+    // the same on either backend rather than only being exercised on disk.
+    list: async (onBatch?: (notes: Note[]) => void): Promise<Note[]> => {
+      const notes = readAll();
+      if (onBatch && notes.length > 0) {
+        try {
+          onBatch(notes);
+        } catch {
+          /* Progress is advisory. A crash while drawing must not cost the
+             reader their library, so the full list is still returned. */
+        }
+      }
+      return notes;
+    },
 
     put: async (note: Note): Promise<void> => {
       const notes = readAll();

@@ -60,6 +60,24 @@ const mergeTags = (previous: string[], previousBody: string, nextBody: string): 
  * shelf stays in the same order you left it. This also matches the order
  * Previous and Next already move through, in useNoteNeighbours.
  */
+/**
+ * Fold a batch of freshly read notes into what is already on screen.
+ *
+ * Batches arrive in directory order and two files can claim one id, so this
+ * applies the same newest-wins rule the store uses rather than appending
+ * blindly. It is deliberately additive: a batch says what exists, never what
+ * is gone, so nothing is removed here. Deletions are settled by the resolved
+ * list that replaces this one a moment later.
+ */
+const mergeBatch = (prev: Note[], batch: Note[]): Note[] => {
+  const byId = new Map(prev.map((n) => [n.id, n]));
+  for (const note of batch) {
+    const existing = byId.get(note.id);
+    if (!existing || note.updatedAt > existing.updatedAt) byId.set(note.id, note);
+  }
+  return sortByCreated([...byId.values()]);
+};
+
 const sortByCreated = (notes: Note[]): Note[] =>
   [...notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
@@ -187,7 +205,29 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     setError(null);
     (async () => {
       try {
-        const existing = await store.list();
+        // Only the returning reader streams. A first-run library is empty and
+        // about to be seeded, so there is nothing to show early and a partial
+        // paint would only flash before the samples land.
+        const streaming = hasSeeded();
+        let shown = 0;
+
+        const existing = await store.list(
+          streaming
+            ? (batch) => {
+                if (cancelled) return;
+                // Paint the first batch immediately, then at most every 50ms.
+                // The read is paced by file count, so a large library would
+                // otherwise re-sort and re-render the whole list a few hundred
+                // times on the way up, spending more on showing progress than
+                // on the work it is reporting.
+                const now = performance.now();
+                if (shown !== 0 && now - shown < 50) return;
+                shown = now;
+                setNotes((prev) => mergeBatch(prev, batch));
+                setStatus('ready');
+              }
+            : undefined,
+        );
         if (cancelled) return;
 
         // Re-check hasSeeded after the first await. Under StrictMode the

@@ -21,8 +21,23 @@ export interface NotesStore {
   /** Whether this backend can be used at all in the current environment. */
   isAvailable(): boolean;
 
-  /** Load every note. Called once on mount and again on window focus. */
-  list(): Promise<Note[]>;
+  /**
+   * Load every note. Called once on mount and again on window focus.
+   *
+   * `onBatch` reports notes as they are read rather than making the caller
+   * wait for the last one. The nav needs only titles and dates, and the first
+   * two dozen notes are in memory within a few milliseconds, so withholding
+   * them until a library of several hundred has finished parsing is a pause
+   * with nothing behind it.
+   *
+   * Batches are progress, never the answer. They arrive in directory order,
+   * may contain two notes claiming one id, and say nothing about deletions.
+   * The resolved array is the authoritative one, and callers must let it
+   * replace whatever the batches showed. A caller that needs a complete and
+   * reconciled picture, such as focus reconciliation deciding what was
+   * deleted on disk, must ignore batches and await the result.
+   */
+  list(onBatch?: (notes: Note[]) => void): Promise<Note[]>;
 
   /** Create or update a single note. Exactly one file / one record touched. */
   put(note: Note): Promise<void>;

@@ -19,19 +19,6 @@ export interface Note {
   format?: NoteFormat;
 }
 
-/**
- * A note as the library knows it before anyone opens it: everything needed to
- * list, sort, filter and search by title, and deliberately no body.
- *
- * The missing body is the point. A library of several hundred notes is read
- * one note at a time, so bodies are fetched on demand. Making this a type that
- * structurally lacks `body` means a half-loaded note cannot be handed to
- * `put`, which would otherwise write an empty file over something the user
- * spent years writing. The compiler refuses it rather than a reviewer catching
- * it.
- */
-export type NoteMeta = Omit<Note, 'body'> & { filename: string };
-
 export interface Chunk {
   noteId: string;
   noteTitle: string;
