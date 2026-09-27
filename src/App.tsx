@@ -32,7 +32,7 @@ import { AskFab } from "./components/AskFab";
 import { AskPane } from "./components/AskPane";
 import { AskResizer } from "./components/AskResizer";
 import { useAskPane } from "./hooks/useAskPane";
-import { BooksPage } from "./components/BooksPage";
+import { Library } from "./components/Library";
 import { useNoteNeighbours } from "./hooks/useNoteNeighbours";
 import { NoteEditor } from "./components/NoteEditor";
 import { ChatPanel } from "./components/ChatPanel";
@@ -860,10 +860,12 @@ export const AppReady = ({
                 <Route
                   path="/books"
                   element={
-                    <BooksPage
+                    <Library
+                      notes={notes}
                       books={books}
-                      booksLoaded={booksLoaded}
-                      onOpen={handleSelectBook}
+                      onOpenSpine={(spine) => {
+                        if (spine.kind === "book") handleSelectBook(spine.id);
+                      }}
                       onCreate={handleCreateBook}
                     />
                   }
