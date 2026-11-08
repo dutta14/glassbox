@@ -22,7 +22,7 @@
    much of each wall faces the camera. It is a stage set rather than a box, and
    the back wall and floor are sized to match so the corners still meet. */
 
-.library /* the room is a fixed-geometry box; scale it to COVER the viewport rather than
+/* the room is a fixed-geometry box; scale it to COVER the viewport rather than
    letterboxing it,so no page background is ever visible */
 .library .viewport {
   position: absolute;
@@ -83,6 +83,11 @@
   width: 980px;
   height: 720px;
   transform-style: preserve-3d;
+  /* The room is scenery. Pointer events are inherited, so switching them off
+     here lets every light, glow and prop (the lamp's glow is 460px wide and
+     paints over the shelf) pass clicks through, and only the spines opt back
+     in. */
+  pointer-events: none;
 }
 .library .wall {
   position: absolute;
@@ -222,7 +227,7 @@
   margin: 0;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
 }
-.library /* bookcase on the back wall */
+/* bookcase on the back wall */
 .library .case {
   position: absolute;
   bottom: 0;
@@ -283,6 +288,7 @@
     transform 0.2s cubic-bezier(0.2, 0.85, 0.3, 1),
     filter 0.2s ease;
   transform-origin: bottom center;
+  pointer-events: auto;
 }
 .library .bk::before {
   content: "";
@@ -347,7 +353,7 @@
 .library .bk.lean:hover {
   transform: translateX(var(--dx, 0px)) translateY(-10px) rotate(-10deg);
 }
-.library /* objects standing on the floor,pushed off their wall into the room */
+/* objects standing on the floor,pushed off their wall into the room */
 .library .lamp {
   position: absolute;
   bottom: 0;
@@ -404,7 +410,7 @@
   );
   filter: blur(7px);
 }
-.library /* back is a closed slab spanning z 0..26,not a single plane */
+/* back is a closed slab spanning z 0..26,not a single plane */
 .library .cu-backrear {
   width: 300px;
   height: 146px;
