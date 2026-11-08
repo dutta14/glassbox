@@ -16,6 +16,7 @@ import { createLocalStorageStore } from "../storage/localStorageStore";
 import {
   createFileSystemStore,
   isFolderStoreSupported,
+  NOTES_DIR,
 } from "../storage/fileSystemStore";
 import {
   clearDirectoryHandle,
@@ -51,6 +52,9 @@ export interface UseStorageBackendResult {
   folderState: FolderState;
   folderName: string | null;
   connectError: string | null;
+  /** Why the app dropped a saved folder on its own. Dismissable. */
+  folderNotice: string | null;
+  dismissFolderNotice: () => void;
   connectFolder: () => Promise<void>;
   reconnectFolder: () => Promise<void>;
   disconnectFolder: () => Promise<void>;
@@ -59,11 +63,34 @@ export interface UseStorageBackendResult {
 const buildFolderStore = (handle: FileSystemDirectoryHandle) =>
   createFileSystemStore(handle);
 
+/* Permission can still read "granted" for a folder that was deleted or moved
+   after it was chosen, so the permission query cannot be trusted to say the
+   folder exists. Asking for the notes directory is the same call the store
+   makes first, so it fails here exactly where it would have failed on load.
+   Only "not found" counts as gone. Any other error (permission revoked, a
+   transient I/O problem) leaves the folder in place for the existing paths to
+   handle, rather than forgetting a folder that is merely unavailable. */
+const folderIsGone = async (
+  handle: FileSystemDirectoryHandle,
+): Promise<boolean> => {
+  try {
+    await handle.getDirectoryHandle(NOTES_DIR, { create: true });
+    return false;
+  } catch (err) {
+    return (
+      typeof err === "object" &&
+      err !== null &&
+      (err as { name?: unknown }).name === "NotFoundError"
+    );
+  }
+};
+
 export const useStorageBackend = (): UseStorageBackendResult => {
   const [store, setStore] = useState<NotesStore | null>(null);
   const [folderState, setFolderState] = useState<FolderState>("disconnected");
   const [folderName, setFolderName] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [folderNotice, setFolderNotice] = useState<string | null>(null);
 
   const handleRef = useRef<FileSystemDirectoryHandle | null>(null);
   const localStoreRef = useRef<NotesStore | null>(null);
@@ -74,6 +101,30 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     }
     return localStoreRef.current;
   }, []);
+
+  /* Forget a folder that no longer exists and carry on from this browser's
+     copy. Without this the handle stays in IndexedDB, every launch builds a
+     store over a folder that is not there, and the app never gets past the
+     load error. */
+  const dropMissingFolder = useCallback(
+    async (name: string): Promise<void> => {
+      try {
+        await clearDirectoryHandle();
+      } catch {
+        // The session still carries on from local storage if this fails.
+      }
+      handleRef.current = null;
+      setFolderName(null);
+      setFolderState("disconnected");
+      setStore(getLocalStore());
+      setFolderNotice(
+        `The folder "${name}" was moved or deleted, so Glassbox is showing the notes saved in this browser. Choose a folder to connect again.`,
+      );
+    },
+    [getLocalStore],
+  );
+
+  const dismissFolderNotice = useCallback(() => setFolderNotice(null), []);
 
   // Bootstrap on mount: figure out which store to use without calling any
   // permission APIs that need a user gesture.
@@ -110,6 +161,11 @@ export const useStorageBackend = (): UseStorageBackendResult => {
       if (cancelled) return;
 
       if (permission === "granted") {
+        if (await folderIsGone(stored)) {
+          if (!cancelled) await dropMissingFolder(stored.name);
+          return;
+        }
+        if (cancelled) return;
         setStore(buildFolderStore(stored));
         setFolderState("connected");
       } else if (permission === "denied") {
@@ -126,7 +182,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     return () => {
       cancelled = true;
     };
-  }, [getLocalStore]);
+  }, [getLocalStore, dropMissingFolder]);
 
   const connectFolder = useCallback(async (): Promise<void> => {
     setConnectError(null);
@@ -218,6 +274,10 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     }
 
     if (permission === "granted") {
+      if (await folderIsGone(stored)) {
+        await dropMissingFolder(stored.name);
+        return;
+      }
       const folder = buildFolderStore(stored);
 
       // While the folder was disconnected, the user may have created or
@@ -245,7 +305,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     } else {
       setFolderState("needs-reconnect");
     }
-  }, [getLocalStore]);
+  }, [getLocalStore, dropMissingFolder]);
 
   const disconnectFolder = useCallback(async (): Promise<void> => {
     setConnectError(null);
@@ -301,6 +361,8 @@ export const useStorageBackend = (): UseStorageBackendResult => {
       folderState,
       folderName,
       connectError,
+      folderNotice,
+      dismissFolderNotice,
       connectFolder,
       reconnectFolder,
       disconnectFolder,
@@ -312,6 +374,8 @@ export const useStorageBackend = (): UseStorageBackendResult => {
       folderState,
       folderName,
       connectError,
+      folderNotice,
+      dismissFolderNotice,
       connectFolder,
       reconnectFolder,
       disconnectFolder,

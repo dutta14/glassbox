@@ -50,6 +50,8 @@ const App = () => {
     folderState,
     folderName,
     connectError,
+    folderNotice,
+    dismissFolderNotice,
     connectFolder,
     reconnectFolder,
     disconnectFolder,
@@ -67,17 +69,27 @@ const App = () => {
   }
 
   return (
-    <AppReady
-      store={store}
-      conversationStore={conversationStore}
-      bookStore={bookStore}
-      folderState={folderState}
-      folderName={folderName}
-      connectError={connectError}
-      onConnect={connectFolder}
-      onReconnect={reconnectFolder}
-      onDisconnect={disconnectFolder}
-    />
+    <>
+      <AppReady
+        store={store}
+        conversationStore={conversationStore}
+        bookStore={bookStore}
+        folderState={folderState}
+        folderName={folderName}
+        connectError={connectError}
+        onConnect={connectFolder}
+        onReconnect={reconnectFolder}
+        onDisconnect={disconnectFolder}
+      />
+      {folderNotice && (
+        <div className="app__notice" role="status">
+          <p>{folderNotice}</p>
+          <button type="button" onClick={dismissFolderNotice}>
+            Dismiss
+          </button>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -695,6 +707,18 @@ export const AppReady = ({
         <div className="app__error" role="alert">
           <p>Could not load your notes.</p>
           {error && <p className="app__error-detail">{error}</p>}
+          {/* The rail, and the settings that disconnect a folder, are not
+              drawn in this state. Without a way out here, a folder that fails
+              to load would fail the same way on every launch. */}
+          {folderState === "connected" && (
+            <button
+              type="button"
+              className="app__error-action"
+              onClick={() => void onDisconnect()}
+            >
+              Use the notes saved in this browser
+            </button>
+          )}
         </div>
       )}
 
