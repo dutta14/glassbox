@@ -17,7 +17,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "typecheck": "tsc -b",
-    "lint": "oxlint --max-warnings 26",
+    "lint": "oxlint --max-warnings 30",
     "format": "prettier --write src e2e .storybook .github \"*.ts\"",
     "format:check": "prettier --check src e2e .storybook .github \"*.ts\"",
     "audit": "npm audit --audit-level=high",

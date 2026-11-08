@@ -140,7 +140,7 @@ Every pull request runs five jobs in `.github/workflows/ci.yml`, and a push to `
 | `e2e` | Playwright specs and screenshot comparisons |
 | `build` | A `/glassbox/` Pages build, booted in a browser to prove every asset resolves under that path |
 
-Lint is a ratchet. Oxlint is allowed 26 existing warnings (`--max-warnings 26` in `package.json`) and no new ones, so lower the number as they are fixed and never raise it.
+Lint is a ratchet. Oxlint is allowed 30 existing warnings (`--max-warnings 30` in `package.json`) and no new ones, so lower the number as they are fixed. It went from 26 to 30 only because oxlint 1.91 started flagging four more places in code that was already there; raise it for a linter upgrade like that and never for new code.
 
 Husky runs lint and the format check before each commit, and the type check and unit tests before each push.
 
