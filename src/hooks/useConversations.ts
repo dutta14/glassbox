@@ -19,6 +19,14 @@ import { createId } from '../storage/notes';
 const byNewestFirst = (a: Conversation, b: Conversation): number =>
   b.updatedAt.localeCompare(a.updatedAt);
 
+// Writes are fire-and-forget so the UI never waits on disk. A rejection with no
+// handler surfaces as an unhandled rejection, so failures are logged instead.
+const reportFailure = (op: Promise<void> | undefined, what: string): void => {
+  void op?.catch((err) => {
+    console.error(`Failed to ${what}`, err);
+  });
+};
+
 export interface UseConversationsResult {
   conversations: Conversation[];
   /** null means a draft: the chat is open but nothing has been sent. */
@@ -196,7 +204,7 @@ export const useConversations = (
       );
       if (!existing) setActiveId(updated.id);
       else if (targetId !== undefined) setActiveId(existing.id);
-      void store?.put(updated);
+      reportFailure(store?.put(updated), 'save conversation');
 
       // Returned so the caller on a draft can replace `/` with `/chat/<id>` in
       // the same click. The id is known here and nowhere earlier; reaching for
@@ -221,14 +229,14 @@ export const useConversations = (
             : null;
         setActiveId(next?.id ?? null);
         setConversations((prev) => prev.filter((c) => c.id !== id));
-        void store?.remove(id);
+        reportFailure(store?.remove(id), 'delete conversation');
         // The neighbour the caller must replace the dead URL with. Returned
         // rather than left for an effect to notice, because the old /chat/<id>
         // is gone and must not linger in history for one extra render.
         return next?.id ?? null;
       }
       setConversations((prev) => prev.filter((c) => c.id !== id));
-      void store?.remove(id);
+      reportFailure(store?.remove(id), 'delete conversation');
       // A thread other than the open one was removed. Selection did not move,
       // so the URL should not either; hand back the still-active id unchanged.
       return activeId;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { StrictMode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useConversations } from './useConversations';
@@ -469,11 +469,13 @@ describe('useConversations — persistence calls', () => {
     expect(store.puts[0].id).toBe(result.current.conversations[0].id);
   });
 
-  it('survives a store whose put rejects', () => {
+  it('survives a store whose put rejects, and reports the failure', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const failure = new Error('disk full');
     const store: ConversationStore = {
       kind: 'local',
       list: async () => ({ conversations: [], skipped: 0 }),
-      put: () => Promise.reject(new Error('disk full')),
+      put: () => Promise.reject(failure),
       remove: async () => {},
     };
     const { result } = setup(store);
@@ -482,5 +484,9 @@ describe('useConversations — persistence calls', () => {
       act(() => result.current.append('still works', goodAnswer()))
     ).not.toThrow();
     expect(result.current.conversations).toHaveLength(1);
+    await vi.waitFor(() =>
+      expect(error).toHaveBeenCalledWith('Failed to save conversation', failure)
+    );
+    error.mockRestore();
   });
 });
