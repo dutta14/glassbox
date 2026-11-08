@@ -215,6 +215,39 @@ textarea.editor__body:not([data-editing]) {
   }
 }
 
+/* A hand-written section break ("---" then "[2]") drawn as a rule with its
+   number, the way a printed chapter marks a part. Exactly as tall as the two
+   lines of source it replaces, and one line for an opening "[1]", so the text
+   below does not move when the reading view gives way to the field. */
+.editor__break {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  height: 3.5em;
+  color: var(--color-text-muted);
+}
+
+.editor__break--opening {
+  height: 1.75em;
+}
+
+.editor__break:not(.editor__break--opening)::before,
+.editor__break:not(.editor__break--opening)::after {
+  content: "";
+  width: 44px;
+  height: 1px;
+  background: var(--color-text-muted);
+}
+
+.editor__break-number {
+  font-size: 0.85em;
+  letter-spacing: 0.12em;
+  /* Letter-spacing trails the last glyph, which would push a number off the
+     centre of its rules. */
+  margin-right: -0.12em;
+}
+
 .editor__body::placeholder {
   color: var(--color-text-muted);
 }

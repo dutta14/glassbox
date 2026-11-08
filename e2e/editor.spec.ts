@@ -434,3 +434,63 @@ test("a poem is never given a chapter drop cap", async ({ page }) => {
     "data-dropcap",
   );
 });
+
+const SECTIONED = [
+  "[1]",
+  "",
+  "The first part of the story.",
+  "",
+  "---",
+  "[2]",
+  "",
+  "The second part of the story.",
+].join("\n");
+
+test("section markers are drawn as breaks in the reading view", async ({
+  page,
+}) => {
+  await open(page, { body: SECTIONED });
+
+  await expect(page.locator(".editor__break")).toHaveCount(2);
+  await expect(page.locator(".editor__break-number")).toHaveText(["1", "2"]);
+  await expect(page.locator(".editor__read")).not.toContainText("---");
+  await expect(page.getByLabel("Note body")).toHaveValue(SECTIONED);
+});
+
+test("a note with section breaks keeps its height when clicked to write", async ({
+  page,
+}) => {
+  await open(page, { body: SECTIONED });
+  await page.evaluate(() => document.fonts.ready);
+
+  const read = await page.locator(".editor__read").evaluate((el) => {
+    el.style.minHeight = "0";
+    return el.getBoundingClientRect().height;
+  });
+  await page.locator(".editor__read").click();
+  await expect(page.getByLabel("Note body")).toBeFocused();
+  const field = await page.getByLabel("Note body").evaluate((el) => {
+    el.style.minHeight = "0";
+    el.style.height = "auto";
+    return el.scrollHeight;
+  });
+
+  // Padding is the same on both, so any difference is the breaks' own height.
+  expect(Math.abs(field - read)).toBeLessThan(2);
+});
+
+test("clicking prose after a section break puts the caret in that prose", async ({
+  page,
+}) => {
+  await open(page, { body: SECTIONED });
+  await page.evaluate(() => document.fonts.ready);
+
+  await page.locator(".editor__read").getByText("The second part").click();
+  const field = page.getByLabel("Note body");
+  await expect(field).toBeFocused();
+
+  const caret = await field.evaluate(
+    (el: HTMLTextAreaElement) => el.selectionStart,
+  );
+  expect(caret).toBeGreaterThan(SECTIONED.indexOf("The second"));
+});
