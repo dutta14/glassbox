@@ -46,9 +46,7 @@ describe("StorageControl", () => {
   it("offers changing and disconnecting once a folder is connected", () => {
     setup("connected");
 
-    expect(
-      screen.getByRole("button", { name: "Change" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Disconnect" }),
     ).toBeInTheDocument();

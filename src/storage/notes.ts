@@ -1,21 +1,21 @@
-import type { Note } from '../types';
+import type { Note } from "../types";
 
-const STORAGE_KEY = 'glassbox.notes.v1';
-const SEEDED_KEY = 'glassbox.seeded.v1';
+const STORAGE_KEY = "glassbox.notes.v1";
+const SEEDED_KEY = "glassbox.seeded.v1";
 
 /** The only module in the app permitted to touch localStorage. */
 
 const isNote = (value: unknown): value is Note => {
-  if (typeof value !== 'object' || value === null) return false;
+  if (typeof value !== "object" || value === null) return false;
   const n = value as Record<string, unknown>;
   return (
-    typeof n.id === 'string' &&
-    typeof n.title === 'string' &&
-    typeof n.body === 'string' &&
+    typeof n.id === "string" &&
+    typeof n.title === "string" &&
+    typeof n.body === "string" &&
     Array.isArray(n.tags) &&
-    n.tags.every((t) => typeof t === 'string') &&
-    typeof n.createdAt === 'string' &&
-    typeof n.updatedAt === 'string'
+    n.tags.every((t) => typeof t === "string") &&
+    typeof n.createdAt === "string" &&
+    typeof n.updatedAt === "string"
   );
 };
 
@@ -78,7 +78,7 @@ export const createId = (): string =>
 export const parseTags = (input: string): string[] => {
   const seen = new Set<string>();
   for (const raw of input.split(/[,\s]+/)) {
-    const tag = raw.replace(/^#+/, '').trim().toLowerCase();
+    const tag = raw.replace(/^#+/, "").trim().toLowerCase();
     if (tag) seen.add(tag);
   }
   return [...seen];
@@ -88,8 +88,8 @@ export const newNote = (partial: Partial<Note> = {}): Note => {
   const now = new Date().toISOString();
   return {
     id: partial.id ?? createId(),
-    title: partial.title ?? '',
-    body: partial.body ?? '',
+    title: partial.title ?? "",
+    body: partial.body ?? "",
     tags: partial.tags ?? [],
     createdAt: partial.createdAt ?? now,
     updatedAt: partial.updatedAt ?? now,

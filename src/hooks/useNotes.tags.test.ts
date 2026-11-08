@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { useNotes } from './useNotes';
-import { markSeeded } from '../storage/notes';
-import type { Note } from '../types';
-import type { NotesStore } from '../storage/types';
+import { describe, expect, it, beforeEach } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { useNotes } from "./useNotes";
+import { markSeeded } from "../storage/notes";
+import type { Note } from "../types";
+import type { NotesStore } from "../storage/types";
 
 /**
  * AC 5 coverage: "Tags entered as #word tokens inside the body; extracted into tags[] on save."
@@ -14,8 +14,8 @@ import type { NotesStore } from '../storage/types';
  */
 
 class InMemoryStore implements NotesStore {
-  readonly kind = 'local' as const;
-  readonly label = 'inmem';
+  readonly kind = "local" as const;
+  readonly label = "inmem";
   disk = new Map<string, Note>();
   isAvailable(): boolean {
     return true;
@@ -37,19 +37,23 @@ const seed = (store: InMemoryStore, note: Note): void => {
 
 const mkNote = (id: string, body: string, tags: string[] = []): Note => ({
   id,
-  title: 'T',
+  title: "T",
   body,
   tags,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
 });
 
-const setup = async (existing: Note): Promise<ReturnType<typeof renderHookNotes>> => {
+const setup = async (
+  existing: Note,
+): Promise<ReturnType<typeof renderHookNotes>> => {
   const store = new InMemoryStore();
   seed(store, existing);
   const rendered = renderHookNotes(store);
   await waitFor(() =>
-    expect(rendered.result.current.notes.map((n) => n.id)).toContain(existing.id)
+    expect(rendered.result.current.notes.map((n) => n.id)).toContain(
+      existing.id,
+    ),
   );
   return rendered;
 };
@@ -62,7 +66,7 @@ const renderHookNotes = (store: NotesStore) => {
 const editBody = async (
   rendered: Awaited<ReturnType<typeof setup>>,
   id: string,
-  body: string
+  body: string,
 ): Promise<string[]> => {
   await act(async () => {
     rendered.result.current.updateNote(id, { body });
@@ -72,133 +76,169 @@ const editBody = async (
   return updated!.tags;
 };
 
-describe('AC 5 — tag extraction from #word tokens in note body', () => {
+describe("AC 5 — tag extraction from #word tokens in note body", () => {
   beforeEach(() => {
     localStorage.clear();
     markSeeded();
   });
 
-  it('extracts a single lowercase #word from the body into tags', async () => {
-    const rendered = await setup(mkNote('n', 'plain body'));
-    const tags = await editBody(rendered, 'n', 'writing about #postgres today');
-    expect(tags).toEqual(['postgres']);
+  it("extracts a single lowercase #word from the body into tags", async () => {
+    const rendered = await setup(mkNote("n", "plain body"));
+    const tags = await editBody(rendered, "n", "writing about #postgres today");
+    expect(tags).toEqual(["postgres"]);
   });
 
-  it('extracts multiple distinct #word tokens preserving first-occurrence order', async () => {
-    const rendered = await setup(mkNote('n', 'plain body'));
-    const tags = await editBody(rendered, 'n', '#work followed by #travel and #kyoto');
-    expect(tags).toEqual(['work', 'travel', 'kyoto']);
+  it("extracts multiple distinct #word tokens preserving first-occurrence order", async () => {
+    const rendered = await setup(mkNote("n", "plain body"));
+    const tags = await editBody(
+      rendered,
+      "n",
+      "#work followed by #travel and #kyoto",
+    );
+    expect(tags).toEqual(["work", "travel", "kyoto"]);
   });
 
-  it('does not create a tag for a bare # with no following word character', async () => {
-    const rendered = await setup(mkNote('n', 'plain body'));
-    const tags = await editBody(rendered, 'n', 'a bare # goes nowhere and neither does ##');
+  it("does not create a tag for a bare # with no following word character", async () => {
+    const rendered = await setup(mkNote("n", "plain body"));
+    const tags = await editBody(
+      rendered,
+      "n",
+      "a bare # goes nowhere and neither does ##",
+    );
     expect(tags).toEqual([]);
   });
 
-  it('extracts a purely numeric #123 as a tag', async () => {
-    const rendered = await setup(mkNote('n', 'plain body'));
-    const tags = await editBody(rendered, 'n', 'issue #123 came up today');
-    expect(tags).toEqual(['123']);
+  it("extracts a purely numeric #123 as a tag", async () => {
+    const rendered = await setup(mkNote("n", "plain body"));
+    const tags = await editBody(rendered, "n", "issue #123 came up today");
+    expect(tags).toEqual(["123"]);
   });
 
-  it('extracts a #tag that is punctuation-adjacent, e.g. after a period', async () => {
-    const rendered = await setup(mkNote('n', 'plain body'));
-    const tags = await editBody(rendered, 'n', 'end of sentence.#followup was noted');
-    expect(tags).toEqual(['followup']);
+  it("extracts a #tag that is punctuation-adjacent, e.g. after a period", async () => {
+    const rendered = await setup(mkNote("n", "plain body"));
+    const tags = await editBody(
+      rendered,
+      "n",
+      "end of sentence.#followup was noted",
+    );
+    expect(tags).toEqual(["followup"]);
   });
 
-  it('extracts a #tag containing internal hyphens as one tag, not multiple', async () => {
-    const rendered = await setup(mkNote('n', 'plain body'));
-    const tags = await editBody(rendered, 'n', 'category #product-launch mentioned');
-    expect(tags).toEqual(['product-launch']);
+  it("extracts a #tag containing internal hyphens as one tag, not multiple", async () => {
+    const rendered = await setup(mkNote("n", "plain body"));
+    const tags = await editBody(
+      rendered,
+      "n",
+      "category #product-launch mentioned",
+    );
+    expect(tags).toEqual(["product-launch"]);
   });
 
-  it('deduplicates repeated occurrences of the same tag', async () => {
-    const rendered = await setup(mkNote('n', 'plain body'));
-    const tags = await editBody(rendered, 'n', '#work again #work and then #WORK once more');
-    expect(tags).toEqual(['work']);
+  it("deduplicates repeated occurrences of the same tag", async () => {
+    const rendered = await setup(mkNote("n", "plain body"));
+    const tags = await editBody(
+      rendered,
+      "n",
+      "#work again #work and then #WORK once more",
+    );
+    expect(tags).toEqual(["work"]);
   });
 
-  it('lowercases mixed-case #Tag tokens', async () => {
-    const rendered = await setup(mkNote('n', 'plain body'));
-    const tags = await editBody(rendered, 'n', 'mixed case #TravelPlans should lowercase');
-    expect(tags).toEqual(['travelplans']);
+  it("lowercases mixed-case #Tag tokens", async () => {
+    const rendered = await setup(mkNote("n", "plain body"));
+    const tags = await editBody(
+      rendered,
+      "n",
+      "mixed case #TravelPlans should lowercase",
+    );
+    expect(tags).toEqual(["travelplans"]);
   });
 
-  it('removes a previously extracted tag when the user deletes the #hash from the body', async () => {
-    const rendered = await setup(mkNote('n', 'starter body with no hashes'));
+  it("removes a previously extracted tag when the user deletes the #hash from the body", async () => {
+    const rendered = await setup(mkNote("n", "starter body with no hashes"));
     // First edit: introduces the #work hash so the extractor adds "work".
-    const before = await editBody(rendered, 'n', 'about #work');
-    expect(before).toEqual(['work']);
+    const before = await editBody(rendered, "n", "about #work");
+    expect(before).toEqual(["work"]);
     // Second edit: removes the hash. Extractor must reflect that.
-    const after = await editBody(rendered, 'n', 'about work with no hash now');
+    const after = await editBody(rendered, "n", "about work with no hash now");
     expect(after).toEqual([]);
   });
 
-  it('preserves the sample provenance tag when a sample note is edited and its body no longer contains #sample', async () => {
+  it("preserves the sample provenance tag when a sample note is edited and its body no longer contains #sample", async () => {
     const sampleNote: Note = {
-      id: 'sample-1',
-      title: 'Sample',
-      body: 'body without any hash',
-      tags: ['sample'],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
+      id: "sample-1",
+      title: "Sample",
+      body: "body without any hash",
+      tags: ["sample"],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     };
     const rendered = await setup(sampleNote);
-    const tags = await editBody(rendered, 'sample-1', 'user typed here with #new and #ideas');
+    const tags = await editBody(
+      rendered,
+      "sample-1",
+      "user typed here with #new and #ideas",
+    );
     // Explicitly assert BOTH presence of provenance and presence of new tags.
-    expect(tags).toContain('sample');
-    expect(tags).toContain('new');
-    expect(tags).toContain('ideas');
+    expect(tags).toContain("sample");
+    expect(tags).toContain("new");
+    expect(tags).toContain("ideas");
     // And no drift: exactly those three, deduped.
-    expect(new Set(tags)).toEqual(new Set(['sample', 'new', 'ideas']));
+    expect(new Set(tags)).toEqual(new Set(["sample", "new", "ideas"]));
   });
 
-  it('does not preserve a non-provenance previous tag that is absent from the new body (only the sample tag is preserved by design)', async () => {
+  it("does not preserve a non-provenance previous tag that is absent from the new body (only the sample tag is preserved by design)", async () => {
     // Note starts with tags=['work','sample']. User edits body to have no
     // #work reference. Only 'sample' should carry forward; 'work' must drop.
     const existing: Note = {
-      id: 'mixed',
-      title: 'Mixed',
-      body: 'about #work',
-      tags: ['work', 'sample'],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
+      id: "mixed",
+      title: "Mixed",
+      body: "about #work",
+      tags: ["work", "sample"],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     };
     const rendered = await setup(existing);
-    const tags = await editBody(rendered, 'mixed', 'no hashes in this rewrite');
-    expect(tags).toContain('sample');
-    expect(tags).not.toContain('work');
+    const tags = await editBody(rendered, "mixed", "no hashes in this rewrite");
+    expect(tags).toContain("sample");
+    expect(tags).not.toContain("work");
   });
 
-  it('preserves the sample provenance tag when the new body has no tags at all', async () => {
+  it("preserves the sample provenance tag when the new body has no tags at all", async () => {
     const sampleNote: Note = {
-      id: 'sample-empty',
-      title: 'Sample',
-      body: 'first body',
-      tags: ['sample'],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
+      id: "sample-empty",
+      title: "Sample",
+      body: "first body",
+      tags: ["sample"],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     };
     const rendered = await setup(sampleNote);
-    const tags = await editBody(rendered, 'sample-empty', 'edited body with no hashes');
-    expect(tags).toEqual(['sample']);
+    const tags = await editBody(
+      rendered,
+      "sample-empty",
+      "edited body with no hashes",
+    );
+    expect(tags).toEqual(["sample"]);
   });
 
-  it('does not duplicate the sample tag when the new body itself contains #sample', async () => {
+  it("does not duplicate the sample tag when the new body itself contains #sample", async () => {
     const sampleNote: Note = {
-      id: 'sample-explicit',
-      title: 'Sample',
-      body: 'first body',
-      tags: ['sample'],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
+      id: "sample-explicit",
+      title: "Sample",
+      body: "first body",
+      tags: ["sample"],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     };
     const rendered = await setup(sampleNote);
-    const tags = await editBody(rendered, 'sample-explicit', 'this note has #sample in body');
+    const tags = await editBody(
+      rendered,
+      "sample-explicit",
+      "this note has #sample in body",
+    );
     // Presence, and no duplication.
-    expect(tags.filter((t) => t === 'sample')).toHaveLength(1);
+    expect(tags.filter((t) => t === "sample")).toHaveLength(1);
   });
 });
 
@@ -210,56 +250,72 @@ describe('AC 5 — tag extraction from #word tokens in note body', () => {
  * withholds a note from search it is worse: the note quietly becomes
  * answerable, and nothing about the note looks any different.
  */
-describe('tags that were not written into the body', () => {
+describe("tags that were not written into the body", () => {
   beforeEach(() => {
     localStorage.clear();
     markSeeded();
   });
 
-  it('keeps an imported tag when the body is edited and never mentioned it', async () => {
-    const rendered = await setup(mkNote('i', 'A poem from 2011.', ['verses', 'octaves']));
+  it("keeps an imported tag when the body is edited and never mentioned it", async () => {
+    const rendered = await setup(
+      mkNote("i", "A poem from 2011.", ["verses", "octaves"]),
+    );
 
-    const tags = await editBody(rendered, 'i', 'A poem from 2011, lightly corrected.');
+    const tags = await editBody(
+      rendered,
+      "i",
+      "A poem from 2011, lightly corrected.",
+    );
 
-    expect(new Set(tags)).toEqual(new Set(['verses', 'octaves']));
+    expect(new Set(tags)).toEqual(new Set(["verses", "octaves"]));
   });
 
-  it('keeps withholding an imported note from answers after it is edited', async () => {
-    const rendered = await setup(mkNote('a', 'In shadowed garden.', ['verses', 'ai-generated']));
+  it("keeps withholding an imported note from answers after it is edited", async () => {
+    const rendered = await setup(
+      mkNote("a", "In shadowed garden.", ["verses", "ai-generated"]),
+    );
 
-    const tags = await editBody(rendered, 'a', 'In shadowed garden, veiled in night.');
+    const tags = await editBody(
+      rendered,
+      "a",
+      "In shadowed garden, veiled in night.",
+    );
 
-    expect(tags).toContain('ai-generated');
+    expect(tags).toContain("ai-generated");
   });
 
-  it('adds a newly typed hashtag without discarding the imported tags', async () => {
-    const rendered = await setup(mkNote('b', 'A poem.', ['verses']));
+  it("adds a newly typed hashtag without discarding the imported tags", async () => {
+    const rendered = await setup(mkNote("b", "A poem.", ["verses"]));
 
-    const tags = await editBody(rendered, 'b', 'A poem. #autumn');
+    const tags = await editBody(rendered, "b", "A poem. #autumn");
 
-    expect(new Set(tags)).toEqual(new Set(['verses', 'autumn']));
+    expect(new Set(tags)).toEqual(new Set(["verses", "autumn"]));
   });
 
   /* The rule is "the body owns what the body wrote", so a tag the body did
      put there must still be removable. Preserving everything unconditionally
      would fix the import at the cost of making tags permanent. */
-  it('still removes a tag when its hashtag is deleted from the body', async () => {
-    const rendered = await setup(mkNote('c', 'A poem. #draft', ['verses', 'draft']));
+  it("still removes a tag when its hashtag is deleted from the body", async () => {
+    const rendered = await setup(
+      mkNote("c", "A poem. #draft", ["verses", "draft"]),
+    );
 
-    const tags = await editBody(rendered, 'c', 'A poem.');
+    const tags = await editBody(rendered, "c", "A poem.");
 
-    expect(tags).not.toContain('draft');
-    expect(tags).toContain('verses');
+    expect(tags).not.toContain("draft");
+    expect(tags).toContain("verses");
   });
 
   /* ai-generated is provenance, not a subject: it describes where the writing
      came from. Deleting the hashtag must not be able to make a machine's poem
      answerable as the user's own. */
-  it('refuses to let the withholding tag be removed by deleting its hashtag', async () => {
-    const rendered = await setup(mkNote('d', 'A poem. #ai-generated', ['ai-generated']));
+  it("refuses to let the withholding tag be removed by deleting its hashtag", async () => {
+    const rendered = await setup(
+      mkNote("d", "A poem. #ai-generated", ["ai-generated"]),
+    );
 
-    const tags = await editBody(rendered, 'd', 'A poem.');
+    const tags = await editBody(rendered, "d", "A poem.");
 
-    expect(tags).toContain('ai-generated');
+    expect(tags).toContain("ai-generated");
   });
 });

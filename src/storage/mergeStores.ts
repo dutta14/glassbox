@@ -1,5 +1,5 @@
-import type { Note } from '../types';
-import type { NotesStore } from './types';
+import type { Note } from "../types";
+import type { NotesStore } from "./types";
 
 /**
  * Copy every note in `source` into `dest`, with `dest` taking priority on
@@ -12,7 +12,7 @@ import type { NotesStore } from './types';
  */
 export const mergeStores = async (
   source: NotesStore,
-  dest: NotesStore
+  dest: NotesStore,
 ): Promise<void> => {
   const [srcNotes, destNotes] = await Promise.all([source.list(), dest.list()]);
   const destById = new Map<string, Note>(destNotes.map((n) => [n.id, n]));

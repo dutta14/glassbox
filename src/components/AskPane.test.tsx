@@ -206,7 +206,9 @@ describe("the past questions drawer", () => {
     const toggle = screen.getByRole("button", { name: COPY.askHistoryOpen });
     await user.click(toggle);
 
-    await user.click(screen.getByRole("button", { name: COPY.askHistoryClose }));
+    await user.click(
+      screen.getByRole("button", { name: COPY.askHistoryClose }),
+    );
 
     expect(
       screen.getByRole("button", { name: COPY.askHistoryOpen }),

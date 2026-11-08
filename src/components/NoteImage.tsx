@@ -9,9 +9,7 @@ interface NoteImageProps {
 }
 
 type Resolution =
-  | { state: "loading" }
-  | { state: "ready"; url: string }
-  | { state: "missing" };
+  { state: "loading" } | { state: "ready"; url: string } | { state: "missing" };
 
 /**
  * A picture stored beside the notes rather than on the web. The browser cannot

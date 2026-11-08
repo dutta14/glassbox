@@ -14,11 +14,7 @@ import type {
   ScoredChunk,
   Trace,
 } from "./types";
-import type {
-  BookStore,
-  ConversationStore,
-  NotesStore,
-} from "./storage/types";
+import type { BookStore, ConversationStore, NotesStore } from "./storage/types";
 
 const ISO = "2026-01-01T00:00:00.000Z";
 
@@ -61,7 +57,11 @@ const goodAnswer = (text = "Here."): Answer => ({
   trace: goodTrace(),
 });
 
-const makeConversation = (id: string, title: string, userText: string): Conversation => ({
+const makeConversation = (
+  id: string,
+  title: string,
+  userText: string,
+): Conversation => ({
   id,
   title,
   messages: [
@@ -75,7 +75,8 @@ const makeConversation = (id: string, title: string, userText: string): Conversa
     },
   ],
   createdAt: ISO,
-  updatedAt: id === "c1" ? "2026-01-02T00:00:00.000Z" : "2026-01-01T00:00:00.000Z",
+  updatedAt:
+    id === "c1" ? "2026-01-02T00:00:00.000Z" : "2026-01-01T00:00:00.000Z",
 });
 
 const makeNotesStore = (initial: Note[]): NotesStore => {
@@ -148,8 +149,7 @@ interface RenderOptions {
 }
 
 const renderApp = (initialEntries: string[], options: RenderOptions = {}) => {
-  const notesStore =
-    options.notesStore ?? makeNotesStore(options.notes ?? []);
+  const notesStore = options.notesStore ?? makeNotesStore(options.notes ?? []);
   const conversationStore =
     options.conversationStore ??
     makeConversationStore(options.conversations ?? []);
@@ -257,9 +257,7 @@ describe("deep links open the right thing (AC 1)", () => {
   it("says so plainly at / when there is nothing to open", async () => {
     renderApp(["/"], { notes: [] });
 
-    expect(
-      await screen.findByText(COPY.emptyLibraryTitle),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(COPY.emptyLibraryTitle)).toBeInTheDocument();
     expect(pathname()).toBe("/");
   });
 });
@@ -267,7 +265,10 @@ describe("deep links open the right thing (AC 1)", () => {
 describe("selecting from the rail sets the URL and adds one history entry (AC 2, 3, 4, 14)", () => {
   it("selecting a note navigates to /note/<id> and back returns to where you were", async () => {
     renderApp(["/note/n1"], {
-      notes: [makeNote("n1", ISO, "Alpha note"), makeNote("n2", ISO, "Beta note")],
+      notes: [
+        makeNote("n1", ISO, "Alpha note"),
+        makeNote("n2", ISO, "Beta note"),
+      ],
     });
     const user = userEvent.setup();
     await ready();
@@ -309,7 +310,10 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
      panes instead of leaving the note. */
   it("opening Ask leaves the URL alone, so back still exits the note", async () => {
     renderApp(["/note/n1"], {
-      notes: [makeNote("n0", ISO, "Zero note"), makeNote("n1", ISO, "Alpha note")],
+      notes: [
+        makeNote("n0", ISO, "Zero note"),
+        makeNote("n1", ISO, "Alpha note"),
+      ],
     });
     const user = userEvent.setup();
     await screen.findByRole("region", { name: "Note editor" });
@@ -321,7 +325,10 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
 
   it("selecting the note already open does not stack a duplicate history entry", async () => {
     renderApp(["/note/n1"], {
-      notes: [makeNote("n1", ISO, "Alpha note"), makeNote("n2", ISO, "Beta note")],
+      notes: [
+        makeNote("n1", ISO, "Alpha note"),
+        makeNote("n2", ISO, "Beta note"),
+      ],
     });
     const user = userEvent.setup();
     await screen.findByRole("region", { name: "Note editor" });
@@ -393,7 +400,9 @@ describe("asking a question leaves the address bar alone (AC 7)", () => {
     await user.type(input, "what did I write about bread");
     await user.keyboard("{Enter}");
 
-    const transcript = await screen.findByRole("list", { name: "Conversation" });
+    const transcript = await screen.findByRole("list", {
+      name: "Conversation",
+    });
     expect(
       within(transcript).getByText("what did I write about bread"),
     ).toBeInTheDocument();
@@ -412,7 +421,9 @@ describe("asking a question leaves the address bar alone (AC 7)", () => {
     await user.type(input, "what did I write about bread");
     await user.keyboard("{Enter}");
 
-    const transcript = await screen.findByRole("list", { name: "Conversation" });
+    const transcript = await screen.findByRole("list", {
+      name: "Conversation",
+    });
     const panel = within(transcript)
       .getAllByRole("button")
       .find((b) => /confidence|No match/i.test(b.textContent ?? ""));
@@ -428,7 +439,10 @@ describe("the composer survives moving around the app", () => {
      asserts the structure, not the trick it replaced. */
   it("keeps text typed into the composer when the note behind it changes", async () => {
     renderApp(["/note/n1"], {
-      notes: [makeNote("n1", ISO, "Alpha note"), makeNote("n2", ISO, "Beta note")],
+      notes: [
+        makeNote("n1", ISO, "Alpha note"),
+        makeNote("n2", ISO, "Beta note"),
+      ],
     });
     const user = userEvent.setup();
     await screen.findByRole("region", { name: "Note editor" });
@@ -439,9 +453,9 @@ describe("the composer survives moving around the app", () => {
     await user.click(screen.getByRole("button", { name: "Beta note" }));
     await waitFor(() => expect(pathname()).toBe("/note/n2"));
 
-    expect(
-      screen.getByRole("textbox", { name: "Ask a question" }),
-    ).toHaveValue("six hours");
+    expect(screen.getByRole("textbox", { name: "Ask a question" })).toHaveValue(
+      "six hours",
+    );
   });
 });
 
@@ -461,9 +475,7 @@ describe("deleting the open thread replaces the URL (AC 8)", () => {
     await screen.findByRole("region", { name: "Note editor" });
     await openAsk(user);
 
-    await user.click(
-      screen.getByRole("button", { name: COPY.askHistoryOpen }),
-    );
+    await user.click(screen.getByRole("button", { name: COPY.askHistoryOpen }));
     await user.click(
       await screen.findByRole("button", { name: "More actions for Chat one" }),
     );
@@ -547,7 +559,8 @@ describe("editing a note does not touch history (AC 12)", () => {
   });
 });
 
-describe("the document title reflects what is open (AC 15)", () => {  it("names the open note, and says only Glassbox when none is open", async () => {
+describe("the document title reflects what is open (AC 15)", () => {
+  it("names the open note, and says only Glassbox when none is open", async () => {
     renderApp(["/note/n1"], {
       notes: [makeNote("n1", ISO, "Sourdough log")],
       conversations: [makeConversation("c1", "Bread questions", "why flat")],

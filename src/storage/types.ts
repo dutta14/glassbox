@@ -1,4 +1,4 @@
-import type { Book, Conversation, Note } from '../types';
+import type { Book, Conversation, Note } from "../types";
 
 /**
  * NotesStore abstracts how notes are persisted. The engine and UI never see a
@@ -14,7 +14,7 @@ import type { Book, Conversation, Note } from '../types';
  */
 export interface NotesStore {
   /** Which concrete backend this instance is. */
-  readonly kind: 'local' | 'folder';
+  readonly kind: "local" | "folder";
   /** Human label shown in the UI, e.g. the folder name or "This browser". */
   readonly label: string;
 
@@ -58,7 +58,6 @@ export interface NotesStore {
   readAsset?(path: string): Promise<Blob | null>;
 }
 
-
 /**
  * ConversationStore is the same shape as NotesStore, for the same reasons, over
  * a different record. Conversations are whole-record writes rather than
@@ -81,7 +80,7 @@ export interface ConversationListResult {
 }
 
 export interface ConversationStore {
-  readonly kind: 'local' | 'folder';
+  readonly kind: "local" | "folder";
 
   /** Load every conversation. Malformed records are skipped, never thrown. */
   list(): Promise<ConversationListResult>;
@@ -117,7 +116,7 @@ export interface BookListResult {
  * record as prose.
  */
 export interface BookStore {
-  readonly kind: 'local' | 'folder';
+  readonly kind: "local" | "folder";
 
   /** Load every book. Malformed records are skipped, never thrown. */
   list(): Promise<BookListResult>;

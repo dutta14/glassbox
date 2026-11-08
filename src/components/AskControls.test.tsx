@@ -68,7 +68,9 @@ describe("the resizer announces itself as a sizeable separator", () => {
 
     await user.tab();
 
-    expect(screen.getByRole("separator", { name: COPY.askResize })).toHaveFocus();
+    expect(
+      screen.getByRole("separator", { name: COPY.askResize }),
+    ).toHaveFocus();
   });
 });
 

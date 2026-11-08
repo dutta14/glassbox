@@ -1,0 +1,50 @@
+# Screenshot baselines are per platform, and CI compares against the Linux ones.
+# They cannot be made on a Mac, so this runs the e2e suite on the same image CI
+# uses, rewrites the Linux PNGs and commits them to the branch it was run on.
+#
+# Run it after an intentional visual change:
+#   gh workflow run visual-baselines.yml --ref <branch>
+
+name: Update visual baselines
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  baselines:
+    # main only takes changes through a pull request, so never push there.
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    env:
+      TZ: UTC
+      # The repo's Husky hooks would otherwise run lint, typecheck and the
+      # unit suite around this commit and push, and a failure there would
+      # silently stop the baselines landing.
+      HUSKY: 0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Regenerate Linux baselines
+        run: npx playwright test --update-snapshots
+      - name: Commit changed baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 'e2e/**/*-linux.png'
+          if git diff --cached --quiet; then
+            echo "Baselines already up to date."
+          else
+            git commit -m "test: update Linux visual baselines"
+            git push
+            # A push made with GITHUB_TOKEN does not start CI, so the branch
+            # head has no checks until a new commit lands.
+            echo "::notice::Baselines pushed. Push an empty commit to start CI: git commit --allow-empty -m 'ci: rerun' && git push"
+          fi

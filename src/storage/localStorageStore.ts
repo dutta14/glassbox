@@ -1,6 +1,6 @@
-import type { Note } from '../types';
-import type { NotesStore } from './types';
-import { loadNotes, saveNotes } from './notes';
+import type { Note } from "../types";
+import type { NotesStore } from "./types";
+import { loadNotes, saveNotes } from "./notes";
 
 /**
  * localStorage-backed NotesStore. This is the default and the fallback when
@@ -16,8 +16,8 @@ import { loadNotes, saveNotes } from './notes';
 
 const isStorageAvailable = (): boolean => {
   try {
-    const probe = '__glassbox_probe__';
-    localStorage.setItem(probe, '1');
+    const probe = "__glassbox_probe__";
+    localStorage.setItem(probe, "1");
     localStorage.removeItem(probe);
     return true;
   } catch {
@@ -33,8 +33,8 @@ export const createLocalStorageStore = (): NotesStore => {
   };
 
   return {
-    kind: 'local',
-    label: 'This browser',
+    kind: "local",
+    label: "This browser",
     isAvailable: isStorageAvailable,
 
     // Reads from memory in one go, so there is no progress to report. The

@@ -1,6 +1,6 @@
-import type { Note } from '../types';
-import type { NotesStore } from './types';
-import { noteFilename, parseNote, serialiseNote } from './markdown';
+import type { Note } from "../types";
+import type { NotesStore } from "./types";
+import { noteFilename, parseNote, serialiseNote } from "./markdown";
 
 /**
  * NotesStore over a FileSystemDirectoryHandle. One `.md` file per note,
@@ -28,12 +28,13 @@ import { noteFilename, parseNote, serialiseNote } from './markdown';
  */
 
 export const isFolderStoreSupported = (): boolean =>
-  typeof window !== 'undefined' && typeof window.showDirectoryPicker === 'function';
+  typeof window !== "undefined" &&
+  typeof window.showDirectoryPicker === "function";
 
-export const NOTES_DIR = 'notes';
+export const NOTES_DIR = "notes";
 
 export const createFileSystemStore = (
-  root: FileSystemDirectoryHandle
+  root: FileSystemDirectoryHandle,
 ): NotesStore => {
   const filenamesById = new Map<string, string>();
 
@@ -50,7 +51,7 @@ export const createFileSystemStore = (
   };
 
   const readFile = async (
-    fileHandle: FileSystemFileHandle
+    fileHandle: FileSystemFileHandle,
   ): Promise<{ note: Note; filename: string } | null> => {
     let file: File;
     try {
@@ -84,8 +85,8 @@ export const createFileSystemStore = (
 
     const entries: FileSystemFileHandle[] = [];
     for await (const entry of handle.values()) {
-      if (entry.kind !== 'file') continue;
-      if (!entry.name.toLowerCase().endsWith('.md')) continue;
+      if (entry.kind !== "file") continue;
+      if (!entry.name.toLowerCase().endsWith(".md")) continue;
       entries.push(entry as FileSystemFileHandle);
     }
 
@@ -96,7 +97,9 @@ export const createFileSystemStore = (
     // simultaneous file handles is its own kind of rude.
     const parsedEntries: Array<Awaited<ReturnType<typeof readFile>>> = [];
     for (let i = 0; i < entries.length; i += READ_BATCH) {
-      const batch = await Promise.all(entries.slice(i, i + READ_BATCH).map(readFile));
+      const batch = await Promise.all(
+        entries.slice(i, i + READ_BATCH).map(readFile),
+      );
       parsedEntries.push(...batch);
 
       // Hand the batch over before reading the next one. Measured in Chrome
@@ -108,7 +111,9 @@ export const createFileSystemStore = (
       // A throwing callback must not cost the reader their library, so the
       // read continues and the resolved array is unaffected.
       if (onBatch) {
-        const notes = batch.filter((p): p is NonNullable<typeof p> => p !== null).map((p) => p.note);
+        const notes = batch
+          .filter((p): p is NonNullable<typeof p> => p !== null)
+          .map((p) => p.note);
         if (notes.length > 0) {
           try {
             onBatch(notes);
@@ -139,7 +144,9 @@ export const createFileSystemStore = (
   };
 
   const writeFile = async (name: string, contents: string): Promise<void> => {
-    const fileHandle = await (await dir()).getFileHandle(name, { create: true });
+    const fileHandle = await (
+      await dir()
+    ).getFileHandle(name, { create: true });
     const writable = await fileHandle.createWritable();
     try {
       await writable.write(contents);
@@ -171,8 +178,8 @@ export const createFileSystemStore = (
     if (!name) {
       // Cache cold: scan and populate. Cheaper on the second call.
       for await (const entry of (await dir()).values()) {
-        if (entry.kind !== 'file') continue;
-        if (!entry.name.toLowerCase().endsWith('.md')) continue;
+        if (entry.kind !== "file") continue;
+        if (!entry.name.toLowerCase().endsWith(".md")) continue;
         const parsed = await readFile(entry);
         if (parsed && parsed.note.id === id) {
           name = entry.name;
@@ -202,15 +209,19 @@ export const createFileSystemStore = (
    * note that needs to escape upwards.
    */
   const readAsset = async (path: string): Promise<Blob | null> => {
-    const segments = path.split('/').filter(part => part !== '' && part !== '.');
-    if (segments.length === 0 || segments.includes('..')) return null;
+    const segments = path
+      .split("/")
+      .filter((part) => part !== "" && part !== ".");
+    if (segments.length === 0 || segments.includes("..")) return null;
 
     try {
       let folder = await dir();
       for (const part of segments.slice(0, -1)) {
         folder = await folder.getDirectoryHandle(part);
       }
-      const fileHandle = await folder.getFileHandle(segments[segments.length - 1]);
+      const fileHandle = await folder.getFileHandle(
+        segments[segments.length - 1],
+      );
       return await fileHandle.getFile();
     } catch {
       // Missing, renamed, or permission withdrawn. All the same to the caller.
@@ -219,7 +230,7 @@ export const createFileSystemStore = (
   };
 
   return {
-    kind: 'folder',
+    kind: "folder",
     /* The folder the user picked, not the notes/ subfolder inside it. This is
        the name shown back to them as the connected folder. */
     label: root.name,

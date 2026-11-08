@@ -7,7 +7,8 @@ import { test, expect } from "@playwright/test";
 
 const LONG = Array.from(
   { length: 60 },
-  (_, i) => `Paragraph ${i + 1}. ${"The quick brown fox jumps over it. ".repeat(3)}`,
+  (_, i) =>
+    `Paragraph ${i + 1}. ${"The quick brown fox jumps over it. ".repeat(3)}`,
 ).join("\n\n");
 
 const VERSE = [
@@ -359,14 +360,20 @@ test("the nudge never pushes the longest line out of the column", async ({
    even lines needs none and must not be pushed off the axis it already sits
    on. */
 test("a poem with even line lengths is left where it is", async ({ page }) => {
-  const even = ["Even lines of a kind,", "Even lines of a kind,", "Even lines of a kind,"].join("\n");
+  const even = [
+    "Even lines of a kind,",
+    "Even lines of a kind,",
+    "Even lines of a kind,",
+  ].join("\n");
   await open(page, { body: even, format: "verse" });
   await page.evaluate(() => document.fonts.ready);
 
   const box = (await page.locator(".editor__read").boundingBox())!;
   const title = (await page.getByLabel("Note title").boundingBox())!;
 
-  expect(Math.abs(box.x + box.width / 2 - (title.x + title.width / 2))).toBeLessThan(2);
+  expect(
+    Math.abs(box.x + box.width / 2 - (title.x + title.width / 2)),
+  ).toBeLessThan(2);
 });
 
 test("a poem does not shift when it is clicked to start writing", async ({
@@ -398,5 +405,7 @@ test("a poem line longer than the column stays inside it", async ({ page }) => {
 test("a poem is never given a chapter drop cap", async ({ page }) => {
   await open(page, { body: VERSE, format: "verse" });
 
-  await expect(page.locator(".editor__read")).not.toHaveAttribute("data-dropcap");
+  await expect(page.locator(".editor__read")).not.toHaveAttribute(
+    "data-dropcap",
+  );
 });

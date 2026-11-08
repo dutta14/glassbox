@@ -88,10 +88,17 @@ npm run dev
 |---|---|
 | `npm run dev` | Dev server |
 | `npm run build` | `tsc -b` then Vite production build |
+| `npm run build:pages` | The same build with the `/glassbox/` base path used on GitHub Pages |
 | `npm run test` | Vitest in watch mode |
-| `npm run test:run` | Single test run |
+| `npm run test:run` | Single unit test run |
+| `npm run test:coverage` | Unit tests with the coverage thresholds enforced |
+| `npm run test:storybook` | Every story and its play function, in real Chromium, with accessibility checks |
+| `npm run test:e2e` | Playwright end to end and screenshot tests |
+| `npm run storybook` | Storybook dev server on port 6006 |
 | `npm run lint` | Oxlint |
-| `npm run deploy` | Test, build, publish to GitHub Pages |
+| `npm run format` / `npm run format:check` | Prettier, write or verify |
+| `npm run typecheck` | `tsc -b` |
+| `npm run check` | Lint, format, typecheck and coverage together: what CI's fast gates run |
 
 `npm run build` is the real gate, not `tsc --noEmit`. The build runs `tsc -b` with `erasableSyntaxOnly`, which is stricter and rejects things like TypeScript constructor parameter properties.
 
@@ -120,6 +127,45 @@ npm run test:run
 Coverage concentrates on the engine (tokenisation, stemming, scoring, routing) and the storage layer, including an in-memory fake of `FileSystemDirectoryHandle` that exercises the folder adapter without a browser: one file per note, updates in place, retitling without duplicating, external renames, and corrupt files being skipped rather than crashing a load.
 
 The two data-loss regressions the code review caught (deleting a note while its write is still in flight, and reconnecting a folder without merging interim work) each have a test that was confirmed to fail when the fix is reverted.
+
+## Quality gates and delivery
+
+Every pull request runs five jobs in `.github/workflows/ci.yml`, and a push to `main` only publishes if all five pass.
+
+| Job | Gate |
+|---|---|
+| `check` | `npm audit` (high severity), Prettier, Oxlint, `tsc -b` |
+| `unit` | Vitest with coverage thresholds (statements 85, branches 78, functions 85, lines 87) |
+| `storybook` | Story play functions and axe accessibility checks in Chromium, then a Storybook build |
+| `e2e` | Playwright specs and screenshot comparisons |
+| `build` | A `/glassbox/` Pages build, booted in a browser to prove every asset resolves under that path |
+
+Lint is a ratchet. Oxlint is allowed 26 existing warnings (`--max-warnings 26` in `package.json`) and no new ones, so lower the number as they are fixed and never raise it.
+
+Husky runs lint and the format check before each commit, and the type check and unit tests before each push.
+
+### Shipping
+
+Merging to `main` deploys automatically. There is no manual publish step.
+
+- App: https://anindya.dev/glassbox/
+- Storybook: https://anindya.dev/glassbox/storybook/
+
+Pages must be set to deploy from **GitHub Actions** (Settings, Pages, Source). The `anindya.dev` domain is owned by the `dutta14.github.io` repository, which is why this project serves under the `/glassbox/` path.
+
+### Screenshot baselines
+
+Screenshot tests compare against per-platform baselines. CI runs on Linux, so it uses the `*-linux.png` files, which cannot be produced on a Mac. After an intentional visual change, regenerate them on the CI image and commit the result to your branch:
+
+```bash
+gh workflow run visual-baselines.yml --ref <your-branch>
+```
+
+For quick local iteration, `npm run test:e2e:update` rewrites the `*-darwin.png` files.
+
+### Stories
+
+Stories sit beside their component as `*.stories.tsx`. A story's `play` function runs as a test, and an accessibility violation fails it. A rule is only waived per story, with a comment saying why.
 
 ## Known limitations
 

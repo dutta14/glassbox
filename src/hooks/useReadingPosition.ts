@@ -1,6 +1,6 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from "react";
 
-const READING_POSITION_KEY = 'glassbox.reading.v1';
+const READING_POSITION_KEY = "glassbox.reading.v1";
 
 type ReadingPositions = Record<string, string>;
 
@@ -14,10 +14,12 @@ export interface ReadingPositionApi {
 }
 
 const isReadingPositions = (value: unknown): value is ReadingPositions => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return false;
   }
-  return Object.values(value).every((chapterId) => typeof chapterId === 'string');
+  return Object.values(value).every(
+    (chapterId) => typeof chapterId === "string",
+  );
 };
 
 const readPositions = (): ReadingPositions => {
@@ -52,7 +54,7 @@ export const useReadingPosition = (): ReadingPositionApi => {
 
   const positionFor = useCallback(
     (bookId: string): string | null => positions()[bookId] ?? null,
-    [positions]
+    [positions],
   );
 
   const remember = useCallback(
@@ -64,7 +66,7 @@ export const useReadingPosition = (): ReadingPositionApi => {
       positionsRef.current = next;
       writePositions(next);
     },
-    [positions]
+    [positions],
   );
 
   const forget = useCallback(
@@ -75,7 +77,7 @@ export const useReadingPosition = (): ReadingPositionApi => {
       positionsRef.current = next;
       writePositions(next);
     },
-    [positions]
+    [positions],
   );
 
   return { positionFor, remember, forget };

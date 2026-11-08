@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
-const STORAGE_KEY = 'glassbox.theme.v1';
+const STORAGE_KEY = "glassbox.theme.v1";
 
-export type Theme = 'light' | 'dark';
+export type Theme = "light" | "dark";
 
 const isTheme = (value: unknown): value is Theme =>
-  value === 'light' || value === 'dark';
+  value === "light" || value === "dark";
 
 /**
  * An explicit choice, or null to follow the operating system. Reading is
@@ -30,10 +30,10 @@ const writeStored = (theme: Theme): void => {
 };
 
 const systemTheme = (): Theme =>
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
+  typeof window.matchMedia === "function" &&
+  window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 
 export const resolveInitialTheme = (): Theme => readStored() ?? systemTheme();
 
@@ -46,7 +46,7 @@ export const useTheme = (): UseThemeResult => {
   const [theme, setTheme] = useState<Theme>(resolveInitialTheme);
 
   useEffect(() => {
-    document.body.classList.toggle('dark', theme === 'dark');
+    document.body.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
   /**
@@ -55,21 +55,21 @@ export const useTheme = (): UseThemeResult => {
    */
   useEffect(() => {
     if (readStored() !== null) return;
-    if (typeof window.matchMedia !== 'function') return;
+    if (typeof window.matchMedia !== "function") return;
 
-    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = (e: MediaQueryListEvent) => {
       if (readStored() !== null) return;
-      setTheme(e.matches ? 'dark' : 'light');
+      setTheme(e.matches ? "dark" : "light");
     };
 
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
     setTheme((current) => {
-      const next: Theme = current === 'dark' ? 'light' : 'dark';
+      const next: Theme = current === "dark" ? "light" : "dark";
       writeStored(next);
       return next;
     });

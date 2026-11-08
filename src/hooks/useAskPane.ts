@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Whether the Ask pane is open, and how wide it is.
@@ -14,8 +14,8 @@ import { useCallback, useEffect, useState } from 'react';
  * again tomorrow.
  */
 
-const OPEN_KEY = 'glassbox.ask.open.v1';
-const WIDTH_KEY = 'glassbox.ask.width.v1';
+const OPEN_KEY = "glassbox.ask.open.v1";
+const WIDTH_KEY = "glassbox.ask.width.v1";
 
 /** Wide enough for a passage to breathe, narrow enough to leave the note readable. */
 export const DEFAULT_WIDTH = 400;
@@ -35,7 +35,7 @@ export const clampWidth = (width: number): number =>
 
 const readOpen = (): boolean => {
   try {
-    return localStorage.getItem(OPEN_KEY) === 'true';
+    return localStorage.getItem(OPEN_KEY) === "true";
   } catch {
     return false;
   }
@@ -90,7 +90,10 @@ export const useAskPane = (): AskPaneState => {
 
   const openPane = useCallback(() => setOpen(true), []);
   const closePane = useCallback(() => setOpen(false), []);
-  const setWidth = useCallback((next: number) => setWidthState(clampWidth(next)), []);
+  const setWidth = useCallback(
+    (next: number) => setWidthState(clampWidth(next)),
+    [],
+  );
 
   return { open, width, openPane, closePane, setWidth };
 };

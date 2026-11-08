@@ -1,24 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { BookStore, ConversationStore, NotesStore } from '../storage/types';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  BookStore,
+  ConversationStore,
+  NotesStore,
+} from "../storage/types";
 import {
   createFolderConversationStore,
   createLocalConversationStore,
-} from '../storage/conversationStore';
+} from "../storage/conversationStore";
 import {
   createFolderBookStore,
   createLocalBookStore,
-} from '../storage/bookStore';
-import { createLocalStorageStore } from '../storage/localStorageStore';
+} from "../storage/bookStore";
+import { createLocalStorageStore } from "../storage/localStorageStore";
 import {
   createFileSystemStore,
   isFolderStoreSupported,
-} from '../storage/fileSystemStore';
+} from "../storage/fileSystemStore";
 import {
   clearDirectoryHandle,
   loadDirectoryHandle,
   saveDirectoryHandle,
-} from '../storage/handleStore';
-import { mergeStores } from '../storage/mergeStores';
+} from "../storage/handleStore";
+import { mergeStores } from "../storage/mergeStores";
 
 /**
  * State of the folder-sync feature.
@@ -36,11 +40,7 @@ import { mergeStores } from '../storage/mergeStores';
  *   disconnected from the app's point of view.
  */
 export type FolderState =
-  | 'unsupported'
-  | 'disconnected'
-  | 'connected'
-  | 'needs-reconnect'
-  | 'denied';
+  "unsupported" | "disconnected" | "connected" | "needs-reconnect" | "denied";
 
 export interface UseStorageBackendResult {
   store: NotesStore | null;
@@ -61,7 +61,7 @@ const buildFolderStore = (handle: FileSystemDirectoryHandle) =>
 
 export const useStorageBackend = (): UseStorageBackendResult => {
   const [store, setStore] = useState<NotesStore | null>(null);
-  const [folderState, setFolderState] = useState<FolderState>('disconnected');
+  const [folderState, setFolderState] = useState<FolderState>("disconnected");
   const [folderName, setFolderName] = useState<string | null>(null);
   const [connectError, setConnectError] = useState<string | null>(null);
 
@@ -83,7 +83,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
       if (!isFolderStoreSupported()) {
         if (!cancelled) {
           setStore(getLocalStore());
-          setFolderState('unsupported');
+          setFolderState("unsupported");
         }
         return;
       }
@@ -93,7 +93,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
 
       if (!stored) {
         setStore(getLocalStore());
-        setFolderState('disconnected');
+        setFolderState("disconnected");
         return;
       }
 
@@ -101,26 +101,26 @@ export const useStorageBackend = (): UseStorageBackendResult => {
       setFolderName(stored.name);
 
       // queryPermission does not require a user gesture. requestPermission does.
-      let permission: PermissionState = 'prompt';
+      let permission: PermissionState = "prompt";
       try {
-        permission = await stored.queryPermission({ mode: 'readwrite' });
+        permission = await stored.queryPermission({ mode: "readwrite" });
       } catch {
-        permission = 'prompt';
+        permission = "prompt";
       }
       if (cancelled) return;
 
-      if (permission === 'granted') {
+      if (permission === "granted") {
         setStore(buildFolderStore(stored));
-        setFolderState('connected');
-      } else if (permission === 'denied') {
+        setFolderState("connected");
+      } else if (permission === "denied") {
         setStore(getLocalStore());
-        setFolderState('denied');
+        setFolderState("denied");
       } else {
         // 'prompt' — do NOT call requestPermission here. Fall back to
         // localStorage so the app is functional, and surface a Reconnect
         // affordance in the UI.
         setStore(getLocalStore());
-        setFolderState('needs-reconnect');
+        setFolderState("needs-reconnect");
       }
     })();
     return () => {
@@ -131,36 +131,40 @@ export const useStorageBackend = (): UseStorageBackendResult => {
   const connectFolder = useCallback(async (): Promise<void> => {
     setConnectError(null);
     if (!isFolderStoreSupported() || !window.showDirectoryPicker) {
-      setConnectError('Folder sync is only available in Chrome or Edge.');
+      setConnectError("Folder sync is only available in Chrome or Edge.");
       return;
     }
 
     let picked: FileSystemDirectoryHandle;
     try {
-      picked = await window.showDirectoryPicker({ mode: 'readwrite' });
+      picked = await window.showDirectoryPicker({ mode: "readwrite" });
     } catch (err) {
       // AbortError when the user dismisses the picker. Not an error worth showing.
-      if (err instanceof Error && err.name === 'AbortError') return;
+      if (err instanceof Error && err.name === "AbortError") return;
       setConnectError(
-        err instanceof Error ? err.message : 'Could not open the folder picker.'
+        err instanceof Error
+          ? err.message
+          : "Could not open the folder picker.",
       );
       return;
     }
 
     let permission: PermissionState;
     try {
-      permission = await picked.queryPermission({ mode: 'readwrite' });
-      if (permission !== 'granted') {
-        permission = await picked.requestPermission({ mode: 'readwrite' });
+      permission = await picked.queryPermission({ mode: "readwrite" });
+      if (permission !== "granted") {
+        permission = await picked.requestPermission({ mode: "readwrite" });
       }
     } catch (err) {
       setConnectError(
-        err instanceof Error ? err.message : 'Could not get write access to that folder.'
+        err instanceof Error
+          ? err.message
+          : "Could not get write access to that folder.",
       );
       return;
     }
-    if (permission !== 'granted') {
-      setConnectError('Write access to the folder was not granted.');
+    if (permission !== "granted") {
+      setConnectError("Write access to the folder was not granted.");
       return;
     }
 
@@ -176,7 +180,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
       setConnectError(
         err instanceof Error
           ? `Could not migrate notes into the folder: ${err.message}`
-          : 'Could not migrate notes into the folder.'
+          : "Could not migrate notes into the folder.",
       );
       return;
     }
@@ -189,7 +193,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
 
     handleRef.current = picked;
     setFolderName(picked.name);
-    setFolderState('connected');
+    setFolderState("connected");
     setStore(folder);
   }, [getLocalStore]);
 
@@ -197,21 +201,23 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     setConnectError(null);
     const stored = handleRef.current ?? (await loadDirectoryHandle());
     if (!stored) {
-      setFolderState('disconnected');
+      setFolderState("disconnected");
       return;
     }
 
     let permission: PermissionState;
     try {
-      permission = await stored.requestPermission({ mode: 'readwrite' });
+      permission = await stored.requestPermission({ mode: "readwrite" });
     } catch (err) {
       setConnectError(
-        err instanceof Error ? err.message : 'Could not reconnect to the folder.'
+        err instanceof Error
+          ? err.message
+          : "Could not reconnect to the folder.",
       );
       return;
     }
 
-    if (permission === 'granted') {
+    if (permission === "granted") {
       const folder = buildFolderStore(stored);
 
       // While the folder was disconnected, the user may have created or
@@ -225,19 +231,19 @@ export const useStorageBackend = (): UseStorageBackendResult => {
         setConnectError(
           err instanceof Error
             ? `Could not merge browser notes into the folder: ${err.message}`
-            : 'Could not merge browser notes into the folder.'
+            : "Could not merge browser notes into the folder.",
         );
         return;
       }
 
       handleRef.current = stored;
       setFolderName(stored.name);
-      setFolderState('connected');
+      setFolderState("connected");
       setStore(folder);
-    } else if (permission === 'denied') {
-      setFolderState('denied');
+    } else if (permission === "denied") {
+      setFolderState("denied");
     } else {
-      setFolderState('needs-reconnect');
+      setFolderState("needs-reconnect");
     }
   }, [getLocalStore]);
 
@@ -248,7 +254,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     // Best-effort backfill: copy anything newer from the folder into
     // localStorage before disconnecting, so the user does not lose recent
     // work when they come back offline.
-    if (active && active.kind === 'folder') {
+    if (active && active.kind === "folder") {
       try {
         await mergeStores(active, local);
       } catch {
@@ -258,7 +264,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
     await clearDirectoryHandle();
     handleRef.current = null;
     setFolderName(null);
-    setFolderState('disconnected');
+    setFolderState("disconnected");
     setStore(local);
   }, [getLocalStore, store]);
 
@@ -271,7 +277,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
   const conversationStore = useMemo<ConversationStore | null>(() => {
     if (store === null) return null;
     const handle = handleRef.current;
-    return store.kind === 'folder' && handle !== null
+    return store.kind === "folder" && handle !== null
       ? createFolderConversationStore(handle)
       : createLocalConversationStore();
   }, [store]);
@@ -282,7 +288,7 @@ export const useStorageBackend = (): UseStorageBackendResult => {
   const bookStore = useMemo<BookStore | null>(() => {
     if (store === null) return null;
     const handle = handleRef.current;
-    return store.kind === 'folder' && handle !== null
+    return store.kind === "folder" && handle !== null
       ? createFolderBookStore(handle)
       : createLocalBookStore();
   }, [store]);
@@ -309,6 +315,6 @@ export const useStorageBackend = (): UseStorageBackendResult => {
       connectFolder,
       reconnectFolder,
       disconnectFolder,
-    ]
+    ],
   );
 };

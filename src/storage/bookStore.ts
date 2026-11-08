@@ -1,8 +1,8 @@
-import type { Book } from '../types';
-import type { BookStore, BookListResult } from './types';
+import type { Book } from "../types";
+import type { BookStore, BookListResult } from "./types";
 
-export const BOOKS_DIR = 'books';
-export const BOOKS_KEY = 'glassbox.books.v1';
+export const BOOKS_DIR = "books";
+export const BOOKS_KEY = "glassbox.books.v1";
 
 /* Named by id alone. The title is whatever the user typed and can contain
    path separators, quotes, anything, so deriving a filename from it means
@@ -11,20 +11,20 @@ export const BOOKS_KEY = 'glassbox.books.v1';
 export const bookFilename = (book: Book): string => `${book.id}.json`;
 
 const isStringArray = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every((item) => typeof item === 'string');
+  Array.isArray(value) && value.every((item) => typeof item === "string");
 
 const isBook = (value: unknown): value is Book => {
-  if (typeof value !== 'object' || value === null) return false;
+  if (typeof value !== "object" || value === null) return false;
   const book = value as Record<string, unknown>;
   return (
-    typeof book.id === 'string' &&
-    typeof book.title === 'string' &&
+    typeof book.id === "string" &&
+    typeof book.title === "string" &&
     // chapterIds must be an array of strings. A book whose order is corrupt is
     // a book that would render nothing, so it is rejected here and counted as
     // skipped rather than returned half-valid.
     isStringArray(book.chapterIds) &&
-    typeof book.createdAt === 'string' &&
-    typeof book.updatedAt === 'string'
+    typeof book.createdAt === "string" &&
+    typeof book.updatedAt === "string"
   );
 };
 
@@ -35,10 +35,10 @@ const isStoryMarkArray = (value: unknown): boolean =>
   Array.isArray(value) &&
   value.every(
     (m) =>
-      typeof m === 'object' &&
+      typeof m === "object" &&
       m !== null &&
-      typeof (m as Record<string, unknown>).startsAt === 'string' &&
-      typeof (m as Record<string, unknown>).title === 'string'
+      typeof (m as Record<string, unknown>).startsAt === "string" &&
+      typeof (m as Record<string, unknown>).title === "string",
   );
 
 /**
@@ -67,7 +67,9 @@ const normalizeBook = (book: Book): Book => {
   return next;
 };
 
-export const createFolderBookStore = (root: FileSystemDirectoryHandle): BookStore => {
+export const createFolderBookStore = (
+  root: FileSystemDirectoryHandle,
+): BookStore => {
   const filenamesById = new Map<string, string>();
 
   /* Resolved once and kept. Concurrent callers may each ask for it before the
@@ -83,7 +85,7 @@ export const createFolderBookStore = (root: FileSystemDirectoryHandle): BookStor
   };
 
   const readFile = async (
-    fileHandle: FileSystemFileHandle
+    fileHandle: FileSystemFileHandle,
   ): Promise<{ book: Book; filename: string } | null> => {
     let file: File;
     try {
@@ -116,8 +118,8 @@ export const createFolderBookStore = (root: FileSystemDirectoryHandle): BookStor
     const handle = await dir();
 
     for await (const entry of handle.values()) {
-      if (entry.kind !== 'file') continue;
-      if (!entry.name.toLowerCase().endsWith('.json')) continue;
+      if (entry.kind !== "file") continue;
+      if (!entry.name.toLowerCase().endsWith(".json")) continue;
 
       const parsed = await readFile(entry);
       if (!parsed) {
@@ -135,7 +137,9 @@ export const createFolderBookStore = (root: FileSystemDirectoryHandle): BookStor
   };
 
   const writeFile = async (name: string, contents: string): Promise<void> => {
-    const fileHandle = await (await dir()).getFileHandle(name, { create: true });
+    const fileHandle = await (
+      await dir()
+    ).getFileHandle(name, { create: true });
     const writable = await fileHandle.createWritable();
     try {
       await writable.write(contents);
@@ -165,7 +169,7 @@ export const createFolderBookStore = (root: FileSystemDirectoryHandle): BookStor
   };
 
   return {
-    kind: 'folder',
+    kind: "folder",
     list,
     put,
     remove,
@@ -198,7 +202,7 @@ export const createLocalBookStore = (): BookStore => {
   };
 
   return {
-    kind: 'local',
+    kind: "local",
     list: async (): Promise<BookListResult> => readAll(),
     put: async (book: Book): Promise<void> => {
       const { books } = readAll();

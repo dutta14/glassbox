@@ -1,13 +1,13 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import { sampleNotes } from './sampleNotes';
-import { createLocalStorageStore } from '../storage/localStorageStore';
+import { describe, expect, it, beforeEach } from "vitest";
+import { sampleNotes } from "./sampleNotes";
+import { createLocalStorageStore } from "../storage/localStorageStore";
 
-describe('sampleNotes — stable ids (bug 3 regression)', () => {
+describe("sampleNotes — stable ids (bug 3 regression)", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('returns the same five ids on every call so StrictMode double-invocation cannot produce ten samples', () => {
+  it("returns the same five ids on every call so StrictMode double-invocation cannot produce ten samples", () => {
     const first = sampleNotes();
     const second = sampleNotes();
 
@@ -22,7 +22,7 @@ describe('sampleNotes — stable ids (bug 3 regression)', () => {
     expect(new Set(firstIds).size).toBe(5);
   });
 
-  it('seeding twice into a NotesStore results in exactly five notes, not ten', async () => {
+  it("seeding twice into a NotesStore results in exactly five notes, not ten", async () => {
     const store = createLocalStorageStore();
 
     // First seeding pass.

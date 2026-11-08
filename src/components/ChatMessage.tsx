@@ -1,7 +1,7 @@
-import type { ChatMessage as ChatMessageType, Note } from '../types';
-import { QuotedSource } from './QuotedSource';
-import { ReasoningDisclosure } from './ReasoningDisclosure';
-import '../styles/ChatMessage.css';
+import type { ChatMessage as ChatMessageType, Note } from "../types";
+import { QuotedSource } from "./QuotedSource";
+import { ReasoningDisclosure } from "./ReasoningDisclosure";
+import "../styles/ChatMessage.css";
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -18,7 +18,7 @@ export const ChatMessage = ({
   onJumpToNote,
   defaultReasoningExpanded = false,
 }: ChatMessageProps) => {
-  if (message.role === 'user') {
+  if (message.role === "user") {
     return (
       <li className="msg msg--user">
         <div className="msg__bubble">{message.text}</div>

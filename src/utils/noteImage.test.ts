@@ -57,7 +57,9 @@ describe("everything else is left as the text it is", () => {
 
   it("leaves a picture inside a sentence alone", () => {
     expect(
-      leadingImage("Here it is ![Sultry Days](images/handdrawn-001.jpg) below."),
+      leadingImage(
+        "Here it is ![Sultry Days](images/handdrawn-001.jpg) below.",
+      ),
     ).toBeNull();
   });
 
@@ -66,8 +68,9 @@ describe("everything else is left as the text it is", () => {
   });
 
   it("returns nothing for prose", () => {
-    expect(leadingImage("With no work at home, I have resorted to sketching."))
-      .toBeNull();
+    expect(
+      leadingImage("With no work at home, I have resorted to sketching."),
+    ).toBeNull();
   });
 
   it("returns nothing for an empty note", () => {

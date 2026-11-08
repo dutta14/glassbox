@@ -5,11 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { markSeeded } from "./storage/notes";
 import { COPY } from "./engine/copy";
 import type { Note } from "./types";
-import type {
-  BookStore,
-  ConversationStore,
-  NotesStore,
-} from "./storage/types";
+import type { BookStore, ConversationStore, NotesStore } from "./storage/types";
 
 /**
  * The retrieval index is expensive and has exactly one reader: the route()

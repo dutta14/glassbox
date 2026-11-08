@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 /**
  * AC 13 says the first assistant message of a *session* opens its reasoning
@@ -12,9 +13,9 @@ import { test, expect } from "@playwright/test";
 
 const ISO = new Date("2024-01-01").toISOString();
 
-const seed = async (page: import("@playwright/test").Page) => {
+const seed = async (page: Page, conversations: unknown[] = []) => {
   await page.addInitScript(
-    ([iso]) => {
+    ([iso, stored]) => {
       localStorage.setItem(
         "glassbox.notes.v1",
         JSON.stringify([
@@ -26,23 +27,51 @@ const seed = async (page: import("@playwright/test").Page) => {
             createdAt: iso,
             updatedAt: iso,
           },
-        ])
+        ]),
       );
       localStorage.setItem("glassbox.seeded.v1", "x");
       localStorage.setItem("glassbox.theme.v1", "light");
+      if (stored) localStorage.setItem("glassbox.conversations.v1", stored);
     },
-    [ISO]
+    [ISO, conversations.length ? JSON.stringify(conversations) : ""],
   );
   await page.goto("/");
   // Sample notes would mean the fixture never landed. Fail here, not on a
   // 30s locator timeout pointing nowhere.
   await expect(page.getByText("These are sample notes")).toHaveCount(0);
+  await openAsk(page);
 };
 
-const ask = async (page: import("@playwright/test").Page, q: string) => {
-  const input = page.getByRole("textbox", { name: /ask/i });
+/** Ask lives in a side pane that starts shut, opened by the floating button. */
+const openAsk = async (page: Page) => {
+  await page.getByRole("button", { name: "Ask your notes" }).click();
+  await expect(page.getByRole("complementary", { name: "Ask" })).toBeVisible();
+};
+
+const ask = async (page: Page, q: string) => {
+  const input = page.getByRole("textbox", { name: "Ask a question" });
   await input.fill(q);
   await input.press("Enter");
+};
+
+const newQuestion = async (page: Page) => {
+  await page.getByRole("button", { name: "New question" }).click();
+  // A draft has no transcript, so the composer sits under the empty state.
+  await expect(
+    page.getByRole("heading", { name: "Ask what you've written" }),
+  ).toBeVisible();
+};
+
+/** Past questions are a drawer over the pane; picking a row closes it again. */
+const reopenThread = async (page: Page, title: string) => {
+  await page.getByRole("button", { name: "Past questions" }).click();
+  await page
+    .getByRole("group", { name: "Past questions" })
+    .getByRole("button", { name: title, exact: true })
+    .click();
+  await expect(page.getByRole("group", { name: "Past questions" })).toHaveCount(
+    0,
+  );
 };
 
 /**
@@ -50,7 +79,7 @@ const ask = async (page: import("@playwright/test").Page, q: string) => {
  * from Sourdough starter · 1 of 1 passages"), so match on that rather than on
  * a label it does not have.
  */
-const reasoningPanels = (page: import("@playwright/test").Page) =>
+const reasoningPanels = (page: Page) =>
   page.getByRole("button", {
     // Anchored: an expanded panel also contains "Open source note ... high
     // confidence ...", which an unanchored match would count as a panel.
@@ -70,7 +99,7 @@ test("the first answer of the session expands its reasoning, later ones do not",
   await expect(reasoningPanels(page)).toHaveCount(2);
   await expect(reasoningPanels(page).nth(1)).toHaveAttribute(
     "aria-expanded",
-    "false"
+    "false",
   );
 });
 
@@ -87,18 +116,21 @@ test("reopening a conversation does not re-expand reasoning the user closed", as
   await panel.click();
   await expect(panel).toHaveAttribute("aria-expanded", "false");
 
-  await page.getByRole("button", { name: /new chat/i }).click();
+  await newQuestion(page);
   await ask(page, "six hours");
+  await expect(reasoningPanels(page)).toHaveCount(1);
 
-  // Back to the first thread.
-  await page
-    .getByRole("button", { name: /starter/i })
-    .first()
-    .click();
+  await reopenThread(page, "starter");
 
+  // The first thread is what is on screen, not the second one.
+  const log = page.getByRole("list", { name: "Conversation" });
+  const sent = (text: RegExp) =>
+    log.getByRole("listitem").filter({ hasText: text });
+  await expect(sent(/^starter$/)).toBeVisible();
+  await expect(sent(/^six hours$/)).toHaveCount(0);
   await expect(reasoningPanels(page).first()).toHaveAttribute(
     "aria-expanded",
-    "false"
+    "false",
   );
 });
 
@@ -108,75 +140,53 @@ test("a second conversation does not expand its own first answer", async ({
   await seed(page);
 
   await ask(page, "starter");
-  await page.getByRole("button", { name: /new chat/i }).click();
+  await newQuestion(page);
   await ask(page, "six hours");
 
   await expect(reasoningPanels(page)).toHaveCount(1);
   await expect(reasoningPanels(page).first()).toHaveAttribute(
     "aria-expanded",
-    "false"
+    "false",
   );
 });
 
 /**
  * Isolates the clearing done by select(). The test above happens to route
- * through "New chat", which clears too, so it passed even with select's clear
- * removed. Here the only navigation is between two existing threads, so
- * nothing else can cover for it.
+ * through "New question", which does not clear, so it cannot cover for it.
+ * Here the only navigation is between two existing threads, so nothing else
+ * can.
  */
 test("switching to another thread and back does not re-expand", async ({
   page,
 }) => {
-  await page.addInitScript(
-    ([iso]) => {
-      localStorage.setItem(
-        "glassbox.notes.v1",
-        JSON.stringify([
-          {
-            id: "n1",
-            title: "Sourdough starter",
-            body: "The starter doubles in about six hours at room temperature.",
-            tags: [],
-            createdAt: iso,
-            updatedAt: iso,
-          },
-        ])
-      );
-      localStorage.setItem("glassbox.seeded.v1", "x");
-      localStorage.setItem("glassbox.theme.v1", "light");
-      // A thread that already exists, so the user can move between two
-      // conversations without ever starting a draft.
-      localStorage.setItem(
-        "glassbox.conversations.v1",
-        JSON.stringify([
-          {
-            id: "c-old",
-            title: "An older thread",
-            messages: [],
-            createdAt: iso,
-            updatedAt: iso,
-          },
-        ])
-      );
+  const iso = ISO;
+  // A thread that already exists, so the user can move between two
+  // conversations without ever starting a draft.
+  await seed(page, [
+    {
+      id: "c-old",
+      title: "An older thread",
+      messages: [],
+      createdAt: iso,
+      updatedAt: iso,
     },
-    [ISO]
-  );
-  await page.goto("/");
-  await expect(page.getByText("These are sample notes")).toHaveCount(0);
+  ]);
 
   await ask(page, "starter");
   await expect(reasoningPanels(page).first()).toHaveAttribute(
     "aria-expanded",
-    "true"
+    "true",
   );
 
-  await page
-    .getByRole("button", { name: "An older thread", exact: true })
-    .click();
-  await page.getByRole("button", { name: "starter", exact: true }).click();
+  await reopenThread(page, "An older thread");
+  // The older thread has no answers, which proves the switch happened.
+  await expect(reasoningPanels(page)).toHaveCount(0);
 
+  await reopenThread(page, "starter");
+
+  await expect(reasoningPanels(page)).toHaveCount(1);
   await expect(reasoningPanels(page).first()).toHaveAttribute(
     "aria-expanded",
-    "false"
+    "false",
   );
 });

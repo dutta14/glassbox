@@ -167,15 +167,15 @@ describe("labelChapters", () => {
   it("leaves an unnumbered chapter's own numbering in its title", () => {
     // Nothing is printed above it to contradict, so taking the number off
     // would destroy the only label the chapter has.
-    expect(labelChapters([{ id: "x", title: "#1 – Ahead" }], new Set(["x"]))).toEqual(
-      [{ number: null, title: "#1 – Ahead" }],
-    );
+    expect(
+      labelChapters([{ id: "x", title: "#1 – Ahead" }], new Set(["x"])),
+    ).toEqual([{ number: null, title: "#1 – Ahead" }]);
   });
 
   it("reports an empty title for a chapter that was only a number", () => {
-    expect(labelChapters([{ id: "x", title: "Chapter 1" }], new Set())).toEqual([
-      { number: 1, title: "" },
-    ]);
+    expect(labelChapters([{ id: "x", title: "Chapter 1" }], new Set())).toEqual(
+      [{ number: 1, title: "" }],
+    );
   });
 
   it("renumbers from the order it is given, not from the titles", () => {
@@ -349,11 +349,9 @@ describe("groupChapters", () => {
    * wrong, and hiding the evidence would make that impossible to notice.
    */
   it("keeps a prefix that disagrees with the story it sits in", () => {
-    const sections = groupChapters(
-      plain("Fracture – Chapter 1"),
-      new Set(),
-      [{ startsAt: "c0", title: "Echoes" }],
-    );
+    const sections = groupChapters(plain("Fracture – Chapter 1"), new Set(), [
+      { startsAt: "c0", title: "Echoes" },
+    ]);
 
     expect(sections[0].chapters[0].title).toBe("Fracture – Chapter 1");
   });

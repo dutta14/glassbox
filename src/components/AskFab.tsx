@@ -1,5 +1,5 @@
-import { COPY } from '../engine/copy';
-import '../styles/AskFab.css';
+import { COPY } from "../engine/copy";
+import "../styles/AskFab.css";
 
 interface AskFabProps {
   onOpen: () => void;
