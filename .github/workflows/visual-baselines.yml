@@ -9,9 +9,6 @@ name: Update visual baselines
 
 on:
   workflow_dispatch:
-  # BOOTSTRAP-ONLY: remove once the first Linux baselines are committed.
-  push:
-    branches: [ci/delivery-pipeline]
 
 permissions:
   contents: write
