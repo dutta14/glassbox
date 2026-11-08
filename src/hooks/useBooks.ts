@@ -135,7 +135,11 @@ export const useBooks = (store: BookStore | null): UseBooksResult => {
     setBooks((prev) =>
       [next, ...prev.filter((b) => b.id !== next.id)].sort(byNewestFirst),
     );
-    void storeRef.current?.put(next);
+    // Fire-and-forget so the UI never waits on disk. An unhandled rejection
+    // would be silent, so a failed write is logged like useNotes does.
+    void Promise.resolve(storeRef.current?.put(next)).catch((err) => {
+      console.error("Failed to save book", err);
+    });
   }, []);
 
   const mutate = useCallback(

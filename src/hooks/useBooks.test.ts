@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { StrictMode } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useBooks } from "./useBooks";
@@ -98,6 +98,28 @@ describe("useBooks — createBook", () => {
     expect(created?.chapterIds).toEqual([]);
     expect(result.current.books.map((b) => b.id)).toContain(created?.id);
     expect(store.puts.some((b) => b.id === created?.id)).toBe(true);
+  });
+
+  it("keeps the book in state and reports the failure when the store's put rejects", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const failure = new Error("disk full");
+    const store: BookStore = {
+      ...fakeStore(),
+      put: () => Promise.reject(failure),
+    };
+    const { result } = setup(store);
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    let created: Book | undefined;
+    await act(async () => {
+      created = await result.current.createBook("New book");
+    });
+
+    expect(result.current.books.map((b) => b.id)).toContain(created?.id);
+    await waitFor(() =>
+      expect(error).toHaveBeenCalledWith("Failed to save book", failure),
+    );
+    error.mockRestore();
   });
 });
 

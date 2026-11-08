@@ -15,9 +15,15 @@ permissions:
 
 jobs:
   baselines:
+    # main only takes changes through a pull request, so never push there.
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-24.04
     env:
       TZ: UTC
+      # The repo's Husky hooks would otherwise run lint, typecheck and the
+      # unit suite around this commit and push, and a failure there would
+      # silently stop the baselines landing.
+      HUSKY: 0
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -38,4 +44,7 @@ jobs:
           else
             git commit -m "test: update Linux visual baselines"
             git push
+            # A push made with GITHUB_TOKEN does not start CI, so the branch
+            # head has no checks until a new commit lands.
+            echo "::notice::Baselines pushed. Push an empty commit to start CI: git commit --allow-empty -m 'ci: rerun' && git push"
           fi
