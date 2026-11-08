@@ -11,6 +11,9 @@ interface FakeHandleOptions {
   initialPermission?: PermissionState;
   requestResult?: PermissionState;
   requestThrows?: Error;
+  /** Thrown when the notes directory is asked for, as it is for a folder that
+   *  was deleted or moved after being chosen. */
+  directoryError?: Error;
 }
 
 /**
@@ -25,11 +28,18 @@ class FakeDirHandle {
   #current: PermissionState;
   #requestResult: PermissionState;
   #requestThrows?: Error;
+  #directoryError?: Error;
 
   constructor(opts: FakeHandleOptions = {}) {
     this.#current = opts.initialPermission ?? "prompt";
     this.#requestResult = opts.requestResult ?? "granted";
     this.#requestThrows = opts.requestThrows;
+    this.#directoryError = opts.directoryError;
+  }
+
+  async getDirectoryHandle(): Promise<FakeDirHandle> {
+    if (this.#directoryError) throw this.#directoryError;
+    return this;
   }
 
   async queryPermission(): Promise<PermissionState> {
@@ -288,5 +298,99 @@ describe("useStorageBackend — the conversation store follows the notes store",
       result.current.store?.kind,
     );
     expect(result.current.bookStore?.kind).toBe(result.current.store?.kind);
+  });
+});
+
+const notFound = () =>
+  Object.assign(
+    new Error(
+      "A requested file or directory could not be found at the time an operation was processed.",
+    ),
+    { name: "NotFoundError" },
+  );
+
+describe("useStorageBackend — a saved folder that no longer exists", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+    vi.spyOn(fileSystemStore, "isFolderStoreSupported").mockReturnValue(true);
+  });
+
+  it("falls back to this browser, forgets the folder and says why when the folder was deleted before launch", async () => {
+    const handle = new FakeDirHandle({
+      initialPermission: "granted",
+      directoryError: notFound(),
+    });
+    setupHandle(handle);
+    const build = vi.spyOn(fileSystemStore, "createFileSystemStore");
+    const { result } = renderHook(() => useStorageBackend());
+
+    await waitFor(() => expect(result.current.store).not.toBeNull());
+
+    expect(result.current.store?.kind).toBe("local");
+    expect(result.current.folderState).toBe("disconnected");
+    expect(result.current.folderName).toBeNull();
+    expect(result.current.folderNotice).toContain("test-folder");
+    expect(handleStore.clearDirectoryHandle).toHaveBeenCalledOnce();
+    expect(build).not.toHaveBeenCalled();
+  });
+
+  it("lets the notice be dismissed", async () => {
+    setupHandle(
+      new FakeDirHandle({
+        initialPermission: "granted",
+        directoryError: notFound(),
+      }),
+    );
+    const { result } = renderHook(() => useStorageBackend());
+    await waitFor(() => expect(result.current.folderNotice).not.toBeNull());
+
+    act(() => result.current.dismissFolderNotice());
+
+    expect(result.current.folderNotice).toBeNull();
+  });
+
+  it("keeps the folder when the failure is anything other than not found", async () => {
+    setupHandle(
+      new FakeDirHandle({
+        initialPermission: "granted",
+        directoryError: Object.assign(new Error("denied"), {
+          name: "NotAllowedError",
+        }),
+      }),
+    );
+    vi.spyOn(fileSystemStore, "createFileSystemStore").mockReturnValue(
+      new InMemoryStore(),
+    );
+    const { result } = renderHook(() => useStorageBackend());
+
+    await waitFor(() => expect(result.current.store?.kind).toBe("folder"));
+
+    expect(result.current.folderState).toBe("connected");
+    expect(result.current.folderNotice).toBeNull();
+    expect(handleStore.clearDirectoryHandle).not.toHaveBeenCalled();
+  });
+
+  it("does the same when the folder turns out to be gone on reconnect", async () => {
+    setupHandle(
+      new FakeDirHandle({
+        initialPermission: "prompt",
+        requestResult: "granted",
+        directoryError: notFound(),
+      }),
+    );
+    const { result } = renderHook(() => useStorageBackend());
+    await waitFor(() =>
+      expect(result.current.folderState).toBe("needs-reconnect"),
+    );
+
+    await act(async () => {
+      await result.current.reconnectFolder();
+    });
+
+    expect(result.current.store?.kind).toBe("local");
+    expect(result.current.folderState).toBe("disconnected");
+    expect(result.current.folderNotice).toContain("test-folder");
+    expect(handleStore.clearDirectoryHandle).toHaveBeenCalledOnce();
   });
 });
