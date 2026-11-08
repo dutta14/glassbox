@@ -26,12 +26,12 @@ const seed = async (page: import("@playwright/test").Page) => {
             createdAt: iso,
             updatedAt: iso,
           },
-        ])
+        ]),
       );
       localStorage.setItem("glassbox.seeded.v1", "x");
       localStorage.setItem("glassbox.theme.v1", "light");
     },
-    [ISO]
+    [ISO],
   );
   await page.goto("/");
   // Sample notes would mean the fixture never landed. Fail here, not on a
@@ -70,7 +70,7 @@ test("the first answer of the session expands its reasoning, later ones do not",
   await expect(reasoningPanels(page)).toHaveCount(2);
   await expect(reasoningPanels(page).nth(1)).toHaveAttribute(
     "aria-expanded",
-    "false"
+    "false",
   );
 });
 
@@ -98,7 +98,7 @@ test("reopening a conversation does not re-expand reasoning the user closed", as
 
   await expect(reasoningPanels(page).first()).toHaveAttribute(
     "aria-expanded",
-    "false"
+    "false",
   );
 });
 
@@ -114,7 +114,7 @@ test("a second conversation does not expand its own first answer", async ({
   await expect(reasoningPanels(page)).toHaveCount(1);
   await expect(reasoningPanels(page).first()).toHaveAttribute(
     "aria-expanded",
-    "false"
+    "false",
   );
 });
 
@@ -140,7 +140,7 @@ test("switching to another thread and back does not re-expand", async ({
             createdAt: iso,
             updatedAt: iso,
           },
-        ])
+        ]),
       );
       localStorage.setItem("glassbox.seeded.v1", "x");
       localStorage.setItem("glassbox.theme.v1", "light");
@@ -156,10 +156,10 @@ test("switching to another thread and back does not re-expand", async ({
             createdAt: iso,
             updatedAt: iso,
           },
-        ])
+        ]),
       );
     },
-    [ISO]
+    [ISO],
   );
   await page.goto("/");
   await expect(page.getByText("These are sample notes")).toHaveCount(0);
@@ -167,7 +167,7 @@ test("switching to another thread and back does not re-expand", async ({
   await ask(page, "starter");
   await expect(reasoningPanels(page).first()).toHaveAttribute(
     "aria-expanded",
-    "true"
+    "true",
   );
 
   await page
@@ -177,6 +177,6 @@ test("switching to another thread and back does not re-expand", async ({
 
   await expect(reasoningPanels(page).first()).toHaveAttribute(
     "aria-expanded",
-    "false"
+    "false",
   );
 });

@@ -115,7 +115,7 @@ const FALLBACK_LINE_HEIGHT = 31.5;
 const caretOffsetFromPoint = (
   x: number,
   y: number,
-  root: HTMLElement
+  root: HTMLElement,
 ): number | null => {
   const doc = root.ownerDocument;
   const pos = doc.caretPositionFromPoint?.(x, y);
@@ -199,12 +199,7 @@ export const NoteEditor = ({
     }
   }, []);
 
-  useLayoutEffect(fitToContent, [
-    fitToContent,
-    note.body,
-    note.title,
-    note.id,
-  ]);
+  useLayoutEffect(fitToContent, [fitToContent, note.body, note.title, note.id]);
 
   /**
    * A title is one line. An input enforced that for free; a textarea does not,
@@ -285,8 +280,11 @@ export const NoteEditor = ({
     const read = readRef.current;
     if (!read) return;
     setVerseWidth(read.getBoundingClientRect().width);
-    const column = read.parentElement?.parentElement?.getBoundingClientRect().width;
-    setVerseShift(verseOpticalShift(read, column ?? read.getBoundingClientRect().width));
+    const column =
+      read.parentElement?.parentElement?.getBoundingClientRect().width;
+    setVerseShift(
+      verseOpticalShift(read, column ?? read.getBoundingClientRect().width),
+    );
   }, [verse, note.body, note.id, editing, fontsReady]);
 
   /* Runs after the swap, because setSelectionRange on a field that is still
@@ -366,7 +364,7 @@ export const NoteEditor = ({
         at === null ? note.body.length : at + readOffset;
       field.focus();
     },
-    [note.body.length, readOffset]
+    [note.body.length, readOffset],
   );
 
   return (
@@ -445,7 +443,9 @@ export const NoteEditor = ({
                it is given the width the reading view worked out, which is what
                keeps the poem from jumping sideways the moment it is clicked. */
             style={
-              verse && verseWidth !== undefined ? { width: verseWidth } : undefined
+              verse && verseWidth !== undefined
+                ? { width: verseWidth }
+                : undefined
             }
             data-editing={editing ? "on" : undefined}
             aria-label="Note body"

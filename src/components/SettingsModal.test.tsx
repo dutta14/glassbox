@@ -99,7 +99,9 @@ describe("SettingsModal", () => {
   it("moves focus into the dialog when it opens", () => {
     setup();
 
-    expect(screen.getByRole("button", { name: "Close settings" })).toHaveFocus();
+    expect(
+      screen.getByRole("button", { name: "Close settings" }),
+    ).toHaveFocus();
   });
 
   it("makes the rest of the app inert so focus cannot wander behind it", () => {

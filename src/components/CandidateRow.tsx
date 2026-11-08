@@ -1,6 +1,6 @@
-import type { ScoredChunk } from '../types';
-import { tierFor, type ConfidenceTier } from '../engine/router';
-import '../styles/CandidateRow.css';
+import type { ScoredChunk } from "../types";
+import { tierFor, type ConfidenceTier } from "../engine/router";
+import "../styles/CandidateRow.css";
 
 interface CandidateRowProps {
   candidate: ScoredChunk;
@@ -13,13 +13,13 @@ const SNIPPET_MAX = 140;
 const BAR_FLOOR = 0.08;
 
 const TIER_TEXT: Record<ConfidenceTier, string> = {
-  high: 'high',
-  medium: 'med',
-  low: 'low',
+  high: "high",
+  medium: "med",
+  low: "low",
 };
 
 const truncate = (text: string, max: number): string => {
-  const clean = text.replace(/\s+/g, ' ').trim();
+  const clean = text.replace(/\s+/g, " ").trim();
   if (clean.length <= max) return clean;
   return `${clean.slice(0, max - 1)}…`;
 };
@@ -48,7 +48,7 @@ export const CandidateRow = ({
 }: CandidateRowProps) => {
   const tier = tierFor(candidate);
   const rawTitle = candidate.noteTitle.trim();
-  const title = rawTitle || 'Untitled note';
+  const title = rawTitle || "Untitled note";
   const denominator = topScore > 0 ? topScore : 1;
   const fill = Math.max(BAR_FLOOR, Math.min(1, candidate.score / denominator));
   const coveragePct = Math.round(candidate.coverage * 100);

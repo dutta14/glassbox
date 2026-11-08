@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useDismissable } from "../hooks/useDismissable";
 import type { NoteFormat } from "../types";
 import { createPortal } from "react-dom";

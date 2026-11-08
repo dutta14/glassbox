@@ -54,9 +54,14 @@ test("the flyout labels give way to the panel they open", async ({ page }) => {
 
 for (const theme of ["light", "dark"] as const) {
   test(`labelled icon column (${theme})`, async ({ page }) => {
-    await page.addInitScript(t => localStorage.setItem("glassbox.theme.v1", t), theme);
+    await page.addInitScript(
+      (t) => localStorage.setItem("glassbox.theme.v1", t),
+      theme,
+    );
     await page.goto("/");
-    await page.getByRole("button", { name: "Search notes", exact: true }).hover();
+    await page
+      .getByRole("button", { name: "Search notes", exact: true })
+      .hover();
     await page.waitForTimeout(600);
     await expect(page).toHaveScreenshot(`tooltip-${theme}.png`, {
       clip: { x: 0, y: 0, width: 420, height: 400 },

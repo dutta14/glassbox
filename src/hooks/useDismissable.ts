@@ -37,7 +37,7 @@ export const useDismissable = ({
     if (!open) return;
 
     const inside = (target: Node | null): boolean =>
-      partsRef.current.some(part => part.current?.contains(target) === true);
+      partsRef.current.some((part) => part.current?.contains(target) === true);
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;

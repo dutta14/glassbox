@@ -1,9 +1,9 @@
-import { useCallback, useId, useRef, useState } from 'react';
-import type { Answer } from '../types';
-import { displayTerms, stem } from '../engine/tokenize';
-import { tierFor, type ConfidenceTier } from '../engine/router';
-import { CandidateRow } from './CandidateRow';
-import '../styles/ReasoningDisclosure.css';
+import { useCallback, useId, useRef, useState } from "react";
+import type { Answer } from "../types";
+import { displayTerms, stem } from "../engine/tokenize";
+import { tierFor, type ConfidenceTier } from "../engine/router";
+import { CandidateRow } from "./CandidateRow";
+import "../styles/ReasoningDisclosure.css";
 
 interface ReasoningDisclosureProps {
   answer: Answer;
@@ -13,15 +13,15 @@ interface ReasoningDisclosureProps {
 }
 
 const TIER_LABEL: Record<ConfidenceTier, string> = {
-  high: 'High confidence',
-  medium: 'Medium confidence',
-  low: 'Low confidence',
+  high: "High confidence",
+  medium: "Medium confidence",
+  low: "Low confidence",
 };
 
 const TITLE_MAX = 32;
 
 const truncateTitle = (title: string): string => {
-  const clean = title.trim() || 'Untitled note';
+  const clean = title.trim() || "Untitled note";
   if (clean.length <= TITLE_MAX) return clean;
   return `${clean.slice(0, TITLE_MAX - 1)}…`;
 };
@@ -38,18 +38,21 @@ export const ReasoningDisclosure = ({
 
   const toggle = useCallback(() => setExpanded((v) => !v), []);
 
-  const handlePanelKey = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation();
-      setExpanded(false);
-      summaryRef.current?.focus();
-    }
-  }, []);
+  const handlePanelKey = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setExpanded(false);
+        summaryRef.current?.focus();
+      }
+    },
+    [],
+  );
 
   const topSource = answer.sources[0];
   const isRefusal = topSource === undefined;
-  const tier: ConfidenceTier | 'refused' = isRefusal
-    ? 'refused'
+  const tier: ConfidenceTier | "refused" = isRefusal
+    ? "refused"
     : tierFor(topSource);
   const m = answer.trace.candidatesConsidered;
   const n = answer.sources.length;
@@ -70,37 +73,47 @@ export const ReasoningDisclosure = ({
         <span className="reason__chevron" aria-hidden="true" />
         <span
           className={`reason__dot${
-            tier === 'refused' ? ' reason__dot--ring' : ''
+            tier === "refused" ? " reason__dot--ring" : ""
           }`}
           data-tier={tier}
           aria-hidden="true"
         />
         <span className="reason__label">
-          {isRefusal ? 'No match' : TIER_LABEL[tier as ConfidenceTier]}
+          {isRefusal ? "No match" : TIER_LABEL[tier as ConfidenceTier]}
         </span>
         {isRefusal ? (
           m > 0 ? (
             <>
-              <span className="reason__sep" aria-hidden="true">·</span>
+              <span className="reason__sep" aria-hidden="true">
+                ·
+              </span>
               <span className="reason__meta-text">
                 nothing in your notes covered this
               </span>
-              <span className="reason__sep" aria-hidden="true">·</span>
+              <span className="reason__sep" aria-hidden="true">
+                ·
+              </span>
               <span className="reason__meta-text">{m} passages searched</span>
             </>
           ) : (
             <>
-              <span className="reason__sep" aria-hidden="true">·</span>
+              <span className="reason__sep" aria-hidden="true">
+                ·
+              </span>
               <span className="reason__meta-text">you have no notes yet</span>
             </>
           )
         ) : (
           <>
-            <span className="reason__sep" aria-hidden="true">·</span>
+            <span className="reason__sep" aria-hidden="true">
+              ·
+            </span>
             <span className="reason__source">
               from {truncateTitle(topSource.noteTitle)}
             </span>
-            <span className="reason__sep" aria-hidden="true">·</span>
+            <span className="reason__sep" aria-hidden="true">
+              ·
+            </span>
             <span className="reason__meta-text">
               {n} of {m} passages
             </span>
@@ -108,10 +121,7 @@ export const ReasoningDisclosure = ({
         )}
       </button>
 
-      <div
-        className="reason__panel-wrap"
-        data-expanded={expanded}
-      >
+      <div className="reason__panel-wrap" data-expanded={expanded}>
         <div
           id={panelId}
           role="group"
@@ -162,9 +172,7 @@ const ReasoningPanelContent = ({
         </div>
         <div className="reason__row">
           <dt>Terms</dt>
-          <dd className="reason__terms">
-            {termChips(displayed, terms)}
-          </dd>
+          <dd className="reason__terms">{termChips(displayed, terms)}</dd>
         </div>
       </dl>
 
@@ -187,7 +195,7 @@ const ReasoningPanelContent = ({
 
       <div className="reason__why">
         <h3 className="reason__why-title">
-          {isRefusal ? 'Why nothing matched' : 'Why this ranking'}
+          {isRefusal ? "Why nothing matched" : "Why this ranking"}
         </h3>
         <p className="reason__why-text">{answer.trace.reason}</p>
       </div>

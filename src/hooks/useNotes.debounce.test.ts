@@ -1,15 +1,15 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
-import { useNotes } from './useNotes';
-import { markSeeded } from '../storage/notes';
-import type { Note } from '../types';
-import type { NotesStore } from '../storage/types';
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { useNotes } from "./useNotes";
+import { markSeeded } from "../storage/notes";
+import type { Note } from "../types";
+import type { NotesStore } from "../storage/types";
 
 const AUTOSAVE_MS = 500;
 
 class InMemoryStore implements NotesStore {
-  readonly kind = 'local' as const;
-  readonly label = 'debounce-fixture';
+  readonly kind = "local" as const;
+  readonly label = "debounce-fixture";
   disk = new Map<string, Note>();
   putCalls: Note[] = [];
   isAvailable(): boolean {
@@ -41,21 +41,21 @@ class InMemoryStore implements NotesStore {
  * A regression to save-on-every-keystroke would produce five puts on a
  * five-keystroke burst, not one, and would fail these tests loudly.
  */
-describe('useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote path)', () => {
+describe("useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote path)", () => {
   beforeEach(() => {
     localStorage.clear();
     markSeeded();
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('does not put a newly created note at 499ms after createNote', async () => {
+  it("does not put a newly created note at 499ms after createNote", async () => {
     const store = new InMemoryStore();
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     await act(async () => {
       result.current.createNote();
@@ -67,10 +67,10 @@ describe('useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
     expect(store.putCalls).toEqual([]);
   });
 
-  it('puts a newly created note exactly once at the 500ms boundary after createNote', async () => {
+  it("puts a newly created note exactly once at the 500ms boundary after createNote", async () => {
     const store = new InMemoryStore();
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     let created: Note;
     await act(async () => {
@@ -89,10 +89,10 @@ describe('useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
     expect(store.putCalls[0].id).toBe(created!.id);
   });
 
-  it('produces one put per newly created note when creates are spaced beyond the 500ms window', async () => {
+  it("produces one put per newly created note when creates are spaced beyond the 500ms window", async () => {
     const store = new InMemoryStore();
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     let a: Note;
     let b: Note;
@@ -120,33 +120,33 @@ describe('useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
     expect(store.putCalls[1].id).not.toBe(a!.id);
   });
 
-  it('coalesces two updateNote calls inside the 500ms window into exactly one put whose body is the second edit', async () => {
+  it("coalesces two updateNote calls inside the 500ms window into exactly one put whose body is the second edit", async () => {
     const store = new InMemoryStore();
     // Seed a note on disk plus wait for bootstrap so the note is loaded into
     // React state; then edits go through the debounce path.
-    store.disk.set('n', {
-      id: 'n',
-      title: 'T',
-      body: 'v0',
+    store.disk.set("n", {
+      id: "n",
+      title: "T",
+      body: "v0",
       tags: [],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     // Pre-mark seeded so bootstrap does not stack sample-note puts on top of
     // the ones we want to count.
     markSeeded();
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     // Two edits inside one 500ms window: t=0 and t=200.
     await act(async () => {
-      result.current.updateNote('n', { body: 'v1' });
+      result.current.updateNote("n", { body: "v1" });
     });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(200);
     });
     await act(async () => {
-      result.current.updateNote('n', { body: 'v2' });
+      result.current.updateNote("n", { body: "v2" });
     });
     // Fire the debounce boundary from the SECOND edit.
     await act(async () => {
@@ -154,31 +154,31 @@ describe('useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
     });
 
     expect(store.putCalls).toHaveLength(1);
-    expect(store.putCalls[0].id).toBe('n');
-    expect(store.putCalls[0].body).toBe('v2');
+    expect(store.putCalls[0].id).toBe("n");
+    expect(store.putCalls[0].body).toBe("v2");
     // And the first edit is provably NOT what was persisted.
-    expect(store.putCalls[0].body).not.toBe('v1');
+    expect(store.putCalls[0].body).not.toBe("v1");
   });
 
-  it('coalesces a five-keystroke burst inside one debounce window into a single put carrying the final text', async () => {
+  it("coalesces a five-keystroke burst inside one debounce window into a single put carrying the final text", async () => {
     // A save-on-every-keystroke regression would produce five puts, not one.
     const store = new InMemoryStore();
-    store.disk.set('n', {
-      id: 'n',
-      title: 'T',
-      body: '',
+    store.disk.set("n", {
+      id: "n",
+      title: "T",
+      body: "",
       tags: [],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     markSeeded();
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
-    const keystrokes = ['h', 'he', 'hel', 'hell', 'hello'];
+    const keystrokes = ["h", "he", "hel", "hell", "hello"];
     for (const stroke of keystrokes) {
       await act(async () => {
-        result.current.updateNote('n', { body: stroke });
+        result.current.updateNote("n", { body: stroke });
         await vi.advanceTimersByTimeAsync(50); // 50ms between keys; well inside 500ms.
       });
     }
@@ -188,44 +188,44 @@ describe('useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
     });
 
     expect(store.putCalls).toHaveLength(1);
-    expect(store.putCalls[0].body).toBe('hello');
+    expect(store.putCalls[0].body).toBe("hello");
   });
 
-  it('produces exactly two puts when two updateNote calls are separated by more than the 500ms window', async () => {
+  it("produces exactly two puts when two updateNote calls are separated by more than the 500ms window", async () => {
     const store = new InMemoryStore();
-    store.disk.set('n', {
-      id: 'n',
-      title: 'T',
-      body: 'v0',
+    store.disk.set("n", {
+      id: "n",
+      title: "T",
+      body: "v0",
       tags: [],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
     });
     markSeeded();
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     // First edit + let it flush.
     await act(async () => {
-      result.current.updateNote('n', { body: 'v1' });
+      result.current.updateNote("n", { body: "v1" });
     });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
     });
     expect(store.putCalls).toHaveLength(1);
-    expect(store.putCalls[0].body).toBe('v1');
+    expect(store.putCalls[0].body).toBe("v1");
 
     // Then wait 10ms of quiet outside the previous window, second edit + flush.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10);
-      result.current.updateNote('n', { body: 'v2' });
+      result.current.updateNote("n", { body: "v2" });
     });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(AUTOSAVE_MS);
     });
 
     expect(store.putCalls).toHaveLength(2);
-    expect(store.putCalls[1].body).toBe('v2');
+    expect(store.putCalls[1].body).toBe("v2");
     // And the first put was NOT overwritten by the second one's contents in
     // the recorded history: two distinct puts, two distinct bodies.
     expect(store.putCalls[0].body).not.toBe(store.putCalls[1].body);

@@ -11,5 +11,8 @@ const WORDS_PER_MINUTE = 230;
 export const readingTime = (body: string): number => {
   const trimmed = body.trim();
   if (trimmed === "") return 1;
-  return Math.max(1, Math.round(trimmed.split(/\s+/).length / WORDS_PER_MINUTE));
+  return Math.max(
+    1,
+    Math.round(trimmed.split(/\s+/).length / WORDS_PER_MINUTE),
+  );
 };

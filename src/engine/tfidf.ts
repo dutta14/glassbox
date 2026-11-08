@@ -1,11 +1,11 @@
-import type { Chunk, Note, ScoredChunk } from '../types';
-import { tokenize } from './tokenize';
+import type { Chunk, Note, ScoredChunk } from "../types";
+import { tokenize } from "./tokenize";
 
 /** Splits a note into paragraph-sized chunks so retrieval points at a passage, not a whole note. */
 export const chunkNote = (note: Note): Chunk[] => {
   const paragraphs = note.body
     .split(/\n{2,}/)
-    .map((p) => p.replace(/[ \t]+/g, ' ').trim())
+    .map((p) => p.replace(/[ \t]+/g, " ").trim())
     .filter(Boolean);
 
   const source = paragraphs.length > 0 ? paragraphs : [note.title];
@@ -36,7 +36,9 @@ export const buildIndex = (notes: Note[]): TfIdfIndex => {
   // The note title is folded into each chunk's scoring text so a note titled
   // "Postgres indexing" still matches a postgres query when the body never
   // repeats the word. chunk.text stays clean for display.
-  const chunkTerms = chunks.map((chunk) => tokenize(`${chunk.noteTitle} ${chunk.text}`));
+  const chunkTerms = chunks.map((chunk) =>
+    tokenize(`${chunk.noteTitle} ${chunk.text}`),
+  );
 
   const documentFrequency = new Map<string, number>();
   for (const terms of chunkTerms) {
@@ -62,14 +64,18 @@ export const buildIndex = (notes: Note[]): TfIdfIndex => {
       norm += weight * weight;
     }
     norm = Math.sqrt(norm);
-    if (norm > 0) for (const [term, weight] of vector) vector.set(term, weight / norm);
+    if (norm > 0)
+      for (const [term, weight] of vector) vector.set(term, weight / norm);
     return vector;
   });
 
   return { chunks, vectors, idf, size: total };
 };
 
-const queryVector = (terms: string[], idf: Map<string, number>): Map<string, number> => {
+const queryVector = (
+  terms: string[],
+  idf: Map<string, number>,
+): Map<string, number> => {
   const tf = termFrequencies(terms);
   const vector = new Map<string, number>();
   let norm = 0;
@@ -80,11 +86,16 @@ const queryVector = (terms: string[], idf: Map<string, number>): Map<string, num
     norm += weight * weight;
   }
   norm = Math.sqrt(norm);
-  if (norm > 0) for (const [term, weight] of vector) vector.set(term, weight / norm);
+  if (norm > 0)
+    for (const [term, weight] of vector) vector.set(term, weight / norm);
   return vector;
 };
 
-export const search = (index: TfIdfIndex, query: string, topK = 5): ScoredChunk[] => {
+export const search = (
+  index: TfIdfIndex,
+  query: string,
+  topK = 5,
+): ScoredChunk[] => {
   const terms = tokenize(query);
   if (terms.length === 0 || index.size === 0) return [];
   const uniqueQueryTerms = new Set(terms);
@@ -117,5 +128,7 @@ export const search = (index: TfIdfIndex, query: string, topK = 5): ScoredChunk[
     }
   });
 
-  return scored.sort((a, b) => b.score - a.score || a.noteTitle.localeCompare(b.noteTitle)).slice(0, topK);
+  return scored
+    .sort((a, b) => b.score - a.score || a.noteTitle.localeCompare(b.noteTitle))
+    .slice(0, topK);
 };

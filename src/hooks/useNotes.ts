@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Note, NoteFormat } from '../types';
-import type { NotesStore } from '../storage/types';
-import { hasSeeded, markSeeded, newNote, parseTags } from '../storage/notes';
-import { sampleNotes } from '../data/sampleNotes';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Note, NoteFormat } from "../types";
+import type { NotesStore } from "../storage/types";
+import { hasSeeded, markSeeded, newNote, parseTags } from "../storage/notes";
+import { sampleNotes } from "../data/sampleNotes";
 
 const AUTOSAVE_MS = 500;
 
@@ -16,11 +16,14 @@ const AUTOSAVE_MS = 500;
  * it does not show up as a missing label, it shows up months later as a poem
  * a machine wrote being quoted back as theirs.
  */
-const PROVENANCE_TAGS: ReadonlySet<string> = new Set(['sample', 'ai-generated']);
+const PROVENANCE_TAGS: ReadonlySet<string> = new Set([
+  "sample",
+  "ai-generated",
+]);
 
 const extractTagsFromBody = (body: string): string[] => {
   const matches = body.match(/#[a-z0-9][a-z0-9-]*/gi) ?? [];
-  return parseTags(matches.join(' '));
+  return parseTags(matches.join(" "));
 };
 
 /**
@@ -36,7 +39,11 @@ const extractTagsFromBody = (body: string): string[] => {
  * new one does not was deliberately removed by deleting its hashtag, and goes.
  * A tag the body never produced was set some other way and stays.
  */
-const mergeTags = (previous: string[], previousBody: string, nextBody: string): string[] => {
+const mergeTags = (
+  previous: string[],
+  previousBody: string,
+  nextBody: string,
+): string[] => {
   const fromOldBody = new Set(extractTagsFromBody(previousBody));
   const merged = [...extractTagsFromBody(nextBody)];
   for (const tag of previous) {
@@ -73,7 +80,8 @@ const mergeBatch = (prev: Note[], batch: Note[]): Note[] => {
   const byId = new Map(prev.map((n) => [n.id, n]));
   for (const note of batch) {
     const existing = byId.get(note.id);
-    if (!existing || note.updatedAt > existing.updatedAt) byId.set(note.id, note);
+    if (!existing || note.updatedAt > existing.updatedAt)
+      byId.set(note.id, note);
   }
   return sortByCreated([...byId.values()]);
 };
@@ -81,7 +89,7 @@ const mergeBatch = (prev: Note[], batch: Note[]): Note[] => {
 const sortByCreated = (notes: Note[]): Note[] =>
   [...notes].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-export type NotesStatus = 'loading' | 'ready' | 'error';
+export type NotesStatus = "loading" | "ready" | "error";
 
 export interface ExternalConflict {
   id: string;
@@ -93,7 +101,7 @@ export interface UseNotesResult {
   status: NotesStatus;
   error: string | null;
   storeLabel: string;
-  storeKind: NotesStore['kind'];
+  storeKind: NotesStore["kind"];
   createNote: (format?: NoteFormat) => Note;
   updateNote: (id: string, patch: { title?: string; body?: string }) => void;
   /** Prose is stored as the absence of the key, which a patch cannot express. */
@@ -126,9 +134,11 @@ interface NoteWriteState {
 
 export const useNotes = (store: NotesStore): UseNotesResult => {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [status, setStatus] = useState<NotesStatus>('loading');
+  const [status, setStatus] = useState<NotesStatus>("loading");
   const [error, setError] = useState<string | null>(null);
-  const [externalConflicts, setExternalConflicts] = useState<ExternalConflict[]>([]);
+  const [externalConflicts, setExternalConflicts] = useState<
+    ExternalConflict[]
+  >([]);
 
   const writeStates = useRef<Map<string, NoteWriteState>>(new Map());
   const pendingDeletions = useRef<Set<string>>(new Set());
@@ -150,7 +160,9 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
   const isDirty = useCallback((id: string): boolean => {
     const state = writeStates.current.get(id);
     if (!state) return false;
-    return state.pending !== null || state.running !== null || state.timer !== null;
+    return (
+      state.pending !== null || state.running !== null || state.timer !== null
+    );
   }, []);
 
   const flushNote = useCallback(async (id: string): Promise<void> => {
@@ -163,7 +175,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       const note = state.pending;
       state.pending = null;
       state.running = storeRef.current.put(note).catch((err) => {
-        console.error('Failed to save note', err);
+        console.error("Failed to save note", err);
       });
       await state.running;
       state.running = null;
@@ -184,7 +196,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
         void flushNote(note.id);
       }, AUTOSAVE_MS);
     },
-    [flushNote]
+    [flushNote],
   );
 
   const flushAllPending = useCallback(async (): Promise<void> => {
@@ -201,7 +213,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
 
   useEffect(() => {
     let cancelled = false;
-    setStatus('loading');
+    setStatus("loading");
     setError(null);
     (async () => {
       try {
@@ -224,7 +236,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
                 if (shown !== 0 && now - shown < 50) return;
                 shown = now;
                 setNotes((prev) => mergeBatch(prev, batch));
-                setStatus('ready');
+                setStatus("ready");
               }
             : undefined,
         );
@@ -237,7 +249,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
         // makes the seeding path idempotent under any timing.
         if (hasSeeded()) {
           setNotes(sortByCreated(existing));
-          setStatus('ready');
+          setStatus("ready");
           return;
         }
 
@@ -253,11 +265,11 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
         for (const n of existing) byId.set(n.id, n);
         for (const n of seeded) byId.set(n.id, n);
         setNotes(sortByCreated([...byId.values()]));
-        setStatus('ready');
+        setStatus("ready");
       } catch (e) {
         if (cancelled) return;
-        setStatus('error');
-        setError(e instanceof Error ? e.message : 'Failed to load notes');
+        setStatus("error");
+        setError(e instanceof Error ? e.message : "Failed to load notes");
       }
     })();
     return () => {
@@ -300,13 +312,16 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       const remote = freshById.get(local.id);
       if (isDirty(local.id)) {
         if (remote && remote.updatedAt > local.updatedAt) {
-          conflicts.push({ id: local.id, title: local.title || 'Untitled' });
+          conflicts.push({ id: local.id, title: local.title || "Untitled" });
         }
         nextById.set(local.id, local);
         continue;
       }
       if (!remote) continue;
-      nextById.set(local.id, remote.updatedAt > local.updatedAt ? remote : local);
+      nextById.set(
+        local.id,
+        remote.updatedAt > local.updatedAt ? remote : local,
+      );
     }
 
     for (const [id, remote] of freshById) {
@@ -333,12 +348,12 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
   }, [isDirty, store]);
 
   useEffect(() => {
-    if (status !== 'ready') return;
+    if (status !== "ready") return;
     const onFocus = () => {
       void reconcile();
     };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [reconcile, status]);
 
   const dismissConflict = useCallback((id: string) => {
@@ -349,25 +364,25 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     const onUnload = () => {
       void flushAllPending();
     };
-    window.addEventListener('beforeunload', onUnload);
-    return () => window.removeEventListener('beforeunload', onUnload);
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
   }, [flushAllPending]);
 
   useEffect(
     () => () => {
       void flushAllPending();
     },
-    [flushAllPending]
+    [flushAllPending],
   );
 
   const createNote = useCallback(
-    (format: NoteFormat = 'prose'): Note => {
-      const note = newNote(format === 'prose' ? {} : { format });
+    (format: NoteFormat = "prose"): Note => {
+      const note = newNote(format === "prose" ? {} : { format });
       setNotes((prev) => sortByCreated([note, ...prev]));
       scheduleWrite(note);
       return note;
     },
-    [scheduleWrite]
+    [scheduleWrite],
   );
 
   /**
@@ -393,20 +408,20 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       // Already in that shape. Same reasoning as updateNote's no-op guard:
       // restamping updatedAt here would mark an untouched note as edited and
       // rewrite its file for nothing.
-      if ((current.format ?? 'prose') === format) return;
+      if ((current.format ?? "prose") === format) return;
 
       const { format: _dropped, ...withoutFormat } = current;
       const nextNote: Note = {
         ...withoutFormat,
-        ...(format === 'prose' ? {} : { format }),
+        ...(format === "prose" ? {} : { format }),
         updatedAt: new Date().toISOString(),
       };
       setNotes((prev) =>
-        sortByCreated(prev.map((n) => (n.id === id ? nextNote : n)))
+        sortByCreated(prev.map((n) => (n.id === id ? nextNote : n))),
       );
       scheduleWrite(nextNote);
     },
-    [scheduleWrite]
+    [scheduleWrite],
   );
 
   const updateNote = useCallback(
@@ -421,7 +436,9 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       // note "Edited just now", and quietly rewrites the file on open.
       if (title === current.title && body === current.body) return;
       const tags =
-        body === current.body ? current.tags : mergeTags(current.tags, current.body, body);
+        body === current.body
+          ? current.tags
+          : mergeTags(current.tags, current.body, body);
       const nextNote: Note = {
         ...current,
         title,
@@ -434,7 +451,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       );
       scheduleWrite(nextNote);
     },
-    [scheduleWrite]
+    [scheduleWrite],
   );
 
   /**
@@ -485,18 +502,18 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
           await retireWriteState(id);
           await storeRef.current.remove(id);
         } catch (err) {
-          console.error('Failed to delete note', err);
+          console.error("Failed to delete note", err);
         } finally {
           pendingDeletions.current.delete(id);
         }
       })();
     },
-    [retireWriteState]
+    [retireWriteState],
   );
 
   const deleteSampleNotes = useCallback(() => {
     const toDelete = notesRef.current
-      .filter((n) => n.tags.includes('sample'))
+      .filter((n) => n.tags.includes("sample"))
       .map((n) => n.id);
     if (toDelete.length === 0) return;
     const toDeleteSet = new Set(toDelete);
@@ -508,7 +525,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
           await retireWriteState(id);
           await storeRef.current.remove(id);
         } catch (err) {
-          console.error('Failed to delete sample note', err);
+          console.error("Failed to delete sample note", err);
         } finally {
           pendingDeletions.current.delete(id);
         }
@@ -517,8 +534,8 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
   }, [retireWriteState]);
 
   const hasSampleNotes = useMemo(
-    () => notes.some((n) => n.tags.includes('sample')),
-    [notes]
+    () => notes.some((n) => n.tags.includes("sample")),
+    [notes],
   );
 
   return {

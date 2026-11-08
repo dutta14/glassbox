@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { useScrollFades } from '../hooks/useScrollFades';
-import type { ChatMessage as ChatMessageType, Note } from '../types';
-import { ChatMessage } from './ChatMessage';
-import { ChatInput } from './ChatInput';
-import { COPY } from '../engine/copy';
-import '../styles/ChatPanel.css';
+import { useEffect, useMemo, useRef } from "react";
+import { useScrollFades } from "../hooks/useScrollFades";
+import type { ChatMessage as ChatMessageType, Note } from "../types";
+import { ChatMessage } from "./ChatMessage";
+import { ChatInput } from "./ChatInput";
+import { COPY } from "../engine/copy";
+import "../styles/ChatPanel.css";
 
 interface ChatPanelProps {
   messages: ChatMessageType[];
@@ -21,9 +21,9 @@ interface ChatPanelProps {
    was dropped; it asks the app about itself rather than asking the archive
    about its contents, which teaches the wrong first move. */
 const EXAMPLE_PROMPTS = [
-  'What did I write last week?',
-  'Show me #work notes',
-  'What did I write about postgres?',
+  "What did I write last week?",
+  "Show me #work notes",
+  "What did I write about postgres?",
 ];
 
 export const ChatPanel = ({
@@ -46,7 +46,11 @@ export const ChatPanel = ({
       .map((note) => new Date(note.createdAt).getFullYear())
       .filter((year) => Number.isFinite(year));
     if (years.length === 0) return null;
-    return COPY.archiveLine(notes.length, Math.min(...years), Math.max(...years));
+    return COPY.archiveLine(
+      notes.length,
+      Math.min(...years),
+      Math.max(...years),
+    );
   }, [notes]);
   const isEmpty = messages.length === 0;
 
@@ -64,7 +68,7 @@ export const ChatPanel = ({
     const map = new Map<string, string>();
     let lastUser: string | null = null;
     for (const m of messages) {
-      if (m.role === 'user') {
+      if (m.role === "user") {
         lastUser = m.text;
       } else if (lastUser !== null) {
         map.set(m.id, lastUser);
@@ -76,22 +80,22 @@ export const ChatPanel = ({
   const latestAssistantAnnouncement = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
-      if (m.role !== 'assistant') continue;
+      if (m.role !== "assistant") continue;
       const source = m.answer?.sources[0];
       if (source) {
-        const title = source.noteTitle.trim() || 'untitled note';
+        const title = source.noteTitle.trim() || "untitled note";
         return `Answer from ${title}. ${source.text}`;
       }
       return m.text;
     }
-    return '';
+    return "";
   }, [messages]);
 
   return (
     <section
       id="chat-panel"
       aria-label={COPY.chatRegion}
-      className={isEmpty ? 'chat chat--empty' : 'chat'}
+      className={isEmpty ? "chat chat--empty" : "chat"}
     >
       {isEmpty ? (
         <div className="chat__empty">
@@ -133,7 +137,7 @@ export const ChatPanel = ({
                 notes={notes}
                 onJumpToNote={onJumpToNote}
                 defaultReasoningExpanded={
-                  message.role === 'assistant' &&
+                  message.role === "assistant" &&
                   isFirstAssistantMessage(message.id)
                 }
               />

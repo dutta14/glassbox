@@ -1,11 +1,11 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { useStorageBackend } from './useStorageBackend';
-import * as handleStore from '../storage/handleStore';
-import * as fileSystemStore from '../storage/fileSystemStore';
-import { createLocalStorageStore } from '../storage/localStorageStore';
-import type { NotesStore } from '../storage/types';
-import type { Note } from '../types';
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { useStorageBackend } from "./useStorageBackend";
+import * as handleStore from "../storage/handleStore";
+import * as fileSystemStore from "../storage/fileSystemStore";
+import { createLocalStorageStore } from "../storage/localStorageStore";
+import type { NotesStore } from "../storage/types";
+import type { Note } from "../types";
 
 interface FakeHandleOptions {
   initialPermission?: PermissionState;
@@ -18,8 +18,8 @@ interface FakeHandleOptions {
  * so tests can assert about how the hook interacted with the browser.
  */
 class FakeDirHandle {
-  kind = 'directory' as const;
-  name = 'test-folder';
+  kind = "directory" as const;
+  name = "test-folder";
   queryCalls = 0;
   requestCalls = 0;
   #current: PermissionState;
@@ -27,8 +27,8 @@ class FakeDirHandle {
   #requestThrows?: Error;
 
   constructor(opts: FakeHandleOptions = {}) {
-    this.#current = opts.initialPermission ?? 'prompt';
-    this.#requestResult = opts.requestResult ?? 'granted';
+    this.#current = opts.initialPermission ?? "prompt";
+    this.#requestResult = opts.requestResult ?? "granted";
     this.#requestThrows = opts.requestThrows;
   }
 
@@ -50,8 +50,8 @@ class FakeDirHandle {
  * write to an in-memory Map so we can observe what merged where.
  */
 class InMemoryStore implements NotesStore {
-  readonly kind = 'folder' as const;
-  readonly label = 'fake-folder';
+  readonly kind = "folder" as const;
+  readonly label = "fake-folder";
   disk = new Map<string, Note>();
   putCalls: Note[] = [];
   removeCalls: string[] = [];
@@ -71,7 +71,7 @@ class InMemoryStore implements NotesStore {
   }
 }
 
-const mk = (id: string, updatedAt: string, body = 'body'): Note => ({
+const mk = (id: string, updatedAt: string, body = "body"): Note => ({
   id,
   title: `Title ${id}`,
   body,
@@ -81,102 +81,133 @@ const mk = (id: string, updatedAt: string, body = 'body'): Note => ({
 });
 
 const setupHandle = (handle: FakeDirHandle | null): void => {
-  vi.spyOn(handleStore, 'loadDirectoryHandle').mockResolvedValue(
-    handle as unknown as FileSystemDirectoryHandle | null
+  vi.spyOn(handleStore, "loadDirectoryHandle").mockResolvedValue(
+    handle as unknown as FileSystemDirectoryHandle | null,
   );
-  vi.spyOn(handleStore, 'saveDirectoryHandle').mockResolvedValue(undefined);
-  vi.spyOn(handleStore, 'clearDirectoryHandle').mockResolvedValue(undefined);
+  vi.spyOn(handleStore, "saveDirectoryHandle").mockResolvedValue(undefined);
+  vi.spyOn(handleStore, "clearDirectoryHandle").mockResolvedValue(undefined);
 };
 
-describe('useStorageBackend.reconnectFolder — bug 2 regression (merge skipped on reconnect)', () => {
+describe("useStorageBackend.reconnectFolder — bug 2 regression (merge skipped on reconnect)", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
-    vi.spyOn(fileSystemStore, 'isFolderStoreSupported').mockReturnValue(true);
+    vi.spyOn(fileSystemStore, "isFolderStoreSupported").mockReturnValue(true);
   });
 
-  it('migrates notes created against localStorage while disconnected into the folder store on reconnect', async () => {
-    const handle = new FakeDirHandle({ initialPermission: 'prompt', requestResult: 'granted' });
+  it("migrates notes created against localStorage while disconnected into the folder store on reconnect", async () => {
+    const handle = new FakeDirHandle({
+      initialPermission: "prompt",
+      requestResult: "granted",
+    });
     setupHandle(handle);
 
     // Folder store is initially empty. The user was writing to localStorage
     // while the folder was in the 'needs-reconnect' state.
     const folder = new InMemoryStore();
     const createFolder = vi
-      .spyOn(fileSystemStore, 'createFileSystemStore')
+      .spyOn(fileSystemStore, "createFileSystemStore")
       .mockReturnValue(folder);
 
     // Seed localStorage with a note the user made while disconnected. This
     // uses the same key as the real localStorage store, so getLocalStore()
     // will find it via list().
-    const disconnectedNote = mk('local-1', '2026-05-01T00:00:00.000Z', 'written while offline');
+    const disconnectedNote = mk(
+      "local-1",
+      "2026-05-01T00:00:00.000Z",
+      "written while offline",
+    );
     const local = createLocalStorageStore();
     await local.put(disconnectedNote);
 
     const { result } = renderHook(() => useStorageBackend());
-    await waitFor(() => expect(result.current.folderState).toBe('needs-reconnect'));
+    await waitFor(() =>
+      expect(result.current.folderState).toBe("needs-reconnect"),
+    );
 
     await act(async () => {
       await result.current.reconnectFolder();
     });
 
-    expect(result.current.folderState).toBe('connected');
+    expect(result.current.folderState).toBe("connected");
     // The folder store instance the hook is now using was our fake, and the
     // merge must have copied the disconnected note into it.
-    expect(folder.disk.get('local-1')).toEqual(disconnectedNote);
+    expect(folder.disk.get("local-1")).toEqual(disconnectedNote);
     // Assert absence of any surprise: this was the only note migrated.
-    expect(folder.putCalls.map((n) => n.id)).toEqual(['local-1']);
+    expect(folder.putCalls.map((n) => n.id)).toEqual(["local-1"]);
     // And the store the hook exposes is the folder store, not localStorage.
     expect(result.current.store).toBe(folder);
     createFolder.mockRestore();
   });
 
-  it('does not clobber a newer folder copy with an older local copy on reconnect (last-write-wins on updatedAt)', async () => {
-    const handle = new FakeDirHandle({ initialPermission: 'prompt', requestResult: 'granted' });
+  it("does not clobber a newer folder copy with an older local copy on reconnect (last-write-wins on updatedAt)", async () => {
+    const handle = new FakeDirHandle({
+      initialPermission: "prompt",
+      requestResult: "granted",
+    });
     setupHandle(handle);
 
     // Folder already has a newer copy (simulating a Drive sync from another
     // machine while this browser was disconnected).
     const folder = new InMemoryStore();
-    const folderCopy = mk('shared-1', '2026-06-01T00:00:00.000Z', 'newer from another machine');
+    const folderCopy = mk(
+      "shared-1",
+      "2026-06-01T00:00:00.000Z",
+      "newer from another machine",
+    );
     folder.disk.set(folderCopy.id, folderCopy);
-    vi.spyOn(fileSystemStore, 'createFileSystemStore').mockReturnValue(folder);
+    vi.spyOn(fileSystemStore, "createFileSystemStore").mockReturnValue(folder);
 
     // localStorage has an older copy of the same id.
-    const olderLocal = mk('shared-1', '2026-05-01T00:00:00.000Z', 'older, written before Drive sync');
+    const olderLocal = mk(
+      "shared-1",
+      "2026-05-01T00:00:00.000Z",
+      "older, written before Drive sync",
+    );
     const local = createLocalStorageStore();
     await local.put(olderLocal);
 
     const { result } = renderHook(() => useStorageBackend());
-    await waitFor(() => expect(result.current.folderState).toBe('needs-reconnect'));
+    await waitFor(() =>
+      expect(result.current.folderState).toBe("needs-reconnect"),
+    );
 
     await act(async () => {
       await result.current.reconnectFolder();
     });
 
-    expect(result.current.folderState).toBe('connected');
+    expect(result.current.folderState).toBe("connected");
     // Folder copy must be preserved.
-    expect(folder.disk.get('shared-1')).toEqual(folderCopy);
+    expect(folder.disk.get("shared-1")).toEqual(folderCopy);
     // Assert absence of clobber: the older local copy must NOT have been put
     // into the folder store during the merge.
-    expect(folder.putCalls.find((n) => n.id === 'shared-1' && n.updatedAt === olderLocal.updatedAt)).toBeUndefined();
+    expect(
+      folder.putCalls.find(
+        (n) => n.id === "shared-1" && n.updatedAt === olderLocal.updatedAt,
+      ),
+    ).toBeUndefined();
   });
 
-  it('leaves the folder disconnected and performs no merge or store swap when permission is denied on reconnect', async () => {
-    const handle = new FakeDirHandle({ initialPermission: 'prompt', requestResult: 'denied' });
+  it("leaves the folder disconnected and performs no merge or store swap when permission is denied on reconnect", async () => {
+    const handle = new FakeDirHandle({
+      initialPermission: "prompt",
+      requestResult: "denied",
+    });
     setupHandle(handle);
 
     const folder = new InMemoryStore();
     const createFolder = vi
-      .spyOn(fileSystemStore, 'createFileSystemStore')
+      .spyOn(fileSystemStore, "createFileSystemStore")
       .mockReturnValue(folder);
 
-    const localNote = mk('local-only', '2026-05-01T00:00:00.000Z');
+    const localNote = mk("local-only", "2026-05-01T00:00:00.000Z");
     const local = createLocalStorageStore();
     await local.put(localNote);
 
     const { result } = renderHook(() => useStorageBackend());
-    await waitFor(() => expect(result.current.folderState).toBe('needs-reconnect'));
+    await waitFor(() =>
+      expect(result.current.folderState).toBe("needs-reconnect"),
+    );
 
     const storeBefore = result.current.store;
 
@@ -184,7 +215,7 @@ describe('useStorageBackend.reconnectFolder — bug 2 regression (merge skipped 
       await result.current.reconnectFolder();
     });
 
-    expect(result.current.folderState).toBe('denied');
+    expect(result.current.folderState).toBe("denied");
     // No merge occurred.
     expect(folder.putCalls).toEqual([]);
     expect(folder.disk.size).toBe(0);
@@ -202,56 +233,60 @@ describe('useStorageBackend.reconnectFolder — bug 2 regression (merge skipped 
  * read the new one. The conversation store is derived from `store` instead,
  * and these tests hold that relationship rather than the implementation.
  */
-describe('useStorageBackend — the conversation store follows the notes store', () => {
+describe("useStorageBackend — the conversation store follows the notes store", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.restoreAllMocks();
-    vi.spyOn(fileSystemStore, 'isFolderStoreSupported').mockReturnValue(true);
+    vi.spyOn(fileSystemStore, "isFolderStoreSupported").mockReturnValue(true);
   });
 
-  it('gives a local conversation store when no folder is connected', async () => {
+  it("gives a local conversation store when no folder is connected", async () => {
     setupHandle(null);
     const { result } = renderHook(() => useStorageBackend());
 
     await waitFor(() => expect(result.current.store).not.toBeNull());
 
-    expect(result.current.store?.kind).toBe('local');
-    expect(result.current.conversationStore?.kind).toBe('local');
-    expect(result.current.bookStore?.kind).toBe('local');
+    expect(result.current.store?.kind).toBe("local");
+    expect(result.current.conversationStore?.kind).toBe("local");
+    expect(result.current.bookStore?.kind).toBe("local");
   });
 
-  it('gives a folder conversation store once a folder is connected', async () => {
-    const handle = new FakeDirHandle({ initialPermission: 'granted' });
+  it("gives a folder conversation store once a folder is connected", async () => {
+    const handle = new FakeDirHandle({ initialPermission: "granted" });
     setupHandle(handle);
-    vi.spyOn(fileSystemStore, 'createFileSystemStore').mockReturnValue(
-      new InMemoryStore()
+    vi.spyOn(fileSystemStore, "createFileSystemStore").mockReturnValue(
+      new InMemoryStore(),
     );
     const { result } = renderHook(() => useStorageBackend());
 
-    await waitFor(() => expect(result.current.store?.kind).toBe('folder'));
+    await waitFor(() => expect(result.current.store?.kind).toBe("folder"));
 
-    expect(result.current.conversationStore?.kind).toBe('folder');
-    expect(result.current.bookStore?.kind).toBe('folder');
+    expect(result.current.conversationStore?.kind).toBe("folder");
+    expect(result.current.bookStore?.kind).toBe("folder");
   });
 
-  it('never leaves the two stores on different backends', async () => {
-    const handle = new FakeDirHandle({ initialPermission: 'granted' });
+  it("never leaves the two stores on different backends", async () => {
+    const handle = new FakeDirHandle({ initialPermission: "granted" });
     setupHandle(handle);
-    vi.spyOn(fileSystemStore, 'createFileSystemStore').mockReturnValue(
-      new InMemoryStore()
+    vi.spyOn(fileSystemStore, "createFileSystemStore").mockReturnValue(
+      new InMemoryStore(),
     );
     const { result } = renderHook(() => useStorageBackend());
 
     await waitFor(() => expect(result.current.store).not.toBeNull());
-    expect(result.current.conversationStore?.kind).toBe(result.current.store?.kind);
+    expect(result.current.conversationStore?.kind).toBe(
+      result.current.store?.kind,
+    );
     expect(result.current.bookStore?.kind).toBe(result.current.store?.kind);
 
     await act(async () => {
       await result.current.disconnectFolder();
     });
 
-    expect(result.current.store?.kind).toBe('local');
-    expect(result.current.conversationStore?.kind).toBe(result.current.store?.kind);
+    expect(result.current.store?.kind).toBe("local");
+    expect(result.current.conversationStore?.kind).toBe(
+      result.current.store?.kind,
+    );
     expect(result.current.bookStore?.kind).toBe(result.current.store?.kind);
   });
 });

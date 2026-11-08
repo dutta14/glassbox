@@ -1,7 +1,7 @@
-import type { Answer, IntentName, Note, ScoredChunk } from '../types';
-import { buildIndex, search, type TfIdfIndex } from './tfidf';
-import { tokenize } from './tokenize';
-import { COPY } from './copy';
+import type { Answer, IntentName, Note, ScoredChunk } from "../types";
+import { buildIndex, search, type TfIdfIndex } from "./tfidf";
+import { tokenize } from "./tokenize";
+import { COPY } from "./copy";
 
 /**
  * Retrieval gate.
@@ -32,21 +32,35 @@ export const TIERS = {
   medium: { minScore: 0.25, minCoverage: 0.5 },
 } as const;
 
-export type ConfidenceTier = 'high' | 'medium' | 'low';
+export type ConfidenceTier = "high" | "medium" | "low";
 
-export const tierFor = (chunk: Pick<ScoredChunk, 'score' | 'coverage'>): ConfidenceTier => {
-  if (chunk.score >= TIERS.high.minScore && chunk.coverage >= TIERS.high.minCoverage) return 'high';
-  if (chunk.score >= TIERS.medium.minScore && chunk.coverage >= TIERS.medium.minCoverage) return 'medium';
-  return 'low';
+export const tierFor = (
+  chunk: Pick<ScoredChunk, "score" | "coverage">,
+): ConfidenceTier => {
+  if (
+    chunk.score >= TIERS.high.minScore &&
+    chunk.coverage >= TIERS.high.minCoverage
+  )
+    return "high";
+  if (
+    chunk.score >= TIERS.medium.minScore &&
+    chunk.coverage >= TIERS.medium.minCoverage
+  )
+    return "medium";
+  return "low";
 };
 
-export const passesGate = (chunk: Pick<ScoredChunk, 'score' | 'coverage'>): boolean =>
+export const passesGate = (
+  chunk: Pick<ScoredChunk, "score" | "coverage">,
+): boolean =>
   chunk.score >= GATE.minScore && chunk.coverage >= GATE.minCoverage;
 
-const GREETINGS = /^(hi|hey|hello|yo|good (morning|afternoon|evening))\b[\s!.?]*$/i;
+const GREETINGS =
+  /^(hi|hey|hello|yo|good (morning|afternoon|evening))\b[\s!.?]*$/i;
 const HELP = /\b(help|what can you do|how do (i|you) use|what do you do)\b/i;
 const COUNT = /\b(how many|number of|count)\b.*\b(notes?|entries)\b/i;
-const RECENT = /\b(today|yesterday|this week|last week|this month|recent(ly)?|lately)\b/i;
+const RECENT =
+  /\b(today|yesterday|this week|last week|this month|recent(ly)?|lately)\b/i;
 const TAG = /#([a-z0-9][a-z0-9-]*)/i;
 
 export interface RecentWindow {
@@ -54,47 +68,62 @@ export interface RecentWindow {
   since: Date;
 }
 
-export const parseRecentWindow = (query: string, now: Date): RecentWindow | null => {
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const days = (n: number) => new Date(startOfDay(now).getTime() - n * 86_400_000);
+export const parseRecentWindow = (
+  query: string,
+  now: Date,
+): RecentWindow | null => {
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const days = (n: number) =>
+    new Date(startOfDay(now).getTime() - n * 86_400_000);
 
-  if (/\btoday\b/i.test(query)) return { label: 'today', since: startOfDay(now) };
-  if (/\byesterday\b/i.test(query)) return { label: 'yesterday', since: days(1) };
-  if (/\blast week\b/i.test(query)) return { label: 'last week', since: days(14) };
-  if (/\bthis week\b/i.test(query)) return { label: 'this week', since: days(7) };
-  if (/\bthis month\b/i.test(query)) return { label: 'this month', since: days(30) };
-  if (/\brecent(ly)?\b|\blately\b/i.test(query)) return { label: 'recently', since: days(7) };
+  if (/\btoday\b/i.test(query))
+    return { label: "today", since: startOfDay(now) };
+  if (/\byesterday\b/i.test(query))
+    return { label: "yesterday", since: days(1) };
+  if (/\blast week\b/i.test(query))
+    return { label: "last week", since: days(14) };
+  if (/\bthis week\b/i.test(query))
+    return { label: "this week", since: days(7) };
+  if (/\bthis month\b/i.test(query))
+    return { label: "this month", since: days(30) };
+  if (/\brecent(ly)?\b|\blately\b/i.test(query))
+    return { label: "recently", since: days(7) };
   return null;
 };
 
 export const classify = (query: string): IntentName => {
   const q = query.trim();
-  if (q.length === 0) return 'unknown';
-  if (GREETINGS.test(q)) return 'greeting';
-  if (HELP.test(q)) return 'help';
-  if (COUNT.test(q)) return 'count';
-  if (TAG.test(q)) return 'tag';
-  if (RECENT.test(q) && tokenize(q).length <= 4) return 'recent';
-  if (tokenize(q).length === 0) return 'unknown';
-  return 'search';
+  if (q.length === 0) return "unknown";
+  if (GREETINGS.test(q)) return "greeting";
+  if (HELP.test(q)) return "help";
+  if (COUNT.test(q)) return "count";
+  if (TAG.test(q)) return "tag";
+  if (RECENT.test(q) && tokenize(q).length <= 4) return "recent";
+  if (tokenize(q).length === 0) return "unknown";
+  return "search";
 };
 
 const formatDate = (iso: string): string => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
-    ? ''
-    : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    ? ""
+    : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 
 const listTitles = (notes: Note[]): string =>
-  notes.map((n) => `${n.title.trim() || COPY.untitled} (${formatDate(n.updatedAt)})`).join('\n');
+  notes
+    .map(
+      (n) => `${n.title.trim() || COPY.untitled} (${formatDate(n.updatedAt)})`,
+    )
+    .join("\n");
 
 const answer = (
   text: string,
   intent: IntentName,
   reason: string,
-  extras: Partial<Answer['trace']> = {},
-  sources: ScoredChunk[] = []
+  extras: Partial<Answer["trace"]> = {},
+  sources: ScoredChunk[] = [],
 ): Answer => ({
   text,
   sources,
@@ -116,7 +145,7 @@ const answer = (
  * the user's own words back at them, and quoting a machine's words as though
  * they were theirs would be the worst thing it could do.
  */
-export const EXCLUDED_TAG = 'ai-generated';
+export const EXCLUDED_TAG = "ai-generated";
 
 /**
  * The notes a question may be answered from.
@@ -130,36 +159,46 @@ export const EXCLUDED_TAG = 'ai-generated';
 export const answerable = (notes: Note[]): Note[] =>
   notes.filter((note) => !note.tags.includes(EXCLUDED_TAG));
 
-export const route = (query: string, notes: Note[], index: TfIdfIndex, now = new Date()): Answer => {
+export const route = (
+  query: string,
+  notes: Note[],
+  index: TfIdfIndex,
+  now = new Date(),
+): Answer => {
   const intent = classify(query);
   const terms = tokenize(query);
   const corpus = answerable(notes);
 
-  if (intent === 'greeting') return answer(COPY.greeting, intent, 'matched a greeting pattern');
-  if (intent === 'help') return answer(COPY.help, intent, 'matched a help pattern');
+  if (intent === "greeting")
+    return answer(COPY.greeting, intent, "matched a greeting pattern");
+  if (intent === "help")
+    return answer(COPY.help, intent, "matched a help pattern");
 
-  if (intent === 'count') {
+  if (intent === "count") {
     const n = corpus.length;
     return answer(
       n === 1 ? COPY.countOne : COPY.count(n),
       intent,
-      'counted notes directly, no retrieval needed'
+      "counted notes directly, no retrieval needed",
     );
   }
 
-  if (intent === 'tag') {
-    const tag = (query.match(TAG)?.[1] ?? '').toLowerCase();
+  if (intent === "tag") {
+    const tag = (query.match(TAG)?.[1] ?? "").toLowerCase();
     const matches = corpus.filter((n) => n.tags.includes(tag));
     return answer(
       matches.length === 0 ? COPY.tagEmpty(tag) : listTitles(matches),
       intent,
       `filtered notes by tag #${tag}`,
-      { candidatesConsidered: corpus.length }
+      { candidatesConsidered: corpus.length },
     );
   }
 
-  if (intent === 'recent') {
-    const window = parseRecentWindow(query, now) ?? { label: 'recently', since: new Date(0) };
+  if (intent === "recent") {
+    const window = parseRecentWindow(query, now) ?? {
+      label: "recently",
+      since: new Date(0),
+    };
     const matches = corpus
       .filter((n) => new Date(n.updatedAt) >= window.since)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -167,14 +206,19 @@ export const route = (query: string, notes: Note[], index: TfIdfIndex, now = new
       matches.length === 0 ? COPY.recentEmpty : listTitles(matches),
       intent,
       `filtered notes updated since ${window.since.toDateString()}`,
-      { candidatesConsidered: corpus.length }
+      { candidatesConsidered: corpus.length },
     );
   }
 
-  if (intent === 'unknown' || terms.length === 0) {
-    return answer(COPY.unknown, 'unknown', 'no content words in query after removing common words', {
-      queryTerms: terms,
-    });
+  if (intent === "unknown" || terms.length === 0) {
+    return answer(
+      COPY.unknown,
+      "unknown",
+      "no content words in query after removing common words",
+      {
+        queryTerms: terms,
+      },
+    );
   }
 
   const results = search(index, query, 5);
@@ -182,22 +226,29 @@ export const route = (query: string, notes: Note[], index: TfIdfIndex, now = new
   const base = { queryTerms: terms, candidatesConsidered: index.size, results };
 
   if (!top || !passesGate(top)) {
-    return answer(COPY.notFound, 'search', notFoundReason(top), base);
+    return answer(COPY.notFound, "search", notFoundReason(top), base);
   }
 
   // The answer IS the passage. No connector prose is added, because any sentence
   // the user did not write is a sentence this product could be wrong about.
-  return answer(top.text, 'search', 'quoted the highest scoring passage', base, results);
+  return answer(
+    top.text,
+    "search",
+    "quoted the highest scoring passage",
+    base,
+    results,
+  );
 };
 
 const notFoundReason = (top: ScoredChunk | undefined): string => {
-  if (!top) return 'no passage shared any content word with the query';
+  if (!top) return "no passage shared any content word with the query";
   if (top.coverage < GATE.minCoverage) {
     return `best passage matched only ${Math.round(top.coverage * 100)}% of your words, below the ${Math.round(
-      GATE.minCoverage * 100
+      GATE.minCoverage * 100,
     )}% needed`;
   }
   return `best passage scored ${top.score.toFixed(2)}, below the ${GATE.minScore} threshold`;
 };
 
-export const createIndex = (notes: Note[]): TfIdfIndex => buildIndex(answerable(notes));
+export const createIndex = (notes: Note[]): TfIdfIndex =>
+  buildIndex(answerable(notes));

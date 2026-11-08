@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import '../styles/ConfirmDialog.css';
+import { useEffect, useId, useRef } from "react";
+import { createPortal } from "react-dom";
+import "../styles/ConfirmDialog.css";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -21,7 +21,7 @@ export const ConfirmDialog = ({
   title,
   description,
   confirmLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel = "Cancel",
   destructive = false,
   onConfirm,
   onCancel,
@@ -38,29 +38,29 @@ export const ConfirmDialog = ({
 
   useEffect(() => {
     if (!open) return;
-    const root = document.getElementById('root');
+    const root = document.getElementById("root");
     if (!root) return;
-    const hadInert = root.hasAttribute('inert');
-    root.setAttribute('inert', '');
+    const hadInert = root.hasAttribute("inert");
+    root.setAttribute("inert", "");
     return () => {
-      if (!hadInert) root.removeAttribute('inert');
+      if (!hadInert) root.removeAttribute("inert");
     };
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.stopPropagation();
         onCancel();
         return;
       }
-      if (e.key !== 'Tab') return;
+      if (e.key !== "Tab") return;
       const root = dialogRef.current;
       if (!root) return;
       const focusables = Array.from(
         root.querySelectorAll<HTMLElement>(FOCUSABLE),
-      ).filter((el) => !el.hasAttribute('inert'));
+      ).filter((el) => !el.hasAttribute("inert"));
       if (focusables.length === 0) return;
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
@@ -73,8 +73,8 @@ export const ConfirmDialog = ({
         first.focus();
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [open, onCancel]);
 
   if (!open) return null;
@@ -112,7 +112,7 @@ export const ConfirmDialog = ({
           <button
             type="button"
             className={`confirm-dialog__button confirm-dialog__button--confirm${
-              destructive ? ' confirm-dialog__button--destructive' : ''
+              destructive ? " confirm-dialog__button--destructive" : ""
             }`}
             onClick={onConfirm}
           >

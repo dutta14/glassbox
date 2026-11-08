@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { useNotes } from './useNotes';
-import { markSeeded } from '../storage/notes';
-import type { Note } from '../types';
-import type { NotesStore } from '../storage/types';
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { useNotes } from "./useNotes";
+import { markSeeded } from "../storage/notes";
+import type { Note } from "../types";
+import type { NotesStore } from "../storage/types";
 
 const AUTOSAVE_MS = 500;
 
@@ -34,8 +34,8 @@ const defer = <T>(): Deferred<T> => {
  * A `remove` deletes from `disk` only when its promise resolves.
  */
 class ControlledStore implements NotesStore {
-  readonly kind = 'folder' as const;
-  readonly label = 'test-folder';
+  readonly kind = "folder" as const;
+  readonly label = "test-folder";
   isAvailable(): boolean {
     return true;
   }
@@ -72,18 +72,23 @@ class ControlledStore implements NotesStore {
 
   resolveNextPut(): void {
     const d = this.pendingPuts.shift();
-    if (!d) throw new Error('no pending put to resolve');
+    if (!d) throw new Error("no pending put to resolve");
     d.resolve();
   }
 
   resolveNextRemove(): void {
     const d = this.pendingRemoves.shift();
-    if (!d) throw new Error('no pending remove to resolve');
+    if (!d) throw new Error("no pending remove to resolve");
     d.resolve();
   }
 }
 
-const mk = (id: string, title = 'T', body = 'B', updatedAt = '2026-01-01T00:00:00.000Z'): Note => ({
+const mk = (
+  id: string,
+  title = "T",
+  body = "B",
+  updatedAt = "2026-01-01T00:00:00.000Z",
+): Note => ({
   id,
   title,
   body,
@@ -93,9 +98,10 @@ const mk = (id: string, title = 'T', body = 'B', updatedAt = '2026-01-01T00:00:0
 });
 
 // Ensure microtasks drain before assertions that follow a resolved promise.
-const flushMicrotasks = (): Promise<void> => Promise.resolve().then(() => Promise.resolve());
+const flushMicrotasks = (): Promise<void> =>
+  Promise.resolve().then(() => Promise.resolve());
 
-describe('useNotes.deleteNote — bug 1 regression (data loss via delete-during-in-flight put)', () => {
+describe("useNotes.deleteNote — bug 1 regression (data loss via delete-during-in-flight put)", () => {
   beforeEach(() => {
     localStorage.clear();
     // Skip the sample-seed branch so tests observe only the deletion mechanics.
@@ -106,12 +112,12 @@ describe('useNotes.deleteNote — bug 1 regression (data loss via delete-during-
     vi.useRealTimers();
   });
 
-  it('leaves the note absent from the store when it is deleted while a put for it is still in flight', async () => {
+  it("leaves the note absent from the store when it is deleted while a put for it is still in flight", async () => {
     const store = new ControlledStore();
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const { result } = renderHook(() => useNotes(store));
 
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     // Create a note. This schedules a debounced put.
     let created!: Note;
@@ -133,7 +139,9 @@ describe('useNotes.deleteNote — bug 1 regression (data loss via delete-during-
     await act(async () => {
       result.current.deleteNote(created.id);
     });
-    expect(result.current.notes.find((n) => n.id === created.id)).toBeUndefined();
+    expect(
+      result.current.notes.find((n) => n.id === created.id),
+    ).toBeUndefined();
     // remove has NOT been called yet — retireWriteState is awaiting the put.
     expect(store.removeCalls).toEqual([]);
 
@@ -155,24 +163,35 @@ describe('useNotes.deleteNote — bug 1 regression (data loss via delete-during-
     });
 
     expect(store.disk.has(created.id)).toBe(false);
-    expect(result.current.notes.find((n) => n.id === created.id)).toBeUndefined();
+    expect(
+      result.current.notes.find((n) => n.id === created.id),
+    ).toBeUndefined();
   });
 
-  it('does not resurrect a note via focus reconciliation while the deletion is still in flight', async () => {
+  it("does not resurrect a note via focus reconciliation while the deletion is still in flight", async () => {
     const store = new ControlledStore();
     // Seed the "disk" as if a previous session already committed this note.
-    const existing = mk('n-alive', 'Existing', 'body', '2026-06-01T00:00:00.000Z');
+    const existing = mk(
+      "n-alive",
+      "Existing",
+      "body",
+      "2026-06-01T00:00:00.000Z",
+    );
     store.disk.set(existing.id, existing);
 
     const { result } = renderHook(() => useNotes(store));
-    await waitFor(() => expect(result.current.notes.map((n) => n.id)).toContain(existing.id));
+    await waitFor(() =>
+      expect(result.current.notes.map((n) => n.id)).toContain(existing.id),
+    );
 
     // Delete. No write is in flight, so retireWriteState returns immediately.
     // The pending step is store.remove, which we hold open.
     await act(async () => {
       result.current.deleteNote(existing.id);
     });
-    expect(result.current.notes.find((n) => n.id === existing.id)).toBeUndefined();
+    expect(
+      result.current.notes.find((n) => n.id === existing.id),
+    ).toBeUndefined();
     await waitFor(() => expect(store.removeCalls).toEqual([existing.id]));
     // remove is queued but not yet resolved — disk still contains the note.
     expect(store.disk.has(existing.id)).toBe(true);
@@ -181,11 +200,13 @@ describe('useNotes.deleteNote — bug 1 regression (data loss via delete-during-
     // call list() and see the note still on disk. The pendingDeletions guard
     // is what prevents resurrection.
     await act(async () => {
-      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event("focus"));
       await flushMicrotasks();
       await flushMicrotasks();
     });
-    expect(result.current.notes.find((n) => n.id === existing.id)).toBeUndefined();
+    expect(
+      result.current.notes.find((n) => n.id === existing.id),
+    ).toBeUndefined();
 
     // Now resolve the remove. Disk is empty; deletion has settled.
     await act(async () => {
@@ -196,19 +217,23 @@ describe('useNotes.deleteNote — bug 1 regression (data loss via delete-during-
 
     // A subsequent reconcile must confirm the note stays gone.
     await act(async () => {
-      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event("focus"));
       await flushMicrotasks();
     });
-    expect(result.current.notes.find((n) => n.id === existing.id)).toBeUndefined();
+    expect(
+      result.current.notes.find((n) => n.id === existing.id),
+    ).toBeUndefined();
   });
 
-  it('does not resurrect a deleted note on the next focus after the deletion has settled', async () => {
+  it("does not resurrect a deleted note on the next focus after the deletion has settled", async () => {
     const store = new ControlledStore();
-    const existing = mk('n-final', 'Final', 'body', '2026-06-02T00:00:00.000Z');
+    const existing = mk("n-final", "Final", "body", "2026-06-02T00:00:00.000Z");
     store.disk.set(existing.id, existing);
 
     const { result } = renderHook(() => useNotes(store));
-    await waitFor(() => expect(result.current.notes.map((n) => n.id)).toContain(existing.id));
+    await waitFor(() =>
+      expect(result.current.notes.map((n) => n.id)).toContain(existing.id),
+    );
 
     await act(async () => {
       result.current.deleteNote(existing.id);
@@ -221,30 +246,38 @@ describe('useNotes.deleteNote — bug 1 regression (data loss via delete-during-
       await flushMicrotasks();
     });
     expect(store.disk.has(existing.id)).toBe(false);
-    expect(result.current.notes.find((n) => n.id === existing.id)).toBeUndefined();
+    expect(
+      result.current.notes.find((n) => n.id === existing.id),
+    ).toBeUndefined();
 
     // Focus reconcile after the fact must keep it gone.
     await act(async () => {
-      window.dispatchEvent(new Event('focus'));
+      window.dispatchEvent(new Event("focus"));
       await flushMicrotasks();
     });
-    expect(result.current.notes.find((n) => n.id === existing.id)).toBeUndefined();
+    expect(
+      result.current.notes.find((n) => n.id === existing.id),
+    ).toBeUndefined();
     // And list was actually consulted, so this is a real reconcile pass.
     expect(store.listCalls).toBeGreaterThanOrEqual(2);
   });
 
-  it('deletes a note cleanly when no write is in flight (easy-path regression guard)', async () => {
+  it("deletes a note cleanly when no write is in flight (easy-path regression guard)", async () => {
     const store = new ControlledStore();
-    const existing = mk('n-easy', 'Easy', 'body', '2026-06-03T00:00:00.000Z');
+    const existing = mk("n-easy", "Easy", "body", "2026-06-03T00:00:00.000Z");
     store.disk.set(existing.id, existing);
 
     const { result } = renderHook(() => useNotes(store));
-    await waitFor(() => expect(result.current.notes.map((n) => n.id)).toContain(existing.id));
+    await waitFor(() =>
+      expect(result.current.notes.map((n) => n.id)).toContain(existing.id),
+    );
 
     await act(async () => {
       result.current.deleteNote(existing.id);
     });
-    expect(result.current.notes.find((n) => n.id === existing.id)).toBeUndefined();
+    expect(
+      result.current.notes.find((n) => n.id === existing.id),
+    ).toBeUndefined();
 
     await waitFor(() => expect(store.removeCalls).toEqual([existing.id]));
     // No put was ever scheduled for this note.

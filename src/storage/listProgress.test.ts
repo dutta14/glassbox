@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createLocalStorageStore } from './localStorageStore';
-import { saveNotes } from './notes';
-import type { Note } from '../types';
+import { describe, expect, it, vi } from "vitest";
+import { createLocalStorageStore } from "./localStorageStore";
+import { saveNotes } from "./notes";
+import type { Note } from "../types";
 
 /**
  * Reading a library is paced by the number of files, not their size: in Chrome
@@ -13,12 +13,16 @@ import type { Note } from '../types';
  * duration, because a slow machine would fail it for the wrong reason.
  */
 
-const note = (id: string, title: string, updatedAt = '2020-01-01T12:00:00.000Z'): Note => ({
+const note = (
+  id: string,
+  title: string,
+  updatedAt = "2020-01-01T12:00:00.000Z",
+): Note => ({
   id,
   title,
-  body: 'body',
+  body: "body",
   tags: [],
-  createdAt: '2020-01-01T12:00:00.000Z',
+  createdAt: "2020-01-01T12:00:00.000Z",
   updatedAt,
 });
 
@@ -28,9 +32,9 @@ const seed = (notes: Note[]) => {
   saveNotes(notes);
 };
 
-describe('list reports progress while it reads', () => {
-  it('returns the same notes whether or not anyone is listening', async () => {
-    seed([note('a', 'Alpha'), note('b', 'Beta')]);
+describe("list reports progress while it reads", () => {
+  it("returns the same notes whether or not anyone is listening", async () => {
+    seed([note("a", "Alpha"), note("b", "Beta")]);
     const store = createLocalStorageStore();
 
     const withoutCallback = await store.list();
@@ -40,8 +44,8 @@ describe('list reports progress while it reads', () => {
     expect(withCallback).toEqual(withoutCallback);
   });
 
-  it('hands over notes before resolving, so the nav can draw early', async () => {
-    seed([note('a', 'Alpha'), note('b', 'Beta')]);
+  it("hands over notes before resolving, so the nav can draw early", async () => {
+    seed([note("a", "Alpha"), note("b", "Beta")]);
     const store = createLocalStorageStore();
 
     const seen: string[] = [];
@@ -54,11 +58,11 @@ describe('list reports progress while it reads', () => {
     });
     resolved = true;
 
-    expect(seen).toContain('a');
+    expect(seen).toContain("a");
     expect(result).toHaveLength(2);
   });
 
-  it('does not report an empty batch, which would be progress with no news', async () => {
+  it("does not report an empty batch, which would be progress with no news", async () => {
     seed([]);
     const store = createLocalStorageStore();
 
@@ -68,15 +72,15 @@ describe('list reports progress while it reads', () => {
     expect(onBatch).not.toHaveBeenCalled();
   });
 
-  it('still returns the library when the listener throws', async () => {
-    seed([note('a', 'Alpha')]);
+  it("still returns the library when the listener throws", async () => {
+    seed([note("a", "Alpha")]);
     const store = createLocalStorageStore();
 
     /* A crash while drawing a row must not cost someone their notes. */
     const result = await store.list(() => {
-      throw new Error('render blew up');
+      throw new Error("render blew up");
     });
 
-    expect(result.map((n) => n.id)).toEqual(['a']);
+    expect(result.map((n) => n.id)).toEqual(["a"]);
   });
 });

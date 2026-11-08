@@ -172,21 +172,23 @@ export const BookIndex = ({
           enough that nobody would, so the book offers. It is an offer rather
           than something done on load, because the book is the reader's and a
           shape they did not ask for is worse than no shape. */}
-      {editing?.onApplyStories && (editing.suggestedStories?.length ?? 0) > 0 && (
-        <div className="book-index__suggestion">
-          <p className="book-index__suggestion-text">
-            These chapters look like {editing.suggestedStories!.length} stories:{" "}
-            {editing.suggestedStories!.map((m) => m.title).join(", ")}.
-          </p>
-          <button
-            type="button"
-            className="book-index__suggestion-accept"
-            onClick={() => editing.onApplyStories!(editing.suggestedStories!)}
-          >
-            Divide the book
-          </button>
-        </div>
-      )}
+      {editing?.onApplyStories &&
+        (editing.suggestedStories?.length ?? 0) > 0 && (
+          <div className="book-index__suggestion">
+            <p className="book-index__suggestion-text">
+              These chapters look like {editing.suggestedStories!.length}{" "}
+              stories:{" "}
+              {editing.suggestedStories!.map((m) => m.title).join(", ")}.
+            </p>
+            <button
+              type="button"
+              className="book-index__suggestion-accept"
+              onClick={() => editing.onApplyStories!(editing.suggestedStories!)}
+            >
+              Divide the book
+            </button>
+          </div>
+        )}
       <ol className="book-index__list">
         {chapters.map((chapter, index) => {
           const name = nameOf(chapter);
@@ -221,7 +223,10 @@ export const BookIndex = ({
                   initial={chapter.story ?? ""}
                   onCommit={(title) => {
                     setNaming(null);
-                    editing?.onSetStory(chapter.id, title === "" ? null : title);
+                    editing?.onSetStory(
+                      chapter.id,
+                      title === "" ? null : title,
+                    );
                   }}
                   onCancel={() => setNaming(null)}
                 />
@@ -293,7 +298,9 @@ export const BookIndex = ({
                     className="book-index__move book-index__numbering"
                     aria-pressed={numbered}
                     aria-label={`Number ${name}`}
-                    onClick={() => editing?.onSetNumbered(chapter.id, !numbered)}
+                    onClick={() =>
+                      editing?.onSetNumbered(chapter.id, !numbered)
+                    }
                   >
                     <span aria-hidden="true">#</span>
                   </button>

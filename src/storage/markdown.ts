@@ -1,4 +1,4 @@
-import type { Note, NoteFormat } from '../types';
+import type { Note, NoteFormat } from "../types";
 
 /**
  * Markdown + YAML-frontmatter (de)serialiser. Zero dependencies.
@@ -21,13 +21,13 @@ import type { Note, NoteFormat } from '../types';
  * first `---` after the opening one closes the frontmatter, so that is safe.
  */
 
-const FM_OPEN = '---\n';
-const FM_CLOSE = '\n---';
+const FM_OPEN = "---\n";
+const FM_CLOSE = "\n---";
 
 /** Round-trip invariant: parse(serialise(note)) deepEquals note. */
 export const serialiseNote = (note: Note): string => {
   const lines = [
-    '---',
+    "---",
     `id: ${note.id}`,
     `title: ${JSON.stringify(note.title)}`,
     `tags: ${JSON.stringify(note.tags)}`,
@@ -36,11 +36,11 @@ export const serialiseNote = (note: Note): string => {
     ...(note.format === undefined
       ? []
       : [`format: ${JSON.stringify(note.format)}`]),
-    '---',
-    '',
+    "---",
+    "",
     note.body,
   ];
-  return lines.join('\n');
+  return lines.join("\n");
 };
 
 export interface ParseResult {
@@ -55,25 +55,25 @@ export interface ParseError {
 
 export const parseNote = (text: string): ParseResult | ParseError => {
   if (!text.startsWith(FM_OPEN)) {
-    return { ok: false, error: 'missing opening frontmatter delimiter' };
+    return { ok: false, error: "missing opening frontmatter delimiter" };
   }
 
   const afterOpen = text.slice(FM_OPEN.length);
   const closeIndex = findFrontmatterClose(afterOpen);
   if (closeIndex === -1) {
-    return { ok: false, error: 'missing closing frontmatter delimiter' };
+    return { ok: false, error: "missing closing frontmatter delimiter" };
   }
 
   const frontmatter = afterOpen.slice(0, closeIndex);
   let rest = afterOpen.slice(closeIndex + FM_CLOSE.length);
-  if (rest.startsWith('\n')) rest = rest.slice(1);
-  if (rest.startsWith('\n')) rest = rest.slice(1);
+  if (rest.startsWith("\n")) rest = rest.slice(1);
+  if (rest.startsWith("\n")) rest = rest.slice(1);
   const body = rest;
 
   const fields: Record<string, string> = {};
-  for (const raw of frontmatter.split('\n')) {
-    if (raw.trim() === '') continue;
-    const colon = raw.indexOf(':');
+  for (const raw of frontmatter.split("\n")) {
+    if (raw.trim() === "") continue;
+    const colon = raw.indexOf(":");
     if (colon === -1) {
       return { ok: false, error: `malformed frontmatter line: ${raw}` };
     }
@@ -83,19 +83,19 @@ export const parseNote = (text: string): ParseResult | ParseError => {
   }
 
   const id = fields.id;
-  if (!id) return { ok: false, error: 'missing id' };
+  if (!id) return { ok: false, error: "missing id" };
 
-  const title = parseJsonString(fields.title, 'title');
-  if (typeof title !== 'string') return title;
+  const title = parseJsonString(fields.title, "title");
+  if (typeof title !== "string") return title;
 
-  const tags = parseJsonStringArray(fields.tags, 'tags');
+  const tags = parseJsonStringArray(fields.tags, "tags");
   if (!Array.isArray(tags)) return tags;
 
   const createdAtRaw = fields.createdAt;
-  if (!createdAtRaw) return { ok: false, error: 'missing createdAt' };
+  if (!createdAtRaw) return { ok: false, error: "missing createdAt" };
 
   const updatedAtRaw = fields.updatedAt;
-  if (!updatedAtRaw) return { ok: false, error: 'missing updatedAt' };
+  if (!updatedAtRaw) return { ok: false, error: "missing updatedAt" };
 
   const createdAt = normaliseDate(createdAtRaw);
   const updatedAt = normaliseDate(updatedAtRaw);
@@ -107,8 +107,8 @@ export const parseNote = (text: string): ParseResult | ParseError => {
       id,
       title,
       tags,
-      createdAt: createdAt ?? '',
-      updatedAt: updatedAt ?? '',
+      createdAt: createdAt ?? "",
+      updatedAt: updatedAt ?? "",
       body,
       // Only ever present when the file said so, so that a note read from disk
       // and written straight back out is byte-identical.
@@ -128,11 +128,11 @@ const parseFormat = (raw: string | undefined): NoteFormat | undefined => {
   let value = raw.trim();
   try {
     const parsed: unknown = JSON.parse(value);
-    if (typeof parsed === 'string') value = parsed;
+    if (typeof parsed === "string") value = parsed;
   } catch {
     // Not JSON. Fall through and read it bare, so `format: verse` works too.
   }
-  return value === 'prose' || value === 'verse' ? value : undefined;
+  return value === "prose" || value === "verse" ? value : undefined;
 };
 
 /**
@@ -153,11 +153,11 @@ export const normaliseDate = (raw: string): string | null => {
   ) {
     s = s.slice(1, -1);
   }
-  if (s === '') return null;
+  if (s === "") return null;
 
   const candidates = [s];
-  if (s.includes(' ') && !s.includes('T')) {
-    candidates.push(s.replace(' ', 'T'));
+  if (s.includes(" ") && !s.includes("T")) {
+    candidates.push(s.replace(" ", "T"));
   }
 
   for (const c of candidates) {
@@ -175,12 +175,12 @@ export const normaliseDate = (raw: string): string | null => {
 export const slugify = (title: string): string => {
   const cleaned = title
     .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 60);
-  return cleaned.length > 0 ? cleaned : 'untitled';
+  return cleaned.length > 0 ? cleaned : "untitled";
 };
 
 /** filename convention: <slug>-<id>.md */
@@ -193,16 +193,19 @@ const findFrontmatterClose = (afterOpen: string): number => {
     const idx = afterOpen.indexOf(FM_CLOSE, searchFrom);
     if (idx === -1) return -1;
     const after = afterOpen[idx + FM_CLOSE.length];
-    if (after === undefined || after === '\n') return idx;
+    if (after === undefined || after === "\n") return idx;
     searchFrom = idx + 1;
   }
 };
 
-const parseJsonString = (raw: string | undefined, field: string): string | ParseError => {
+const parseJsonString = (
+  raw: string | undefined,
+  field: string,
+): string | ParseError => {
   if (raw === undefined) return { ok: false, error: `missing ${field}` };
   try {
     const value = JSON.parse(raw) as unknown;
-    if (typeof value !== 'string') {
+    if (typeof value !== "string") {
       return { ok: false, error: `${field} must be a string` };
     }
     return value;
@@ -213,12 +216,12 @@ const parseJsonString = (raw: string | undefined, field: string): string | Parse
 
 const parseJsonStringArray = (
   raw: string | undefined,
-  field: string
+  field: string,
 ): string[] | ParseError => {
   if (raw === undefined) return { ok: false, error: `missing ${field}` };
   try {
     const value = JSON.parse(raw) as unknown;
-    if (!Array.isArray(value) || !value.every((v) => typeof v === 'string')) {
+    if (!Array.isArray(value) || !value.every((v) => typeof v === "string")) {
       return { ok: false, error: `${field} must be an array of strings` };
     }
     return value;

@@ -37,9 +37,12 @@ const makeElement = ({ scrollTop, scrollHeight, clientHeight }: Metrics) => {
 const renderFades = (metrics: Metrics, deps: readonly unknown[] = []) => {
   const el = makeElement(metrics);
   const ref = { current: el as HTMLElement | null };
-  const view = renderHook(({ d }: { d: readonly unknown[] }) => {
-    useScrollFades(ref, d);
-  }, { initialProps: { d: deps } });
+  const view = renderHook(
+    ({ d }: { d: readonly unknown[] }) => {
+      useScrollFades(ref, d);
+    },
+    { initialProps: { d: deps } },
+  );
   return { el, view };
 };
 

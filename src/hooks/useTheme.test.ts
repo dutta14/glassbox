@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
-import { useTheme } from './useTheme';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { useTheme } from "./useTheme";
 
-const STORAGE_KEY = 'glassbox.theme.v1';
+const STORAGE_KEY = "glassbox.theme.v1";
 
 type Listener = (e: MediaQueryListEvent) => void;
 
@@ -23,7 +23,7 @@ const stubMatchMedia = (prefersDark: boolean) => {
     },
   };
   vi.stubGlobal(
-    'matchMedia',
+    "matchMedia",
     vi.fn(() => mql),
   );
   return {
@@ -38,45 +38,45 @@ const stubMatchMedia = (prefersDark: boolean) => {
 };
 
 beforeEach(() => {
-  document.body.classList.remove('dark');
+  document.body.classList.remove("dark");
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('useTheme', () => {
-  it('follows the operating system when the user has made no choice', () => {
+describe("useTheme", () => {
+  it("follows the operating system when the user has made no choice", () => {
     stubMatchMedia(true);
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('dark');
+    expect(result.current.theme).toBe("dark");
   });
 
-  it('falls back to light when the operating system prefers light', () => {
+  it("falls back to light when the operating system prefers light", () => {
     stubMatchMedia(false);
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe("light");
   });
 
   /** Light is the default, so an absent matchMedia must not yield dark. */
-  it('falls back to light when matchMedia is unavailable', () => {
-    vi.stubGlobal('matchMedia', undefined);
+  it("falls back to light when matchMedia is unavailable", () => {
+    vi.stubGlobal("matchMedia", undefined);
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe("light");
   });
 
-  it('prefers a stored choice over the operating system setting', () => {
-    localStorage.setItem(STORAGE_KEY, 'dark');
+  it("prefers a stored choice over the operating system setting", () => {
+    localStorage.setItem(STORAGE_KEY, "dark");
     stubMatchMedia(false);
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('dark');
+    expect(result.current.theme).toBe("dark");
   });
 
-  it('ignores a stored value that is not a known theme', () => {
-    localStorage.setItem(STORAGE_KEY, 'solarized');
+  it("ignores a stored value that is not a known theme", () => {
+    localStorage.setItem(STORAGE_KEY, "solarized");
     stubMatchMedia(false);
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe("light");
   });
 
   /**
@@ -84,54 +84,54 @@ describe('useTheme', () => {
    * it. The class has to land on body, not the document element, or none of
    * the dark tokens resolve.
    */
-  it('toggles the dark class on body so the tokens apply', () => {
+  it("toggles the dark class on body so the tokens apply", () => {
     stubMatchMedia(true);
     const { result } = renderHook(() => useTheme());
-    expect(document.body.classList.contains('dark')).toBe(true);
+    expect(document.body.classList.contains("dark")).toBe(true);
 
     act(() => result.current.toggleTheme());
-    expect(document.body.classList.contains('dark')).toBe(false);
+    expect(document.body.classList.contains("dark")).toBe(false);
   });
 
-  it('persists the chosen theme so it survives a reload', () => {
+  it("persists the chosen theme so it survives a reload", () => {
     stubMatchMedia(true);
     const { result } = renderHook(() => useTheme());
 
     act(() => result.current.toggleTheme());
 
-    expect(result.current.theme).toBe('light');
-    expect(localStorage.getItem(STORAGE_KEY)).toBe('light');
+    expect(result.current.theme).toBe("light");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("light");
   });
 
-  it('adopts a system theme change while the user has made no choice', () => {
+  it("adopts a system theme change while the user has made no choice", () => {
     const media = stubMatchMedia(false);
     const { result } = renderHook(() => useTheme());
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe("light");
 
     act(() => media.emit(true));
 
-    expect(result.current.theme).toBe('dark');
+    expect(result.current.theme).toBe("dark");
   });
 
   /**
    * The one that matters. Once someone picks a theme, the OS flipping at
    * sunset must not silently undo their choice.
    */
-  it('keeps the user choice when the system theme changes afterwards', () => {
+  it("keeps the user choice when the system theme changes afterwards", () => {
     const media = stubMatchMedia(true);
     const { result } = renderHook(() => useTheme());
 
     act(() => result.current.toggleTheme());
-    expect(result.current.theme).toBe('light');
+    expect(result.current.theme).toBe("light");
 
     act(() => media.emit(true));
 
-    expect(result.current.theme).toBe('light');
-    expect(localStorage.getItem(STORAGE_KEY)).toBe('light');
+    expect(result.current.theme).toBe("light");
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("light");
   });
 
-  it('does not subscribe to system changes when a stored choice exists', () => {
-    localStorage.setItem(STORAGE_KEY, 'light');
+  it("does not subscribe to system changes when a stored choice exists", () => {
+    localStorage.setItem(STORAGE_KEY, "light");
     const media = stubMatchMedia(true);
 
     renderHook(() => useTheme());

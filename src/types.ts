@@ -2,7 +2,7 @@
  * How a note is set. Prose wraps into paragraphs and can carry a drop cap;
  * verse keeps the line breaks it was typed with.
  */
-export type NoteFormat = 'prose' | 'verse';
+export type NoteFormat = "prose" | "verse";
 
 export interface Note {
   id: string;
@@ -33,7 +33,8 @@ export interface ScoredChunk extends Chunk {
   coverage: number;
 }
 
-export type IntentName = 'search' | 'count' | 'recent' | 'tag' | 'help' | 'greeting' | 'unknown';
+export type IntentName =
+  "search" | "count" | "recent" | "tag" | "help" | "greeting" | "unknown";
 
 export interface Trace {
   intent: IntentName;
@@ -52,7 +53,7 @@ export interface Answer {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   text: string;
   answer?: Answer;
   createdAt: string;

@@ -1,9 +1,9 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
-import { useNotes } from './useNotes';
-import { markSeeded } from '../storage/notes';
-import type { Note } from '../types';
-import type { NotesStore } from '../storage/types';
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { useNotes } from "./useNotes";
+import { markSeeded } from "../storage/notes";
+import type { Note } from "../types";
+import type { NotesStore } from "../storage/types";
 
 /**
  * Gap #6 — AC 3: sidebar sort ties must be deterministic and total.
@@ -21,8 +21,8 @@ import type { NotesStore } from '../storage/types';
  */
 
 class InMemoryStore implements NotesStore {
-  readonly kind = 'local' as const;
-  readonly label = 'tie';
+  readonly kind = "local" as const;
+  readonly label = "tie";
   disk = new Map<string, Note>();
   isAvailable(): boolean {
     return true;
@@ -38,76 +38,76 @@ class InMemoryStore implements NotesStore {
   }
 }
 
-const iso = '2026-01-01T00:00:00.000Z';
-const later = '2026-06-01T00:00:00.000Z';
+const iso = "2026-01-01T00:00:00.000Z";
+const later = "2026-06-01T00:00:00.000Z";
 
 const mk = (id: string, createdAt: string, updatedAt = createdAt): Note => ({
   id,
   title: id,
-  body: '',
+  body: "",
   tags: [],
   createdAt,
   updatedAt,
 });
 
-describe('useNotes sort — Gap #6 / AC 3 sidebar tie-breaks', () => {
+describe("useNotes sort — Gap #6 / AC 3 sidebar tie-breaks", () => {
   beforeEach(() => {
     localStorage.clear();
     markSeeded();
   });
 
-  it('preserves store insertion order when three notes share an identical createdAt', async () => {
+  it("preserves store insertion order when three notes share an identical createdAt", async () => {
     const store = new InMemoryStore();
     // Insert in a specific, non-alphabetical order so we can prove insertion
     // order wins over id-alphabetical (which would be a natural but wrong
     // secondary key to introduce).
-    store.disk.set('gamma', mk('gamma', iso));
-    store.disk.set('alpha', mk('alpha', iso));
-    store.disk.set('beta', mk('beta', iso));
+    store.disk.set("gamma", mk("gamma", iso));
+    store.disk.set("alpha", mk("alpha", iso));
+    store.disk.set("beta", mk("beta", iso));
 
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     const ids = result.current.notes.map((n) => n.id);
-    expect(ids).toEqual(['gamma', 'alpha', 'beta']);
+    expect(ids).toEqual(["gamma", "alpha", "beta"]);
   });
 
-  it('produces the same order across two independent mounts when notes share an identical createdAt', async () => {
+  it("produces the same order across two independent mounts when notes share an identical createdAt", async () => {
     const build = (): InMemoryStore => {
       const s = new InMemoryStore();
-      s.disk.set('gamma', mk('gamma', iso));
-      s.disk.set('alpha', mk('alpha', iso));
-      s.disk.set('beta', mk('beta', iso));
+      s.disk.set("gamma", mk("gamma", iso));
+      s.disk.set("alpha", mk("alpha", iso));
+      s.disk.set("beta", mk("beta", iso));
       return s;
     };
 
     const s1 = build();
     const r1 = renderHook(() => useNotes(s1));
-    await vi.waitFor(() => expect(r1.result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(r1.result.current.status).toBe("ready"));
     const ids1 = r1.result.current.notes.map((n) => n.id);
 
     const s2 = build();
     const r2 = renderHook(() => useNotes(s2));
-    await vi.waitFor(() => expect(r2.result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(r2.result.current.status).toBe("ready"));
     const ids2 = r2.result.current.notes.map((n) => n.id);
 
     expect(ids1).toEqual(ids2);
   });
 
-  it('places a note with a later createdAt ahead of tied earlier notes, and preserves insertion order among the ties', async () => {
+  it("places a note with a later createdAt ahead of tied earlier notes, and preserves insertion order among the ties", async () => {
     const store = new InMemoryStore();
-    store.disk.set('gamma', mk('gamma', iso));
-    store.disk.set('newest', mk('newest', later));
-    store.disk.set('alpha', mk('alpha', iso));
-    store.disk.set('beta', mk('beta', iso));
+    store.disk.set("gamma", mk("gamma", iso));
+    store.disk.set("newest", mk("newest", later));
+    store.disk.set("alpha", mk("alpha", iso));
+    store.disk.set("beta", mk("beta", iso));
 
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     const ids = result.current.notes.map((n) => n.id);
-    expect(ids[0]).toBe('newest');
+    expect(ids[0]).toBe("newest");
     // Ties among the remaining three preserve their store insertion order.
-    expect(ids.slice(1)).toEqual(['gamma', 'alpha', 'beta']);
+    expect(ids.slice(1)).toEqual(["gamma", "alpha", "beta"]);
   });
 
   /**
@@ -115,19 +115,25 @@ describe('useNotes sort — Gap #6 / AC 3 sidebar tie-breaks', () => {
    * written in 2011 used to rewrite its updatedAt and throw it to the top of
    * the library, above everything written in the fifteen years since.
    */
-  it('leaves an old note where it is when it is edited long after it was written', async () => {
+  it("leaves an old note where it is when it is edited long after it was written", async () => {
     const store = new InMemoryStore();
-    store.disk.set('recent', mk('recent', later));
-    store.disk.set('old', mk('old', iso));
+    store.disk.set("recent", mk("recent", later));
+    store.disk.set("old", mk("old", iso));
 
     const { result } = renderHook(() => useNotes(store));
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
-    expect(result.current.notes.map((n) => n.id)).toEqual(['recent', 'old']);
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.notes.map((n) => n.id)).toEqual(["recent", "old"]);
 
     // edit the old note today, exactly as adding a tag to it would
-    act(() => result.current.updateNote('old', { body: 'a poem from 2011 #verses' }));
+    act(() =>
+      result.current.updateNote("old", { body: "a poem from 2011 #verses" }),
+    );
 
-    await vi.waitFor(() => expect(result.current.notes.find((n) => n.id === 'old')!.tags).toEqual(['verses']));
-    expect(result.current.notes.map((n) => n.id)).toEqual(['recent', 'old']);
+    await vi.waitFor(() =>
+      expect(result.current.notes.find((n) => n.id === "old")!.tags).toEqual([
+        "verses",
+      ]),
+    );
+    expect(result.current.notes.map((n) => n.id)).toEqual(["recent", "old"]);
   });
 });

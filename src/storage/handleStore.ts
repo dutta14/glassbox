@@ -10,10 +10,10 @@
  * dependency; this file is a few lines with no dependency.
  */
 
-const DB_NAME = 'glassbox';
+const DB_NAME = "glassbox";
 const DB_VERSION = 1;
-const STORE_NAME = 'handles';
-const HANDLE_KEY = 'directory';
+const STORE_NAME = "handles";
+const HANDLE_KEY = "directory";
 
 const openDb = (): Promise<IDBDatabase> =>
   new Promise((resolve, reject) => {
@@ -30,7 +30,7 @@ const openDb = (): Promise<IDBDatabase> =>
 
 const withStore = async <T>(
   mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T>
+  action: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> => {
   const db = await openDb();
   try {
@@ -49,28 +49,30 @@ const withStore = async <T>(
 
 const isIndexedDbAvailable = (): boolean => {
   try {
-    return typeof indexedDB !== 'undefined';
+    return typeof indexedDB !== "undefined";
   } catch {
     return false;
   }
 };
 
 export const saveDirectoryHandle = async (
-  handle: FileSystemDirectoryHandle
+  handle: FileSystemDirectoryHandle,
 ): Promise<void> => {
   if (!isIndexedDbAvailable()) return;
-  await withStore('readwrite', (store) => store.put(handle, HANDLE_KEY));
+  await withStore("readwrite", (store) => store.put(handle, HANDLE_KEY));
 };
 
 export const loadDirectoryHandle =
   async (): Promise<FileSystemDirectoryHandle | null> => {
     if (!isIndexedDbAvailable()) return null;
     try {
-      const value = await withStore('readonly', (store) => store.get(HANDLE_KEY));
+      const value = await withStore("readonly", (store) =>
+        store.get(HANDLE_KEY),
+      );
       if (
         value &&
-        typeof value === 'object' &&
-        (value as FileSystemHandle).kind === 'directory'
+        typeof value === "object" &&
+        (value as FileSystemHandle).kind === "directory"
       ) {
         return value as FileSystemDirectoryHandle;
       }
@@ -83,7 +85,7 @@ export const loadDirectoryHandle =
 export const clearDirectoryHandle = async (): Promise<void> => {
   if (!isIndexedDbAvailable()) return;
   try {
-    await withStore('readwrite', (store) => store.delete(HANDLE_KEY));
+    await withStore("readwrite", (store) => store.delete(HANDLE_KEY));
   } catch {
     // best effort
   }

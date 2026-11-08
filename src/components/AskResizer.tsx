@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { COPY } from '../engine/copy';
-import { MAX_WIDTH, MIN_WIDTH, clampWidth } from '../hooks/useAskPane';
-import '../styles/AskResizer.css';
+import { useCallback, useEffect, useRef } from "react";
+import { COPY } from "../engine/copy";
+import { MAX_WIDTH, MIN_WIDTH, clampWidth } from "../hooks/useAskPane";
+import "../styles/AskResizer.css";
 
 interface AskResizerProps {
   width: number;
@@ -60,27 +60,27 @@ export const AskResizer = ({ width, onWidth, controls }: AskResizerProps) => {
     const stop = () => {
       draggingRef.current = false;
     };
-    window.addEventListener('pointerup', stop);
-    window.addEventListener('pointercancel', stop);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
     return () => {
-      window.removeEventListener('pointerup', stop);
-      window.removeEventListener('pointercancel', stop);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
     };
   }, []);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       const step = e.shiftKey ? COARSE_STEP : STEP;
-      if (e.key === 'ArrowLeft') {
+      if (e.key === "ArrowLeft") {
         e.preventDefault();
         onWidth(width + step);
-      } else if (e.key === 'ArrowRight') {
+      } else if (e.key === "ArrowRight") {
         e.preventDefault();
         onWidth(width - step);
-      } else if (e.key === 'Home') {
+      } else if (e.key === "Home") {
         e.preventDefault();
         onWidth(MIN_WIDTH);
-      } else if (e.key === 'End') {
+      } else if (e.key === "End") {
         e.preventDefault();
         onWidth(MAX_WIDTH);
       }

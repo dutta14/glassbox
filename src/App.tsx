@@ -7,13 +7,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import type {
-  Answer,
-  Book,
-  Note,
-  NoteFormat,
-  StoryMark,
-} from "./types";
+import type { Answer, Book, Note, NoteFormat, StoryMark } from "./types";
 import { useNotes } from "./hooks/useNotes";
 import { useConversations } from "./hooks/useConversations";
 import { useBooks } from "./hooks/useBooks";

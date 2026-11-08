@@ -11,7 +11,9 @@
  */
 
 /** Percent-encoded id path so an id containing '/', '#' or a space survives the URL. */
-export const notePath = (id: string): string => `/note/${encodeURIComponent(id)}`;
+export const notePath = (id: string): string =>
+  `/note/${encodeURIComponent(id)}`;
 
 /** Percent-encoded id path, on the same contract as notePath. */
-export const bookPath = (id: string): string => `/book/${encodeURIComponent(id)}`;
+export const bookPath = (id: string): string =>
+  `/book/${encodeURIComponent(id)}`;

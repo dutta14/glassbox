@@ -13,7 +13,7 @@
 /* The grip mark. Narrower than the hit area on purpose: the target should be
    easier to hit than the thing it draws. */
 .ask-resizer::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 1px;
   top: 50%;

@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
-import { useNotes } from './useNotes';
-import type { Note } from '../types';
-import type { NotesStore } from '../storage/types';
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import { useNotes } from "./useNotes";
+import type { Note } from "../types";
+import type { NotesStore } from "../storage/types";
 
 /**
  * Gap #3 — AC 25 storage-unavailable bootstrap.
@@ -16,8 +16,8 @@ import type { NotesStore } from '../storage/types';
  */
 
 class InMemoryStore implements NotesStore {
-  readonly kind = 'local' as const;
-  readonly label = 'no-ls';
+  readonly kind = "local" as const;
+  readonly label = "no-ls";
   disk = new Map<string, Note>();
   putCalls: Note[] = [];
   isAvailable(): boolean {
@@ -35,7 +35,7 @@ class InMemoryStore implements NotesStore {
   }
 }
 
-describe('useNotes bootstrap — Gap #3 / AC 25 storage unavailable', () => {
+describe("useNotes bootstrap — Gap #3 / AC 25 storage unavailable", () => {
   let getSpy: ReturnType<typeof vi.spyOn>;
   let setSpy: ReturnType<typeof vi.spyOn>;
   let removeSpy: ReturnType<typeof vi.spyOn>;
@@ -43,15 +43,17 @@ describe('useNotes bootstrap — Gap #3 / AC 25 storage unavailable', () => {
   beforeEach(() => {
     // Real localStorage.clear works before we install the throwing spies.
     localStorage.clear();
-    getSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
-      throw new Error('QuotaExceededError: read denied');
+    getSpy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError: read denied");
     });
-    setSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('QuotaExceededError: write denied');
+    setSpy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("QuotaExceededError: write denied");
     });
-    removeSpy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
-      throw new Error('QuotaExceededError: remove denied');
-    });
+    removeSpy = vi
+      .spyOn(Storage.prototype, "removeItem")
+      .mockImplementation(() => {
+        throw new Error("QuotaExceededError: remove denied");
+      });
   });
 
   afterEach(() => {
@@ -60,20 +62,20 @@ describe('useNotes bootstrap — Gap #3 / AC 25 storage unavailable', () => {
     removeSpy.mockRestore();
   });
 
-  it('reaches ready status even when localStorage throws on both read and write', async () => {
+  it("reaches ready status even when localStorage throws on both read and write", async () => {
     const store = new InMemoryStore();
     const { result } = renderHook(() => useNotes(store));
 
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
-    expect(result.current.status).toBe('ready');
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.status).toBe("ready");
     expect(result.current.error).toBeNull();
   });
 
-  it('seeds exactly five sample notes on first bootstrap under a throwing storage, not zero and not a runaway count', async () => {
+  it("seeds exactly five sample notes on first bootstrap under a throwing storage, not zero and not a runaway count", async () => {
     const store = new InMemoryStore();
     const { result } = renderHook(() => useNotes(store));
 
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     expect(store.putCalls.length).toBe(5);
     // Ids are the stable sample ids, meaning seeding did not loop and generate
@@ -81,18 +83,18 @@ describe('useNotes bootstrap — Gap #3 / AC 25 storage unavailable', () => {
     const uniqueIds = new Set(store.putCalls.map((n) => n.id));
     expect(uniqueIds.size).toBe(5);
     for (const id of uniqueIds) {
-      expect(id.startsWith('sample-')).toBe(true);
+      expect(id.startsWith("sample-")).toBe(true);
     }
   });
 
-  it('seeds at most five sample notes across StrictMode double-effect firing under a throwing storage', async () => {
+  it("seeds at most five sample notes across StrictMode double-effect firing under a throwing storage", async () => {
     // A regression where the "already seeded" recheck is dropped, combined
     // with hasSeeded() returning false due to throws, would put ten sample
     // notes on disk. Cap: five.
     const store = new InMemoryStore();
     const { rerender, result } = renderHook(() => useNotes(store));
 
-    await vi.waitFor(() => expect(result.current.status).toBe('ready'));
+    await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
     // Force a re-render on the same hook + same store. This does not
     // re-fire the useEffect (dep unchanged) but a regression that

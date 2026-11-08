@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Answer, ChatMessage, Conversation } from '../types';
-import type { ConversationStore } from '../storage/types';
-import { createId } from '../storage/notes';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Answer, ChatMessage, Conversation } from "../types";
+import type { ConversationStore } from "../storage/types";
+import { createId } from "../storage/notes";
 
 /**
  * Many chat threads instead of one perpetual transcript.
@@ -61,7 +61,7 @@ export interface UseConversationsResult {
 }
 
 export const useConversations = (
-  store: ConversationStore | null
+  store: ConversationStore | null,
 ): UseConversationsResult => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -108,7 +108,7 @@ export const useConversations = (
 
   const active = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
-    [conversations, activeId]
+    [conversations, activeId],
   );
 
   const messages = active?.messages ?? [];
@@ -156,13 +156,13 @@ export const useConversations = (
       const now = new Date().toISOString();
       const userMsg: ChatMessage = {
         id: createId(),
-        role: 'user',
+        role: "user",
         text,
         createdAt: now,
       };
       const assistantMsg: ChatMessage = {
         id: createId(),
-        role: 'assistant',
+        role: "assistant",
         text: answer.text,
         answer,
         createdAt: new Date().toISOString(),
@@ -180,7 +180,7 @@ export const useConversations = (
       const resolvedTarget = targetId === undefined ? activeId : targetId;
       const existing =
         resolvedTarget !== null
-          ? conversations.find((c) => c.id === resolvedTarget) ?? null
+          ? (conversations.find((c) => c.id === resolvedTarget) ?? null)
           : null;
 
       const updated: Conversation = existing
@@ -200,11 +200,13 @@ export const useConversations = (
           };
 
       setConversations((prev) =>
-        [updated, ...prev.filter((c) => c.id !== updated.id)].sort(byNewestFirst)
+        [updated, ...prev.filter((c) => c.id !== updated.id)].sort(
+          byNewestFirst,
+        ),
       );
       if (!existing) setActiveId(updated.id);
       else if (targetId !== undefined) setActiveId(existing.id);
-      reportFailure(store?.put(updated), 'save conversation');
+      reportFailure(store?.put(updated), "save conversation");
 
       // Returned so the caller on a draft can replace `/` with `/chat/<id>` in
       // the same click. The id is known here and nowhere earlier; reaching for
@@ -212,7 +214,7 @@ export const useConversations = (
       // state sync and let a draft reset fire on the conversation just created.
       return updated.id;
     },
-    [activeId, conversations, store]
+    [activeId, conversations, store],
   );
 
   /* Deleting the thread being viewed moves to the next one down, then the
@@ -229,24 +231,24 @@ export const useConversations = (
             : null;
         setActiveId(next?.id ?? null);
         setConversations((prev) => prev.filter((c) => c.id !== id));
-        reportFailure(store?.remove(id), 'delete conversation');
+        reportFailure(store?.remove(id), "delete conversation");
         // The neighbour the caller must replace the dead URL with. Returned
         // rather than left for an effect to notice, because the old /chat/<id>
         // is gone and must not linger in history for one extra render.
         return next?.id ?? null;
       }
       setConversations((prev) => prev.filter((c) => c.id !== id));
-      reportFailure(store?.remove(id), 'delete conversation');
+      reportFailure(store?.remove(id), "delete conversation");
       // A thread other than the open one was removed. Selection did not move,
       // so the URL should not either; hand back the still-active id unchanged.
       return activeId;
     },
-    [activeId, conversations, store]
+    [activeId, conversations, store],
   );
 
   const isFirstAssistantMessage = useCallback(
     (id: string): boolean => autoExpandId === id,
-    [autoExpandId]
+    [autoExpandId],
   );
 
   return {

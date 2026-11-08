@@ -12,33 +12,33 @@
  */
 
 interface FileSystemHandlePermissionDescriptor {
-  mode?: 'read' | 'readwrite';
+  mode?: "read" | "readwrite";
 }
 
 interface FileSystemHandle {
   queryPermission(
-    descriptor?: FileSystemHandlePermissionDescriptor
+    descriptor?: FileSystemHandlePermissionDescriptor,
   ): Promise<PermissionState>;
   requestPermission(
-    descriptor?: FileSystemHandlePermissionDescriptor
+    descriptor?: FileSystemHandlePermissionDescriptor,
   ): Promise<PermissionState>;
 }
 
 interface DirectoryPickerOptions {
   id?: string;
-  mode?: 'read' | 'readwrite';
+  mode?: "read" | "readwrite";
   startIn?:
     | FileSystemHandle
-    | 'desktop'
-    | 'documents'
-    | 'downloads'
-    | 'music'
-    | 'pictures'
-    | 'videos';
+    | "desktop"
+    | "documents"
+    | "downloads"
+    | "music"
+    | "pictures"
+    | "videos";
 }
 
 interface Window {
   showDirectoryPicker?(
-    options?: DirectoryPickerOptions
+    options?: DirectoryPickerOptions,
   ): Promise<FileSystemDirectoryHandle>;
 }
