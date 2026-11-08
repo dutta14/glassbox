@@ -391,6 +391,31 @@ test("a poem does not shift when it is clicked to start writing", async ({
   expect(Math.abs(after.width - before.width)).toBeLessThan(1.5);
 });
 
+test("a poem keeps the same line breaks when it is clicked to start writing", async ({
+  page,
+}) => {
+  await open(page, { body: VERSE, format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  // The min-height floor is lifted on both views so content height is compared.
+  const readHeight = await page.locator(".editor__read").evaluate((el) => {
+    el.style.minHeight = "0";
+    return el.getBoundingClientRect().height;
+  });
+  await page.locator(".editor__read").click();
+  await expect(page.getByLabel("Note body")).toBeFocused();
+
+  // The field is sized to the reading view's width, so any padding of its own
+  // wraps the longest line and the whole poem reflows.
+  const fieldHeight = await page.getByLabel("Note body").evaluate((el) => {
+    el.style.minHeight = "0";
+    el.style.height = "auto";
+    return el.scrollHeight;
+  });
+
+  expect(Math.abs(fieldHeight - readHeight)).toBeLessThan(1.5);
+});
+
 test("a poem line longer than the column stays inside it", async ({ page }) => {
   const long = `${"A line far longer than the column can hold ".repeat(4)}\nShort one.`;
   await open(page, { body: long, format: "verse" });

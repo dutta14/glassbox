@@ -123,6 +123,10 @@
      starting to write. */
   min-height: 300px;
   padding-block: var(--space-4);
+  /* A textarea carries a 2px inline padding of its own; the reading view does
+     not. Left alone, a field sized to the reading view's width has 4px less
+     room for text and wraps the longest line of a poem. */
+  padding-inline: 0;
   background: transparent;
   border: 0;
   color: var(--color-text);
