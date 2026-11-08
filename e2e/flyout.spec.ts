@@ -41,10 +41,10 @@ test("the flyout scrolls its own list without dismissing itself", async ({
   // A real wheel over the middle of the panel.
   await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await page.mouse.wheel(0, 300);
-  await page.waitForTimeout(250);
 
-  const after = await panel.evaluate((el) => el.scrollTop);
-  expect(after).toBeGreaterThan(0);
+  await expect
+    .poll(() => panel.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0);
   await expect(panel).toBeVisible();
 });
 

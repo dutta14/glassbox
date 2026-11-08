@@ -16,7 +16,9 @@ for (const scheme of ["light", "dark"] as const) {
         <img src="/favicon.svg" width="64" height="64">
         <img src="/favicon.svg" width="128" height="128">
       </body>`);
-    await page.waitForTimeout(200);
+    await page.evaluate(() =>
+      Promise.all(Array.from(document.images, (img) => img.decode())),
+    );
     await expect(page.locator("body")).toHaveScreenshot(
       `favicon-${scheme}.png`,
     );
