@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -14,6 +15,7 @@ import { bookPath } from "../engine/routes";
 import { readingTime } from "../utils/readingTime";
 import { dropCapDepth } from "../utils/dropCap";
 import { leadingImage } from "../utils/noteImage";
+import { splitSectionBreaks } from "../utils/sectionBreaks";
 import { NoteImage } from "./NoteImage";
 import { NoteNav } from "./NoteNav";
 import "../styles/NoteEditor.css";
@@ -103,10 +105,10 @@ const formatWritten = (iso: string): string => {
 const FALLBACK_LINE_HEIGHT = 31.5;
 
 /**
- * Where in the text a click landed. The reading view holds the body as a
- * single text node, so the offset within that node is the offset within the
- * note, and the caret can be put exactly where the reader pointed rather than
- * at the end of the note.
+ * Where in the text a click landed. The reading view holds the body as text
+ * nodes, each carrying the offset it starts at in the note, so the offset
+ * within a node plus that base is the offset within the note, and the caret
+ * can be put exactly where the reader pointed rather than at the end.
  *
  * Two spellings because the standard one is recent and the WebKit one is what
  * older engines shipped. Returning null when neither is available is fine: the
@@ -118,11 +120,35 @@ const caretOffsetFromPoint = (
   root: HTMLElement,
 ): number | null => {
   const doc = root.ownerDocument;
-  const pos = doc.caretPositionFromPoint?.(x, y);
-  if (pos && root.contains(pos.offsetNode)) return pos.offset;
-  const range = doc.caretRangeFromPoint?.(x, y);
-  if (range && root.contains(range.startContainer)) return range.startOffset;
-  return null;
+  const hit: { node: Node; offset: number } | null = (() => {
+    const pos = doc.caretPositionFromPoint?.(x, y);
+    if (pos) return { node: pos.offsetNode, offset: pos.offset };
+    const range = doc.caretRangeFromPoint?.(x, y);
+    if (range) return { node: range.startContainer, offset: range.startOffset };
+    return null;
+  })();
+  if (!hit || !root.contains(hit.node)) return null;
+
+  const marked = (node: Node | null): HTMLElement | null => {
+    const el =
+      node instanceof HTMLElement ? node : (node?.parentElement ?? null);
+    return el?.closest<HTMLElement>("[data-offset]") ?? null;
+  };
+  const owner = marked(hit.node);
+  if (owner && root.contains(owner)) {
+    const base = Number(owner.dataset.offset);
+    // A break is drawn, not typed, so a click on it lands at its start.
+    return hit.node.nodeType === Node.TEXT_NODE && !owner.dataset.break
+      ? base + hit.offset
+      : base;
+  }
+  // Landed on the container itself: the offset is a child index.
+  if (hit.node === root) {
+    const child = root.childNodes[hit.offset];
+    const el = child instanceof HTMLElement ? child : null;
+    return el?.dataset.offset !== undefined ? Number(el.dataset.offset) : null;
+  }
+  return hit.node.nodeType === Node.TEXT_NODE ? hit.offset : null;
 };
 
 export const NoteEditor = ({
@@ -341,6 +367,14 @@ export const NoteEditor = ({
   // prose, not the image line that no longer appears above them.
   const cap = verse ? 0 : dropCapDepth(readBody);
 
+  // A poem is set as it was written, so only prose gets its section breaks
+  // drawn. With none in the note the reading view stays a single text node.
+  const segments = useMemo(
+    () => (verse || isEmpty ? [] : splitSectionBreaks(readBody)),
+    [verse, isEmpty, readBody],
+  );
+  const hasBreaks = segments.some((seg) => seg.kind === "break");
+
   /**
    * Puts the caret where the reader actually pointed. Without this, moving from
    * reading to writing would drop you at one fixed place in the note and you
@@ -432,7 +466,30 @@ export const NoteEditor = ({
               data-dropcap={cap === 0 ? undefined : String(cap)}
               onMouseDown={handleReadMouseDown}
             >
-              {isEmpty ? COPY.placeholderBody : readBody}
+              {isEmpty
+                ? COPY.placeholderBody
+                : hasBreaks
+                  ? segments.map((seg) =>
+                      seg.kind === "text" ? (
+                        <span key={seg.start} data-offset={seg.start}>
+                          {seg.text}
+                        </span>
+                      ) : (
+                        <span
+                          key={seg.start}
+                          className={`editor__break${
+                            seg.opening ? " editor__break--opening" : ""
+                          }`}
+                          data-offset={seg.start}
+                          data-break="true"
+                        >
+                          <span className="editor__break-number">
+                            {seg.number}
+                          </span>
+                        </span>
+                      ),
+                    )
+                  : readBody}
             </div>
           )}
           <textarea
