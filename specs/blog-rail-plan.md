@@ -44,8 +44,8 @@ spec, and what follows.
 - **Collapsed bar.** With the rail collapsed, the collection page's running bar
   is 80px tall and indented 68px so the fixed menu button does not straddle its
   rule. The mock has no collection page in that state.
-- **Sample notes banner.** Unchanged from before the rail; it sits above the
-  first year as specced.
+- **Sample notes.** Removed after the rail shipped: a fresh app is empty, and
+  there is no banner.
 - **Headings.** On the collection page the contents heading, story titles and
   chapter titles are h2, under the page's title field, so the outline has no
   skipped level.

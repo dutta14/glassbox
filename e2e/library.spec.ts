@@ -22,7 +22,6 @@ test("clicking a book on the shelf opens that book", async ({ page }) => {
         },
       ]),
     );
-    localStorage.setItem("glassbox.seeded.v1", "x");
     localStorage.setItem("glassbox.theme.v1", "light");
   });
   await page.goto("/#/books");
@@ -44,4 +43,15 @@ test("the scenery lets pointer events through to the shelf", async ({
     .locator(".library .lamp .glow")
     .evaluate((el) => getComputedStyle(el).pointerEvents);
   expect(events).toBe("none");
+});
+
+test("a fresh app is empty: no sample notes, no banner", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(page.getByText("Nothing here yet.").first()).toBeVisible();
+  await expect(page.locator("[data-note-id]")).toHaveCount(0);
+  await expect(page.getByText("These are sample notes")).toHaveCount(0);
+  expect(
+    await page.evaluate(() => localStorage.getItem("glassbox.notes.v1")),
+  ).toBeNull();
 });

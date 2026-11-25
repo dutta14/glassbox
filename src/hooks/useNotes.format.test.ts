@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useNotes } from "./useNotes";
-import { markSeeded } from "../storage/notes";
 import { serialiseNote, parseNote } from "../storage/markdown";
 import type { Note, NoteFormat } from "../types";
 import type { NotesStore } from "../storage/types";
@@ -72,7 +71,6 @@ const setFormat = async (
 describe("changing a note between prose and verse", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
   });
 
   it("turns a prose note into verse", async () => {
@@ -200,7 +198,6 @@ describe("changing a note between prose and verse", () => {
 describe("creating a note in a chosen shape", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
   });
 
   it("creates a prose note carrying no format key when asked for nothing", async () => {

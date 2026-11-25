@@ -39,7 +39,6 @@ describe("scroll fade wiring", () => {
       <NotesRail
         notes={[mkNote("n1", "Postgres tuning")]}
         selectedNoteId={null}
-        hasSampleNotes={false}
         folderState="unsupported"
         folderName={null}
         connectError={null}
@@ -47,7 +46,6 @@ describe("scroll fade wiring", () => {
         onCreate={vi.fn()}
         onDeleteNote={vi.fn()}
         onToggleNoteFormat={vi.fn()}
-        onDeleteSamples={vi.fn()}
         onConnectFolder={vi.fn()}
         onReconnectFolder={vi.fn()}
         onDisconnectFolder={vi.fn()}

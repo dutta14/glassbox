@@ -20,7 +20,7 @@ Where a document and the code disagree, the code wins and the document is histor
 
 **The note body is the source of truth for tags.** Tags are `#word` tokens written
 into the body text. On every save, `useNotes.updateNote` re-extracts them from the
-body and keeps only what it finds, plus the `sample` provenance tag. A tag that
+body and keeps only what it finds, plus the `ai-generated` provenance tag. A tag that
 exists only in a file's frontmatter is silently dropped the first time that note is
 edited.
 

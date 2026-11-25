@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useNotes } from "./useNotes";
-import { markSeeded } from "../storage/notes";
 import type { Note } from "../types";
 import type { NotesStore } from "../storage/types";
 
@@ -104,8 +103,6 @@ const flushMicrotasks = (): Promise<void> =>
 describe("useNotes.deleteNote — bug 1 regression (data loss via delete-during-in-flight put)", () => {
   beforeEach(() => {
     localStorage.clear();
-    // Skip the sample-seed branch so tests observe only the deletion mechanics.
-    markSeeded();
   });
 
   afterEach(() => {

@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useNotes } from "./useNotes";
-import { markSeeded } from "../storage/notes";
 import type { Note } from "../types";
 import type { NotesStore } from "../storage/types";
 
@@ -66,7 +65,6 @@ const mkNote = (id: string, body: string): Note => ({
 describe("useNotes.updateNote — edits must reach the store through scheduleWrite", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   });
 

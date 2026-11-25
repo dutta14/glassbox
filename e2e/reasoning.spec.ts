@@ -29,16 +29,12 @@ const seed = async (page: Page, conversations: unknown[] = []) => {
           },
         ]),
       );
-      localStorage.setItem("glassbox.seeded.v1", "x");
       localStorage.setItem("glassbox.theme.v1", "light");
       if (stored) localStorage.setItem("glassbox.conversations.v1", stored);
     },
     [ISO, conversations.length ? JSON.stringify(conversations) : ""],
   );
   await page.goto("/");
-  // Sample notes would mean the fixture never landed. Fail here, not on a
-  // 30s locator timeout pointing nowhere.
-  await expect(page.getByText("These are sample notes")).toHaveCount(0);
   await openAsk(page);
 };
 

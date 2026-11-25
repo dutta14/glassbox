@@ -1,7 +1,6 @@
 import type { Note } from "../types";
 
 const STORAGE_KEY = "glassbox.notes.v1";
-const SEEDED_KEY = "glassbox.seeded.v1";
 
 /** The only module in the app permitted to touch localStorage. */
 
@@ -47,27 +46,6 @@ export const saveNotes = (notes: Note[]): boolean => {
     return true;
   } catch {
     return false;
-  }
-};
-
-/**
- * First-run marker. An empty saved array means "the user deliberately deleted
- * everything", which is different from "the app has never run here". Only the
- * absence of this marker triggers sample seeding.
- */
-export const hasSeeded = (): boolean => {
-  try {
-    return localStorage.getItem(SEEDED_KEY) !== null;
-  } catch {
-    return false;
-  }
-};
-
-export const markSeeded = (): void => {
-  try {
-    localStorage.setItem(SEEDED_KEY, new Date().toISOString());
-  } catch {
-    // Non-fatal. Without persistence there is no "next run" to protect from.
   }
 };
 

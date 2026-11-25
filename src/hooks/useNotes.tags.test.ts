@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useNotes } from "./useNotes";
-import { markSeeded } from "../storage/notes";
 import type { Note } from "../types";
 import type { NotesStore } from "../storage/types";
 
@@ -79,7 +78,6 @@ const editBody = async (
 describe("AC 5 — tag extraction from #word tokens in note body", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
   });
 
   it("extracts a single lowercase #word from the body into tags", async () => {
@@ -163,83 +161,6 @@ describe("AC 5 — tag extraction from #word tokens in note body", () => {
     const after = await editBody(rendered, "n", "about work with no hash now");
     expect(after).toEqual([]);
   });
-
-  it("preserves the sample provenance tag when a sample note is edited and its body no longer contains #sample", async () => {
-    const sampleNote: Note = {
-      id: "sample-1",
-      title: "Sample",
-      body: "body without any hash",
-      tags: ["sample"],
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    const rendered = await setup(sampleNote);
-    const tags = await editBody(
-      rendered,
-      "sample-1",
-      "user typed here with #new and #ideas",
-    );
-    // Explicitly assert BOTH presence of provenance and presence of new tags.
-    expect(tags).toContain("sample");
-    expect(tags).toContain("new");
-    expect(tags).toContain("ideas");
-    // And no drift: exactly those three, deduped.
-    expect(new Set(tags)).toEqual(new Set(["sample", "new", "ideas"]));
-  });
-
-  it("does not preserve a non-provenance previous tag that is absent from the new body (only the sample tag is preserved by design)", async () => {
-    // Note starts with tags=['work','sample']. User edits body to have no
-    // #work reference. Only 'sample' should carry forward; 'work' must drop.
-    const existing: Note = {
-      id: "mixed",
-      title: "Mixed",
-      body: "about #work",
-      tags: ["work", "sample"],
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    const rendered = await setup(existing);
-    const tags = await editBody(rendered, "mixed", "no hashes in this rewrite");
-    expect(tags).toContain("sample");
-    expect(tags).not.toContain("work");
-  });
-
-  it("preserves the sample provenance tag when the new body has no tags at all", async () => {
-    const sampleNote: Note = {
-      id: "sample-empty",
-      title: "Sample",
-      body: "first body",
-      tags: ["sample"],
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    const rendered = await setup(sampleNote);
-    const tags = await editBody(
-      rendered,
-      "sample-empty",
-      "edited body with no hashes",
-    );
-    expect(tags).toEqual(["sample"]);
-  });
-
-  it("does not duplicate the sample tag when the new body itself contains #sample", async () => {
-    const sampleNote: Note = {
-      id: "sample-explicit",
-      title: "Sample",
-      body: "first body",
-      tags: ["sample"],
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    };
-    const rendered = await setup(sampleNote);
-    const tags = await editBody(
-      rendered,
-      "sample-explicit",
-      "this note has #sample in body",
-    );
-    // Presence, and no duplication.
-    expect(tags.filter((t) => t === "sample")).toHaveLength(1);
-  });
 });
 
 /**
@@ -253,7 +174,6 @@ describe("AC 5 — tag extraction from #word tokens in note body", () => {
 describe("tags that were not written into the body", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
   });
 
   it("keeps an imported tag when the body is edited and never mentioned it", async () => {

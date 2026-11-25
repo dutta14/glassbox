@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useNotes } from "./useNotes";
-import { markSeeded } from "../storage/notes";
 import type { Note } from "../types";
 import type { NotesStore } from "../storage/types";
 
@@ -49,7 +48,6 @@ const SEEDED: Note = {
 describe("useNotes — an update that changes nothing is not an edit", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   });
 

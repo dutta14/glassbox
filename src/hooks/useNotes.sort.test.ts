@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useNotes } from "./useNotes";
-import { markSeeded } from "../storage/notes";
 import type { Note } from "../types";
 import type { NotesStore } from "../storage/types";
 
@@ -53,7 +52,6 @@ const mk = (id: string, createdAt: string, updatedAt = createdAt): Note => ({
 describe("useNotes sort — Gap #6 / AC 3 sidebar tie-breaks", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
   });
 
   it("preserves store insertion order when three notes share an identical createdAt", async () => {

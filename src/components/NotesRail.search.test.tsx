@@ -52,7 +52,6 @@ const renderRail = (
     <NotesRail
       notes={overrides.notes ?? notes}
       selectedNoteId={overrides.selectedNoteId ?? null}
-      hasSampleNotes={false}
       folderState="unsupported"
       folderName={null}
       connectError={null}
@@ -60,7 +59,6 @@ const renderRail = (
       onCreate={onCreate}
       onDeleteNote={vi.fn()}
       onToggleNoteFormat={vi.fn()}
-      onDeleteSamples={vi.fn()}
       onConnectFolder={vi.fn()}
       onReconnectFolder={vi.fn()}
       onDisconnectFolder={vi.fn()}
