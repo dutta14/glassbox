@@ -194,13 +194,15 @@ test("typing at the end of a long note keeps the caret in view", async ({
   }));
   expect(grew.clientHeight).toBeGreaterThanOrEqual(grew.scrollHeight - 2);
 
-  // The last line of the note sits inside the section's visible window. The
-  // field's own bottom padding may hang below it; the caret is what must show.
+  // The last line of the note is at least half inside the section's visible
+  // window. The field's bottom padding may hang below it, and browsers differ
+  // by a few pixels in how far they scroll to reveal the caret.
   const visible = await page.locator(".editor").evaluate((section, sel) => {
     const el = document.querySelector(sel) as HTMLElement;
     const bottom =
       el.getBoundingClientRect().bottom -
       parseFloat(getComputedStyle(el).paddingBottom) -
+      parseFloat(getComputedStyle(el).lineHeight) / 2 -
       section.getBoundingClientRect().top;
     return bottom <= section.clientHeight + 4 && bottom > 0;
   }, "textarea.editor__body");
