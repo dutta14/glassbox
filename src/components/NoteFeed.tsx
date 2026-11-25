@@ -42,6 +42,8 @@ interface NoteFeedProps {
   readAsset: (path: string) => Promise<Blob | null>;
   /** The reader has moved to another post, or the feed had to pick one. */
   onCurrentChange: (id: string) => void;
+  /** Follows a post's collection line to the collection's page. */
+  onOpenCollection?: (bookId: string, noteId: string) => void;
 }
 
 const prefersReducedMotion = (): boolean =>
@@ -79,6 +81,7 @@ const Feed = ({
   bookByNoteId,
   readAsset,
   onCurrentChange,
+  onOpenCollection,
 }: NoteFeedProps) => {
   const searching = query !== null;
   const q = searching ? normalizeQuery(query) : "";
@@ -285,6 +288,7 @@ const Feed = ({
             book={bookByNoteId.get(note.id) ?? null}
             query={q}
             readAsset={readAsset}
+            onOpenCollection={onOpenCollection}
           />
         ))}
         <div ref={sentinelRef} className="note-feed__sentinel" aria-hidden />

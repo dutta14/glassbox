@@ -118,6 +118,8 @@ export interface UseNotesResult {
   /** Notes whose on-disk copy changed while a local edit was in flight. */
   externalConflicts: ExternalConflict[];
   dismissConflict: (id: string) => void;
+  /** Writes every edit still waiting on its autosave timer, now. */
+  flushPending: () => Promise<void>;
 }
 
 /**
@@ -553,5 +555,6 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     deleteSampleNotes,
     externalConflicts,
     dismissConflict,
+    flushPending: flushAllPending,
   };
 };

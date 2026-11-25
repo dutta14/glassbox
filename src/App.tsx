@@ -170,6 +170,8 @@ interface NoteStageProps {
   /* The whole index rather than this note's books, because the stage reads the
      id from the URL and so cannot be handed its own slice from outside. */
   bookByNoteId: Map<string, Book>;
+  /** Follows the collection line to the collection's page at this note. */
+  onOpenCollection: (bookId: string, noteId: string) => void;
 }
 
 /* The stage for /note/:id. This route only mounts once notes have loaded, since
@@ -185,6 +187,7 @@ const NoteStage = ({
   onSelectNote,
   readAsset,
   bookByNoteId,
+  onOpenCollection,
 }: NoteStageProps) => {
   const { id } = useParams();
   const note = notes.find((n) => n.id === id) ?? null;
@@ -209,6 +212,7 @@ const NoteStage = ({
       onSelectNote={onSelectNote}
       readAsset={readAsset}
       book={bookByNoteId.get(note.id) ?? null}
+      onOpenCollection={onOpenCollection}
     />
   );
 };
@@ -219,6 +223,8 @@ interface NoteRouteProps extends NoteStageProps {
   onCurrentChange: (id: string) => void;
   /** Previous and next inside the editor stay in the editor. */
   onEditNote: (id: string) => void;
+  /** Escape in the editor: back to wherever this note is read. */
+  onCloseEditor: (id: string) => void;
 }
 
 /* /note/:id reads the note in the feed, scrolled to it. The same path with
@@ -230,15 +236,16 @@ const NoteRoute = ({
   scrollRequest,
   onCurrentChange,
   onEditNote,
+  onCloseEditor,
   ...stage
 }: NoteRouteProps) => {
   const { id } = useParams();
   const { search } = useLocation();
-  const navigate = useNavigate();
   const editing = isEditSearch(search);
   const exists = stage.notes.some((n) => n.id === id);
 
-  /* Escape leaves the editor for the feed at this note. It yields to anything
+  /* Escape leaves the editor for the place this note is read: the feed, or its
+     collection's page when it is a chapter. It yields to anything
      that has already used the key, and to a dialog or pane, so closing one of
      those does not also close the note. */
   useEffect(() => {
@@ -249,11 +256,11 @@ const NoteRoute = ({
       const inEditor =
         target === document.body || target?.closest(".editor") != null;
       if (!inEditor) return;
-      navigate(notePath(id), { replace: true });
+      onCloseEditor(id);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [editing, id, navigate]);
+  }, [editing, id, onCloseEditor]);
 
   if (!exists) return <NotFound what="note" />;
 
@@ -268,6 +275,7 @@ const NoteRoute = ({
       bookByNoteId={stage.bookByNoteId}
       readAsset={stage.readAsset}
       onCurrentChange={onCurrentChange}
+      onOpenCollection={stage.onOpenCollection}
     />
   );
 };
@@ -418,6 +426,7 @@ export const AppReady = ({
     readAsset,
     externalConflicts,
     dismissConflict,
+    flushPending,
   } = useNotes(store);
 
   const storageAvailable = storeKind === "local" ? store.isAvailable() : true;
@@ -742,6 +751,33 @@ export const AppReady = ({
 
   const handleOpenedAtChapter = useCallback(() => setOpenAt(null), []);
 
+  /* A collection's page, at one of its chapters. Edits still waiting on their
+     autosave are written first, so the page reads what was just typed. The
+     rail follows the route to the Collections tab on its own. */
+  const handleOpenCollection = useCallback(
+    (bookId: string, noteId: string, replace = false) => {
+      void flushPending();
+      setOpenAt({ bookId, chapterId: noteId });
+      navigate(bookPath(bookId), { replace });
+    },
+    [flushPending, navigate],
+  );
+
+  /* Escape in the editor. A chapter goes back to its collection's page, at
+     that chapter; so does any other post, unless a search is open, whose
+     results are the place it was reached from. */
+  const handleCloseEditor = useCallback(
+    (id: string) => {
+      const book = bookByNoteId.get(id);
+      if (book && searchQuery === null) {
+        handleOpenCollection(book.id, id, true);
+        return;
+      }
+      navigate(notePath(id), { replace: true });
+    },
+    [bookByNoteId, handleOpenCollection, navigate, searchQuery],
+  );
+
   /* Lands the reader in the book it just made, which is where naming it and
      adding chapters happens. An untitled book is valid: BookStage can rename
      it, and asking for a name before there is anything to name would put a
@@ -1005,6 +1041,7 @@ export const AppReady = ({
                   bookByNoteId={bookByNoteId}
                   readAsset={readAsset}
                   onCurrentChange={handleFeedCurrentChange}
+                  onOpenCollection={handleOpenCollection}
                 />
               ) : (
                 <Routes>
@@ -1032,6 +1069,8 @@ export const AppReady = ({
                         onScrollHandled={() => setPendingScrollOffset(null)}
                         onSelectNote={handleSelectNote}
                         onEditNote={handleEditNote}
+                        onCloseEditor={handleCloseEditor}
+                        onOpenCollection={handleOpenCollection}
                         scrollRequest={scrollRequest}
                         onCurrentChange={handleFeedCurrentChange}
                         readAsset={readAsset}

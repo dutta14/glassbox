@@ -96,6 +96,12 @@ export const COPY = {
   chapterCount: (n: number) =>
     n === 0 ? "Empty" : n === 1 ? "1 chapter" : `${n} chapters`,
 
+  /* The collection's own page. An empty collection shows "Empty" under the
+     title, from chapterCount, and this beneath it. */
+  collectionEmpty: "No chapters yet. Add a post from its ⋯ menu.",
+  collectionEnd: (name: string) => `End of ${name}.`,
+  removeFromCollection: "Remove from collection",
+
   /* The two tabs under the action links. */
   railTabsLabel: "Library",
   railTabPosts: "Posts",

@@ -315,6 +315,27 @@ export const NotesRail = ({
     }
   }, [searchOpen]);
 
+  /* Opening a collection, from its row or from a post's collection line,
+     marks it in the Collections tab. Keyed on the collection alone, so choosing
+     the Posts tab afterwards is left as the reader chose it. A search that is
+     open is over: the page has taken the pane, and results would be left
+     listing posts beside it. */
+  const searchOpenRef = useRef(searchOpen);
+  const onSearchChangeRef = useRef(onSearchChange);
+  useEffect(() => {
+    searchOpenRef.current = searchOpen;
+    onSearchChangeRef.current = onSearchChange;
+  });
+  useEffect(() => {
+    if (selectedBookId === null) return;
+    chooseTab("collections");
+    if (searchOpenRef.current) {
+      setSearchOpen(false);
+      setQuery("");
+      onSearchChangeRef.current?.(null);
+    }
+  }, [selectedBookId, chooseTab]);
+
   const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Escape") return;
     event.preventDefault();

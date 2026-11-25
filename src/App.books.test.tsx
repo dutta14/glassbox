@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -413,5 +413,142 @@ describe("collections, end to end through the interface", () => {
     expect(
       await screen.findByText(/That book doesn’t exist/),
     ).toBeInTheDocument();
+  });
+});
+
+describe("a collection's own page", () => {
+  /** Luncheon is the collection's second chapter, School its first. */
+  const buildCollection = async (
+    user: ReturnType<typeof userEvent.setup>,
+    notes: Note[],
+  ) => {
+    const books = makeBookStore();
+    renderApp(notes, books.store);
+    await addNoteToNewBook(user, "School", "Childhood");
+    await openRowMenu(user, "Luncheon");
+    await user.click(
+      await screen.findByRole("menuitem", { name: /add to collection/i }),
+    );
+    const dialog = await screen.findByRole("dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: /^Childhood/ }),
+    );
+    await waitFor(() =>
+      expect(books.read()[0].chapterIds).toEqual(["n2", "n1"]),
+    );
+    return books;
+  };
+
+  const notes = () => [
+    makeNote("n1", "Luncheon", "Lunch is ready"),
+    makeNote("n2", "School", "Bells ring"),
+    makeNote("n3", "Garden", "Roses"),
+  ];
+
+  /** The chapters the page asked the browser to bring into view. */
+  const stubScroll = () => {
+    const spy = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = spy;
+    return {
+      reached: () =>
+        (spy.mock.contexts as HTMLElement[])
+          .map((el) => el.dataset.chapterId)
+          .filter(Boolean),
+      restore: () => {
+        Element.prototype.scrollIntoView = original;
+      },
+    };
+  };
+
+  it("opens at the chapter whose collection line was followed and marks the collection", async () => {
+    const user = userEvent.setup();
+    await buildCollection(user, notes());
+    const scroll = stubScroll();
+    try {
+      await user.click(screen.getByRole("button", { name: "Search notes" }));
+      await user.type(screen.getByRole("searchbox"), "Luncheon");
+      await user.click(
+        await screen.findByRole("button", { name: /^Luncheon/ }),
+      );
+      const main = await screen.findByRole("main");
+      await user.click(
+        await within(main).findByRole("link", { name: "Childhood" }),
+      );
+
+      expect(await within(main).findByText("2 chapters")).toBeInTheDocument();
+      expect(scroll.reached()).toContain("n1");
+      expect(screen.getByRole("tab", { name: "Collections" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(
+        screen.getByRole("button", { name: /^Childhood/ }),
+      ).toHaveAttribute("aria-current", "true");
+      // The results are over: the page has the pane, and the tabs are back.
+      expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+    } finally {
+      scroll.restore();
+    }
+  });
+
+  it("returns from editing a chapter to the page at that chapter on Escape", async () => {
+    const user = userEvent.setup();
+    await buildCollection(user, notes());
+    await openTab(user, "Collections");
+    await user.click(await screen.findByRole("button", { name: /^Childhood/ }));
+    const main = await screen.findByRole("main");
+    await user.click(
+      await within(main).findByRole("link", { name: "Edit Luncheon" }),
+    );
+    await screen.findByRole("textbox", { name: "Note title" });
+
+    const scroll = stubScroll();
+    try {
+      await user.keyboard("{Escape}");
+      expect(await within(main).findByText("2 chapters")).toBeInTheDocument();
+      await waitFor(() => expect(scroll.reached()).toContain("n1"));
+    } finally {
+      scroll.restore();
+    }
+  });
+
+  it("takes a chapter out of the collection from the page and returns it to Posts", async () => {
+    const user = userEvent.setup();
+    const { read } = await buildCollection(user, notes());
+    await openTab(user, "Collections");
+    await user.click(await screen.findByRole("button", { name: /^Childhood/ }));
+    const main = await screen.findByRole("main");
+    await user.click(
+      await within(main).findByRole("button", {
+        name: "Remove from collection: Luncheon",
+      }),
+    );
+
+    await waitFor(() => expect(read()[0].chapterIds).toEqual(["n2"]));
+    expect(within(main).queryByText("Lunch is ready")).not.toBeInTheDocument();
+    expect(within(main).getByText("1 chapter")).toBeInTheDocument();
+    await openTab(user, "Posts");
+    expect(await railRow("Luncheon")).toBeInTheDocument();
+  });
+
+  it("opens a post in the feed when its Posts row is clicked from the page", async () => {
+    const user = userEvent.setup();
+    await buildCollection(user, notes());
+    await openTab(user, "Collections");
+    await user.click(await screen.findByRole("button", { name: /^Childhood/ }));
+    const main = await screen.findByRole("main");
+    await within(main).findByText("2 chapters");
+
+    await openTab(user, "Posts");
+    // Switching tabs leaves the pane alone.
+    expect(within(main).getByText("2 chapters")).toBeInTheDocument();
+    await user.click(
+      within(await railRow("Garden")).getByRole("button", { name: /^Garden/ }),
+    );
+    expect(
+      await within(main).findByRole("article", { name: "Garden" }),
+    ).toBeInTheDocument();
+    expect(within(main).queryByText("2 chapters")).not.toBeInTheDocument();
   });
 });

@@ -11,7 +11,6 @@ import { Link } from "react-router-dom";
 import type { Book, Note, StoryMark } from "../types";
 import { COPY } from "../engine/copy";
 import { noteEditPath } from "../engine/routes";
-import { readingTime } from "../utils/readingTime";
 import { groupChapters, suggestStories } from "../utils/chapterNumbering";
 import { BookIndex } from "./BookIndex";
 import type { BookIndexChapter, BookIndexEditing } from "./BookIndex";
@@ -65,14 +64,12 @@ const prefersReducedMotion = (): boolean =>
   typeof window.matchMedia === "function" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const chapterCount = (n: number): string =>
-  n === 1 ? "1 chapter" : `${n} chapters`;
-
 /**
- * The reading view for a book: the title, a contents page, then every chapter
- * in one continuous column flowing into the next. Bodies are already in memory,
- * so there is nothing to fetch and no loader; the continuous scroll is the
- * reading experience, not a data-loading strategy.
+ * The collection's page: the title, the chapter count, a contents page, then
+ * every chapter in one continuous column flowing into the next, in the
+ * collection's own running order. Bodies are already in memory, so there is
+ * nothing to fetch and no loader; the continuous scroll is the reading
+ * experience, not a data-loading strategy.
  */
 export const BookStage = ({
   book,
@@ -337,10 +334,6 @@ export const BookStage = ({
   );
 
   const isEmpty = book.chapterIds.length === 0;
-  const minutes = chapters.reduce(
-    (total, note) => total + (note ? readingTime(note.body) : 0),
-    0,
-  );
 
   return (
     <section
@@ -376,19 +369,17 @@ export const BookStage = ({
       <div className="book-stage__inner">
         <div className="book-stage__front" ref={frontRef}>
           <BookTitleField title={book.title} onRename={onRename} />
-          {!isEmpty && (
-            <p className="book-stage__meta">
-              {chapterCount(book.chapterIds.length)}
-              {minutes > 0 ? ` · ${minutes} min` : ""}
-            </p>
-          )}
+          <p className="book-stage__meta">
+            {COPY.chapterCount(book.chapterIds.length)}
+          </p>
+          {/* Decorative only, so it is kept out of the accessibility tree. */}
+          <div className="book-stage__ornament" aria-hidden="true">
+            <span className="book-stage__ornament-mark" />
+          </div>
         </div>
 
         {isEmpty ? (
-          <p className="book-stage__empty">
-            This book has no chapters yet. Add a note to it from the note's menu
-            in the list.
-          </p>
+          <p className="book-stage__empty">{COPY.collectionEmpty}</p>
         ) : (
           <>
             <div className="book-stage__contents-page">
@@ -474,6 +465,7 @@ export const BookStage = ({
                               <Link
                                 className="book-chapter__title"
                                 to={noteEditPath(id)}
+                                onClick={() => onReadChapter(id)}
                               >
                                 {display}
                               </Link>
@@ -486,6 +478,7 @@ export const BookStage = ({
                             <Link
                               className="book-chapter__number book-chapter__number--sole"
                               to={noteEditPath(id)}
+                              onClick={() => onReadChapter(id)}
                             >
                               {eyebrow}
                             </Link>
@@ -516,12 +509,40 @@ export const BookStage = ({
                               ))}
                             </div>
                           ))}
+
+                        {/* Remembered on the way out, so Esc or Back from the
+                            editor lands on this chapter and not wherever the
+                            observer last saw the reader. */}
+                        <p className="book-chapter__foot">
+                          {note && (
+                            <Link
+                              className="book-chapter__action"
+                              to={noteEditPath(id)}
+                              aria-label={`${COPY.feedEdit} ${titleOf(note)}`}
+                              onClick={() => onReadChapter(id)}
+                            >
+                              {COPY.feedEdit}
+                            </Link>
+                          )}
+                          <button
+                            type="button"
+                            className="book-chapter__action"
+                            aria-label={`${COPY.removeFromCollection}: ${
+                              note ? titleOf(note) : title
+                            }`}
+                            onClick={() => onRemoveChapter(id)}
+                          >
+                            {COPY.removeFromCollection}
+                          </button>
+                        </p>
                       </article>
                     );
                   })}
                 </Fragment>
               ))}
             </div>
+
+            <p className="book-stage__end">{COPY.collectionEnd(bookTitle)}</p>
           </>
         )}
       </div>

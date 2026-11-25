@@ -129,7 +129,7 @@
   padding: var(--space-2) var(--space-3);
   text-align: center;
   font-family: var(--font-serif);
-  font-size: 2.5rem;
+  font-size: 44px;
   font-weight: var(--fw-normal);
   line-height: var(--leading-tight);
   color: var(--color-text);
@@ -165,7 +165,31 @@
   font-size: var(--fs-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--color-text-faint);
+  color: var(--color-text-muted);
+}
+
+/* The mark the editor sets under a title, here under the count. */
+.book-stage__ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: 22px;
+}
+
+.book-stage__ornament::before,
+.book-stage__ornament::after {
+  content: "";
+  width: 44px;
+  height: 1px;
+  background: var(--color-text-muted);
+}
+
+.book-stage__ornament-mark {
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--color-text-muted);
+  transform: rotate(45deg);
 }
 
 /* Parted from the chapters below by more space than anything else on the page,
@@ -174,11 +198,19 @@
   padding-block: var(--space-6) var(--space-10);
 }
 
-.book-stage__empty {
+.book-stage__empty,
+.book-stage__end {
   margin: 0;
   text-align: center;
-  color: var(--color-text-muted);
-  font-size: var(--fs-md);
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--color-text-faint);
+}
+
+.book-stage__end {
+  margin-top: var(--space-16);
+  padding-bottom: var(--space-16);
 }
 
 .book-stage__chapters {
@@ -337,6 +369,34 @@
   width: max-content;
   max-width: 100%;
   margin-inline: auto;
+}
+
+.book-chapter__foot {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-5);
+  margin: var(--space-6) 0 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+}
+
+/* Set as links, not buttons, whichever they are: the page is type, and the
+   underline is what says they can be followed. */
+.book-chapter__action {
+  padding: 0;
+  font: inherit;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 3px;
+}
+
+.book-chapter__action:hover,
+.book-chapter__action:focus-visible {
+  color: var(--color-text);
 }
 
 .book-chapter__missing {

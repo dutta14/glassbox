@@ -29,6 +29,8 @@ interface NoteEditorProps {
   readAsset: (path: string) => Promise<Blob | null>;
   /** The book holding this note. Null for the great majority of notes. */
   book?: Book | null;
+  /** Follows the collection line to the collection's page at this note. */
+  onOpenCollection?: (bookId: string, noteId: string) => void;
 }
 
 /**
@@ -139,6 +141,7 @@ export const NoteEditor = ({
   onSelectNote,
   readAsset,
   book = null,
+  onOpenCollection,
 }: NoteEditorProps) => {
   const scrollRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -434,7 +437,13 @@ export const NoteEditor = ({
         />
         {/* Placed above the rule rather than below it, because it says where
             this note sits rather than anything about the writing that follows. */}
-        {book && <CollectionLine book={book} />}
+        {book && (
+          <CollectionLine
+            book={book}
+            noteId={note.id}
+            onOpen={onOpenCollection}
+          />
+        )}
 
         {/* A chapter rule. Decorative only, so it is kept out of the
             accessibility tree: there is nothing here to announce. */}

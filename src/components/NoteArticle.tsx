@@ -18,6 +18,8 @@ interface NoteArticleProps {
   /** The search in progress, or empty. Every hit in title and body is marked. */
   query: string;
   readAsset: (path: string) => Promise<Blob | null>;
+  /** Follows the collection line to that collection's page at this note. */
+  onOpenCollection?: (bookId: string, noteId: string) => void;
 }
 
 /**
@@ -31,7 +33,7 @@ interface NoteArticleProps {
  * left out on purpose, so a feed of poems never runs a measurement per post.
  */
 export const NoteArticle = memo(
-  ({ note, book, query, readAsset }: NoteArticleProps) => {
+  ({ note, book, query, readAsset, onOpenCollection }: NoteArticleProps) => {
     const reading = useNoteReading(note);
     const titleId = `post-title-${note.id}`;
     const title = note.title.trim() || COPY.untitled;
@@ -45,7 +47,13 @@ export const NoteArticle = memo(
         <h3 id={titleId} className="editor__title note-article__title">
           <Highlight text={title} query={query} />
         </h3>
-        {book && <CollectionLine book={book} />}
+        {book && (
+          <CollectionLine
+            book={book}
+            noteId={note.id}
+            onOpen={onOpenCollection}
+          />
+        )}
         {/* Decorative only, so it is kept out of the accessibility tree. */}
         <div className="editor__ornament" aria-hidden="true">
           <span className="editor__ornament-mark" />
