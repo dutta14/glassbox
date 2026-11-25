@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { BookStage } from "./BookStage";
@@ -62,7 +62,7 @@ const renderStage = (over: StageOverrides = {}) =>
 
 const chapterHeadings = (): string[] =>
   screen
-    .getAllByRole("heading", { level: 3 })
+    .getAllByRole("heading", { level: 2 })
     .map((h) => h.textContent ?? "")
     .filter((t) => t.startsWith("Chapter "));
 
@@ -212,7 +212,7 @@ describe("BookStage — chapters", () => {
     // copyable as an address, which a button would not be.
     expect(screen.getByRole("link", { name: "Only" })).toHaveAttribute(
       "href",
-      "/note/n1",
+      "/note/n1?edit=1",
     );
   });
 
@@ -239,34 +239,143 @@ describe("BookStage — chapters", () => {
   });
 });
 
+describe("BookStage — chapter actions", () => {
+  it("gives each chapter an Edit link into the editor", () => {
+    const one = makeNote({ id: "n1", title: "One" });
+    renderStage({ book: makeBook(["n1"]), chapters: [one] });
+    expect(screen.getByRole("link", { name: "Edit One" })).toHaveAttribute(
+      "href",
+      "/note/n1?edit=1",
+    );
+  });
+
+  it("remembers the chapter being left for the editor, so Back lands on it", async () => {
+    const user = userEvent.setup();
+    const onReadChapter = vi.fn();
+    const one = makeNote({ id: "n1", title: "One" });
+    renderStage({ book: makeBook(["n1"]), chapters: [one], onReadChapter });
+    await user.click(screen.getByRole("link", { name: "Edit One" }));
+    expect(onReadChapter).toHaveBeenCalledWith("n1");
+  });
+
+  it("removes a chapter from the collection from the chapter itself", async () => {
+    const user = userEvent.setup();
+    const onRemoveChapter = vi.fn();
+    const one = makeNote({ id: "n1", title: "One" });
+    const two = makeNote({ id: "n2", title: "Two" });
+    renderStage({
+      book: makeBook(["n1", "n2"]),
+      chapters: [one, two],
+      onRemoveChapter,
+    });
+    await user.click(
+      screen.getByRole("button", { name: "Remove from collection: Two" }),
+    );
+    expect(onRemoveChapter).not.toHaveBeenCalled();
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Remove from collection",
+      }),
+    );
+    expect(onRemoveChapter).toHaveBeenCalledWith("n2");
+  });
+
+  it("keeps the chapter when the removal is cancelled", async () => {
+    const user = userEvent.setup();
+    const onRemoveChapter = vi.fn();
+    renderStage({
+      book: makeBook(["n1"]),
+      chapters: [makeNote({ id: "n1", title: "One" })],
+      onRemoveChapter,
+    });
+    await user.click(
+      screen.getByRole("button", { name: "Remove from collection: One" }),
+    );
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      'Remove "One" from',
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onRemoveChapter).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("ends each chapter with its written date, then Edit and Remove on one line", () => {
+    const one = makeNote({
+      id: "n1",
+      title: "One",
+      createdAt: "2011-06-15T12:00:00",
+      updatedAt: "2024-01-01T12:00:00",
+    });
+    renderStage({ book: makeBook(["n1"]), chapters: [one] });
+    const foot = screen.getByRole("link", { name: "Edit One" }).closest("p");
+    expect(foot).toHaveTextContent(
+      "June 15, 2011 · Edit · Remove from collection",
+    );
+    expect(foot).not.toHaveTextContent(/written|min read/i);
+  });
+
+  it("leaves the date and its separator off a chapter whose date cannot be read", () => {
+    const one = makeNote({ id: "n1", title: "One", createdAt: "garbled" });
+    renderStage({ book: makeBook(["n1"]), chapters: [one] });
+    const foot = screen.getByRole("link", { name: "Edit One" }).closest("p");
+    expect(foot?.textContent?.trim()).toBe("Edit · Remove from collection");
+  });
+
+  it("offers a missing chapter only its removal, since there is nothing to edit", () => {
+    renderStage({ book: makeBook(["gone"]), chapters: [null] });
+    expect(screen.queryByRole("link", { name: /^Edit/ })).toBeNull();
+    expect(
+      screen.getByRole("button", {
+        name: "Remove from collection: Missing chapter",
+      }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("BookStage — front matter", () => {
   it("shows an empty state that says how to add a chapter", () => {
     renderStage({ book: makeBook([]), chapters: [] });
+    expect(screen.getByText("Empty")).toBeInTheDocument();
     expect(
-      screen.getByText(/This book has no chapters yet/),
+      screen.getByText("No chapters yet. Add a post from its ⋯ menu."),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/^End of /)).toBeNull();
     // No contents and no chapters, so nothing pretends the book has content.
     expect(screen.queryByRole("navigation", { name: "Contents" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Contents" })).toBeNull();
   });
 
-  it("counts the chapters and the time to read them", () => {
-    const long = makeNote({
+  it("counts the chapters and their years beneath the title and ends with the collection's name", () => {
+    const one = makeNote({
       id: "n1",
-      title: "Long",
-      body: "word ".repeat(460),
+      title: "One",
+      createdAt: "2011-03-01T12:00:00",
     });
-    const short = makeNote({ id: "n2", title: "Short", body: "a few words" });
-    renderStage({ book: makeBook(["n1", "n2"]), chapters: [long, short] });
-    // 460 words is two minutes at 230wpm, plus the one-minute floor for the
-    // short chapter.
-    expect(screen.getByText("2 chapters · 3 min")).toBeInTheDocument();
+    const two = makeNote({
+      id: "n2",
+      title: "Two",
+      createdAt: "2014-03-01T12:00:00",
+    });
+    renderStage({ book: makeBook(["n1", "n2"]), chapters: [one, two] });
+    expect(screen.getByText("2 chapters · 2011–2014")).toBeInTheDocument();
+    expect(screen.getByText("End of My Book.")).toBeInTheDocument();
   });
 
   it("counts a single chapter in the singular", () => {
-    const one = makeNote({ id: "n1", title: "One", body: "a word" });
+    const one = makeNote({
+      id: "n1",
+      title: "One",
+      body: "a word",
+      createdAt: "2011-03-01T12:00:00",
+    });
     renderStage({ book: makeBook(["n1"]), chapters: [one] });
-    expect(screen.getByText(/^1 chapter · /)).toBeInTheDocument();
+    expect(screen.getByText("1 chapter · 2011")).toBeInTheDocument();
+  });
+
+  it("shows no collection line on its chapters, since the page is the collection", () => {
+    const one = makeNote({ id: "n1", title: "One" });
+    renderStage({ book: makeBook(["n1"]), chapters: [one] });
+    expect(screen.queryByText(/In the collection/)).toBeNull();
   });
 });
 
@@ -341,6 +450,12 @@ describe("BookStage — contents", () => {
     await user.click(
       screen.getByRole("button", {
         name: "Remove Missing chapter from this book",
+      }),
+    );
+    expect(onRemoveChapter).not.toHaveBeenCalled();
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Remove from collection",
       }),
     );
     expect(onRemoveChapter).toHaveBeenCalledWith("gone");
@@ -492,7 +607,7 @@ describe("BookStage — numbering", () => {
   /** Every chapter heading, less the contents heading that shares its level. */
   const headings = (): string[] =>
     screen
-      .getAllByRole("heading", { level: 3 })
+      .getAllByRole("heading", { level: 2 })
       .map((h) => h.textContent ?? "")
       .filter((t) => t !== "Contents");
 
@@ -542,7 +657,7 @@ describe("BookStage — numbering", () => {
 
     expect(screen.getByRole("link", { name: "Prologue" })).toHaveAttribute(
       "href",
-      "/note/p",
+      "/note/p?edit=1",
     );
   });
 
@@ -579,7 +694,7 @@ describe("BookStage — numbering", () => {
     expect(headings()).toEqual(["Chapter 1"]);
     expect(screen.getByRole("link", { name: "Chapter 1" })).toHaveAttribute(
       "href",
-      "/note/a",
+      "/note/a?edit=1",
     );
   });
 
@@ -653,7 +768,7 @@ describe("BookStage — anthologies", () => {
     });
 
     expect(
-      screen.getByRole("link", { name: /Fracture – Chapter 2/ }),
+      screen.getByRole("link", { name: /^Fracture – Chapter 2/ }),
     ).toBeInTheDocument();
   });
 

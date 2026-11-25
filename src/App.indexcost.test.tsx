@@ -120,7 +120,7 @@ describe("the retrieval index is built only when it is read", () => {
 
   it("does not build the index while a note is being typed into", async () => {
     const user = userEvent.setup();
-    renderApp("/note/n0", threeNotes());
+    renderApp("/note/n0?edit=1", threeNotes());
     const body = await screen.findByRole("textbox", { name: /body/i });
 
     spy.builds = 0;

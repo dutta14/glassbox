@@ -74,40 +74,79 @@ export const COPY = {
   /* Distinct from the other two for the same reason they are distinct from
      each other: three lists share the rail, and an unnamed row in one must
      never be mistaken for an unnamed row in another. */
-  untitledBook: "Untitled book",
-  emptyBooksSidebar: "Add a note to a book to start one.",
+  untitledBook: "Untitled collection",
+  emptyBooksSidebar:
+    "No collections yet. Add a post to a collection from its ⋯ menu.",
+  addToCollection: "Add to collection",
+  deleteCollection: "Delete collection",
+  /* The link under the collection list, and the label of the field it becomes. */
+  newCollectionLabel: "Collection name",
+  removeChapterTitle: (chapter: string, collection: string) =>
+    `Remove "${chapter}" from "${collection}"?`,
+  removeChapterDescription:
+    "The post is kept and goes back to your posts. If you add it again later it joins as the last chapter, so you would need to move it back.",
+  deleteCollectionDescription:
+    "This deletes the collection and its running order. Every post in it stays in your library.",
 
-  emptyNotesSidebar: "Use New note to start one.",
-  /* The rail in book mode lists only notes that are in no book. Saying "Use
+  emptyNotesSidebar: "Nothing here yet. Start with the first line.",
+  /* Posts lists only notes that are in no collection. Saying "Use
      New note to start one." to someone whose 566 notes are all shelved would
      be a lie, so this states the fact instead. */
-  emptyNotesAllBooked: "Every note is in a book.",
+  emptyNotesAllBooked: "Every note is in a collection.",
 
-  /* One string for the button's accessible name and the menu's own heading,
-     so what is heard and what is seen can never drift apart. */
-  organizeMenu: "Organize notes",
-  organizeOptionList: "In one list",
-  organizeOptionBook: "By book",
-
-  /* One phrasing for the rail row and the landing page, so the same book is
-     never "Empty" in one place and "0 chapters" in another. An empty book says
+  /* One phrasing for the rail row and the landing page, so the same collection is
+     never "Empty" in one place and "0 chapters" in another. An empty collection says
      so rather than showing a count, which reads like a counter that failed. */
   chapterCount: (n: number) =>
     n === 0 ? "Empty" : n === 1 ? "1 chapter" : `${n} chapters`,
 
-  booksRow: "Books",
-  booksPageTitle: "Books",
+  /* The collection's own page. An empty collection shows "Empty" under the
+     title, from chapterCount, and this beneath it. */
+  collectionEmpty: "No chapters yet. Add a post from its ⋯ menu.",
+  collectionEnd: (name: string) => `End of ${name}.`,
+  removeFromCollection: "Remove from collection",
+
+  /* The two tabs under the action links. */
+  railTabsLabel: "Library",
+  railTabPosts: "Posts",
+  railTabCollections: "Collections",
+  /* Under the masthead. The spec makes it optional and user-editable; until
+     there is somewhere to edit it, it is this line. */
+  railTagline: "Notes, mostly unfinished.",
+  /* Inline search in the rail. The quoted word is the reader's own, so the
+     message names what was searched without naming posts or collections. */
+  searchLabel: "Search notes",
+  searchClose: "esc",
+  searchCloseLabel: "Close search",
+  searchPrompt: "Search every post and collection.",
+  searchNone: (query: string) => `Nothing matches “${query}”.`,
+  searchCount: (n: number) => (n === 1 ? "1 result" : `${n} results`),
+  searchResultsLabel: "Search results",
+  /* The reading feed in the main pane. */
+  feedLabel: "Posts",
+  feedSearchLabel: "Matching notes",
+  feedEmpty: "Nothing here yet. Start with the first line.",
+  feedLoading: "Loading more…",
+  feedEnd: "That’s everything.",
+  feedNoResults: "Nothing to show.",
+  feedSearchPrompt: "Results open here as you type.",
+  feedEdit: "Edit",
+  /* The bar above the editor. The middle dot is part of the line. */
+  editorBarEditing: "Editing · saved as you write",
+  editorBarNewProse: "New prose · saved as you write",
+  editorBarNewVerse: "New verse · saved as you write",
+  editorDone: "Done",
+  booksPageTitle: "Collections",
   /* Placeholder and label share their words: a placeholder is not a label, but
      there is no reason for the two to say different things. */
-  booksSearch: "Search books",
+  booksSearch: "Search collections",
   /* Names what was searched, so the reader knows the app heard them and the
      shelf is genuinely empty for that word. */
-  booksSearchEmpty: (query: string) => `No books match "${query}".`,
-  newBook: "New book",
+  booksSearchEmpty: (query: string) => `No collections match "${query}".`,
+  newBook: "New collection",
   /* Points at the button on this page rather than teaching the add-a-note
      gesture, which would send the reader past a control in front of them. */
-  booksPageEmpty: "No books yet. Use New book to start one.",
-  emptyBookChapters: "No chapters yet.",
+  booksPageEmpty: "No collections yet. Use New collection to start one.",
   emptyNotesChat: "Add a note to ask questions about it.",
   emptyChat: "Ask a question about your notes.",
 

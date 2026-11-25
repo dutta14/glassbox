@@ -89,6 +89,8 @@ const open = async (
   // Targeted by data attribute rather than accessible name: the rail's notes
   // section can start collapsed, and the name would then match nothing.
   await page.locator(`[data-note-id]`, { hasText: title }).first().click();
+  // The rail opens a note in the reading feed. Writing starts from its Edit link.
+  await page.getByRole("link", { name: `Edit ${title}` }).click();
   await expect(page.getByLabel("Note body")).toBeVisible();
 };
 
@@ -192,11 +194,16 @@ test("typing at the end of a long note keeps the caret in view", async ({
   }));
   expect(grew.clientHeight).toBeGreaterThanOrEqual(grew.scrollHeight - 2);
 
-  // The last line of the note sits inside the section's visible window.
+  // The last line of the note is at least half inside the section's visible
+  // window. The field's bottom padding may hang below it, and browsers differ
+  // by a few pixels in how far they scroll to reveal the caret.
   const visible = await page.locator(".editor").evaluate((section, sel) => {
     const el = document.querySelector(sel) as HTMLElement;
     const bottom =
-      el.getBoundingClientRect().bottom - section.getBoundingClientRect().top;
+      el.getBoundingClientRect().bottom -
+      parseFloat(getComputedStyle(el).paddingBottom) -
+      parseFloat(getComputedStyle(el).lineHeight) / 2 -
+      section.getBoundingClientRect().top;
     return bottom <= section.clientHeight + 4 && bottom > 0;
   }, "textarea.editor__body");
   expect(visible).toBe(true);
@@ -427,6 +434,67 @@ test("a poem line longer than the column stays inside it", async ({ page }) => {
   expect(read.width).toBeLessThanOrEqual(wrap.width + 1);
 });
 
+test("a verse line typed longer than the poem widens the field instead of wrapping", async ({
+  page,
+}) => {
+  await open(page, { body: "The mind wanders\nand stops", format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  const body = await startWriting(page);
+  const before = (await body.boundingBox())!.width;
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("End");
+  await page.keyboard.type(" around all the places I once knew");
+
+  const after = (await body.boundingBox())!.width;
+  expect(after).toBeGreaterThan(before + 100);
+
+  // Two lines of text. A wrapped first line would make three.
+  const lines = await body.evaluate((el: HTMLTextAreaElement) => {
+    const style = getComputedStyle(el);
+    el.style.minHeight = "0";
+    el.style.height = "auto";
+    const padding =
+      parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    return (el.scrollHeight - padding) / parseFloat(style.lineHeight);
+  });
+  expect(Math.round(lines)).toBe(2);
+});
+
+test("the poem's left edge stays put while writing a new line and a longer one", async ({
+  page,
+}) => {
+  await open(page, {
+    body: "A line of a rather more moderate length here,\nShort line,",
+    format: "verse",
+  });
+  await page.evaluate(() => document.fonts.ready);
+
+  const body = await startWriting(page);
+  const left = async () => (await body.boundingBox())!.x;
+  const start = await left();
+
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Enter");
+  // A short fresh line drags the mean down, then a long one pushes the widest
+  // line out. Neither may move the block.
+  for (const chunk of [
+    "The",
+    " mind wanders",
+    " around all the places I knew",
+  ]) {
+    await page.keyboard.type(chunk);
+    expect(Math.abs((await left()) - start)).toBeLessThan(1.5);
+  }
+
+  // And it settles back to the centre once writing stops.
+  await page.getByLabel("Note title").focus();
+  const read = (await page.locator(".editor__read").boundingBox())!;
+  expect(Math.abs(read.x - start)).toBeGreaterThan(1.5);
+});
+
 test("a poem is never given a chapter drop cap", async ({ page }) => {
   await open(page, { body: VERSE, format: "verse" });
 
@@ -493,4 +561,76 @@ test("clicking prose after a section break puts the caret in that prose", async 
     (el: HTMLTextAreaElement) => el.selectionStart,
   );
   expect(caret).toBeGreaterThan(SECTIONED.indexOf("The second"));
+});
+
+test.describe("writing swaps the feed for the editor", () => {
+  const storedCount = (page: import("@playwright/test").Page) =>
+    page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("glassbox.notes.v1") ?? "[]").length,
+    );
+
+  const start = async (page: import("@playwright/test").Page) => {
+    await page.addInitScript(init, { body: "Short.", theme: "light" as const });
+    await page.goto("/");
+    await expect(page.getByRole("region", { name: "Posts" })).toBeVisible();
+  };
+
+  test("New then Done with nothing typed leaves no trace", async ({ page }) => {
+    await start(page);
+    const rows = page.locator("[data-note-id]");
+    const before = await rows.count();
+
+    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await expect(
+      page.getByText("New prose · saved as you write"),
+    ).toBeVisible();
+    await expect(page.getByLabel("Note title")).toBeFocused();
+    await page.getByRole("button", { name: "Done" }).click();
+
+    await expect(page.getByRole("region", { name: "Posts" })).toBeVisible();
+    await expect(rows).toHaveCount(before);
+    // Past the autosave delay, so a stray write would have landed by now.
+    await page.waitForTimeout(800);
+    expect(await storedCount(page)).toBe(3);
+  });
+
+  test("a new post is first in the rail as it is typed, and Done lands on it at the top of the feed", async ({
+    page,
+  }) => {
+    await start(page);
+
+    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await page.getByLabel("Note title").fill("On waiting");
+    await page.getByLabel("Note body").fill("The kettle takes its time.");
+    const first = page.locator("[data-note-id]").first();
+    await expect(first).toContainText("On waiting");
+    await expect(first).toHaveAttribute("aria-current", "true");
+
+    await page.getByRole("button", { name: "Done" }).click();
+
+    const feed = page.getByRole("region", { name: "Posts" });
+    await expect(feed.getByRole("article").first()).toContainText("On waiting");
+    await expect(first).toHaveAttribute("aria-current", "true");
+    await expect.poll(() => storedCount(page)).toBe(4);
+  });
+
+  test("Esc from Edit returns to the feed on that post", async ({ page }) => {
+    await start(page);
+    await page
+      .getByRole("link", { name: "Edit The older note that came before it" })
+      .click();
+    await expect(page.getByText("Editing · saved as you write")).toBeVisible();
+
+    await page.keyboard.press("Escape");
+
+    const feed = page.getByRole("region", { name: "Posts" });
+    await expect(feed).toBeVisible();
+    await expect(feed).toBeFocused();
+    await expect(
+      page.locator("[data-note-id]", {
+        hasText: "The older note that came before it",
+      }),
+    ).toHaveAttribute("aria-current", "true");
+  });
 });

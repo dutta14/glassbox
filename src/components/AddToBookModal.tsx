@@ -115,7 +115,7 @@ export const AddToBookModal = ({
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = title.trim();
-    // A whitespace only title would create a book called "Untitled book", so
+    // A whitespace only title would create a collection called "Untitled collection", so
     // the confirm is disabled and this guards the Enter path too.
     if (trimmed === "") return;
     onCreateBook(trimmed);
@@ -138,21 +138,21 @@ export const AddToBookModal = ({
         className="add-book"
       >
         <h2 id={titleId} className="add-book__title">
-          {current ? "Move to another book" : "Add to book"}
+          {current ? "Move to another collection" : COPY.addToCollection}
         </h2>
         {/* A note belongs to one book, so choosing a second one is a move
             rather than an addition. Said before the choice is made, because a
             book quietly losing a chapter is not a thing to find out later. */}
         <p id={descId} className="add-book__desc">
           {current
-            ? `${name} is in ${current.title.trim() || COPY.untitledBook}. Choosing another book moves it.`
-            : `Add ${name} to a book.`}
+            ? `${name} is in ${current.title.trim() || COPY.untitledBook}. Choosing another collection moves it.`
+            : `Add ${name} to a collection.`}
         </p>
 
         {hasBooks && (
           <div className="add-book__section">
             <p id={listLabelId} className="add-book__label">
-              Your books
+              Your collections
             </p>
             <ul className="add-book__list" aria-labelledby={listLabelId}>
               {books.map((book) => {
@@ -172,7 +172,7 @@ export const AddToBookModal = ({
                       <span className="add-book__book-title">{bookTitle}</span>
                       <span className="add-book__book-meta">
                         {already
-                          ? "Already in this book"
+                          ? "Already in this collection"
                           : chapterLabel(book.chapterIds.length)}
                       </span>
                     </button>
@@ -185,14 +185,14 @@ export const AddToBookModal = ({
 
         <form className="add-book__section" onSubmit={onSubmit}>
           <label htmlFor={inputId} className="add-book__label">
-            {hasBooks ? "Or create a book" : "Create a book"}
+            {hasBooks ? "Or create a collection" : "Create a collection"}
           </label>
           <div className="add-book__create-row">
             <input
               id={inputId}
               type="text"
               className="add-book__input"
-              placeholder="Book title"
+              placeholder="Collection title"
               autoComplete="off"
               value={title}
               onChange={(e) => setTitle(e.target.value)}

@@ -1,72 +1,69 @@
-import { Fragment, useCallback, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { KeyboardEvent } from "react";
 import type { Book, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { BookListItem } from "./BookListItem";
-import { BookChapterList } from "./BookChapterList";
 import { NewNoteMenu } from "./NewNoteMenu";
-import { OrganizeMenu } from "./OrganizeMenu";
-import { NoteSearchModal } from "./NoteSearchModal";
-import { RailFlyout } from "./RailFlyout";
-import { RailTip } from "./RailTip";
 import { useScrollFades } from "../hooks/useScrollFades";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SettingsModal } from "./SettingsModal";
 import type { Theme } from "../hooks/useTheme";
-import type { OrganizeMode } from "../hooks/useNoteOrganize";
 import type { FolderState } from "../hooks/useStorageBackend";
 import { COPY } from "../engine/copy";
+import { groupByYear, monthDayOf } from "../utils/groupByYear";
+import { orderCollections } from "../utils/collectionOrder";
+import {
+  bodySnippet,
+  fullDateOf,
+  normalizeQuery,
+  searchNotes,
+  titleHasHit,
+} from "../utils/searchNotes";
 import "../styles/NotesRail.css";
 
+/* Clear of the sticky year heading above and of the edge below. */
+const RAIL_SCROLL_TOP_MARGIN = 56;
+const RAIL_SCROLL_BOTTOM_MARGIN = 16;
+
+/* Under this width the rail is a drawer over the page. Kept in step with the
+   900px breakpoints in tokens.css and NoteFeed.css. */
+const SMALL_QUERY = "(max-width: 899px)";
+
 const COLLAPSE_KEY = "glassbox.rail.v1";
-const SECTIONS_KEY = "glassbox.railSections.v1";
+const TAB_KEY = "glassbox.railTab.v1";
 
-/* Shares openMenuId with the row menus so that opening this one closes any row
-   menu and the other way round. No note or book can collide with it: ids are
-   generated and this is not. */
-const ORGANIZE_MENU_ID = "organize-notes";
+type RailTab = "posts" | "collections";
 
-type SectionName = "books" | "notes";
-type SectionState = Record<SectionName, boolean>;
+const TABS: readonly { id: RailTab; label: string }[] = [
+  { id: "posts", label: COPY.railTabPosts },
+  { id: "collections", label: COPY.railTabCollections },
+];
 
-/** All open is the state the rail has always had, so a first-time reader
-    sees no change. */
-const DEFAULT_SECTIONS: SectionState = {
-  books: true,
-  notes: true,
-};
-
-const readSections = (): SectionState => {
+/** Wrapped because localStorage throws in some privacy modes. Anything but a
+    known tab falls back to Posts, the tab the rail has always opened on. */
+const readTab = (): RailTab => {
   try {
-    const raw = localStorage.getItem(SECTIONS_KEY);
-    if (!raw) return DEFAULT_SECTIONS;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return DEFAULT_SECTIONS;
-    const record = parsed as Partial<Record<SectionName, unknown>>;
-    // Read field by field rather than trusting the blob, so a hand-edited or
-    // half-written value cannot collapse a section with no way back.
-    return {
-      // A reader who saved their sections before books existed has no `books`
-      // key. Falling back to the default opens it, which is what someone
-      // meeting a new section should get.
-      books:
-        typeof record.books === "boolean"
-          ? record.books
-          : DEFAULT_SECTIONS.books,
-      notes:
-        typeof record.notes === "boolean"
-          ? record.notes
-          : DEFAULT_SECTIONS.notes,
-    };
+    return localStorage.getItem(TAB_KEY) === "collections"
+      ? "collections"
+      : "posts";
   } catch {
-    return DEFAULT_SECTIONS;
+    return "posts";
   }
 };
 
-const writeSections = (sections: SectionState): void => {
+const writeTab = (tab: RailTab): void => {
   try {
-    localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
+    localStorage.setItem(TAB_KEY, tab);
   } catch {
-    // Non-fatal. The sections still toggle for this session.
+    // Non-fatal. The tab still holds for this session.
   }
 };
 
@@ -141,14 +138,22 @@ interface NotesRailProps {
   folderName: string | null;
   connectError: string | null;
   onSelect: (id: string) => void;
+  /** The search text as it changes, and null once search closes, so the
+      reading pane can show the same results the rail lists. */
+  onSearchChange?: (query: string | null) => void;
   onCreate: (format: NoteFormat) => void;
+  /** Something other than the open note was started while the editor is open,
+      so the app can save and close the editor first. It names the tab the
+      reader is going to, or null when no tab is involved. */
+  onLeaveWriting?: (tab: "posts" | "collections" | null) => void;
+  /** Counts the times a new post was started. Each one moves the rail to
+      Posts and closes its search, whichever way New was asked for. The app
+      has already dropped the search by then, so it is not told again. */
+  newPostCount?: number;
   onSelectBook: (id: string) => void;
-  /** Opens the Books page, the only way into a book while the rail keeps
-      notes in one list. */
-  onOpenBooks: () => void;
-  /** Opens a book at one of its chapters, from a chapter row. */
-  onOpenChapter: (bookId: string, noteId: string) => void;
   onDeleteBook: (id: string) => void;
+  /** Creates an empty collection with this name and opens it. */
+  onCreateBook: (title: string) => void;
   onAddNoteToBook: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onToggleNoteFormat: (id: string) => void;
@@ -158,8 +163,6 @@ interface NotesRailProps {
   onDisconnectFolder: () => void;
   theme: Theme;
   onToggleTheme: () => void;
-  organizeMode: OrganizeMode;
-  onOrganizeChange: (mode: OrganizeMode) => void;
 }
 
 export const NotesRail = ({
@@ -173,11 +176,13 @@ export const NotesRail = ({
   folderName,
   connectError,
   onSelect,
+  onSearchChange,
   onCreate,
+  onLeaveWriting,
+  newPostCount = 0,
   onSelectBook,
-  onOpenBooks,
-  onOpenChapter,
   onDeleteBook,
+  onCreateBook,
   onAddNoteToBook,
   onDeleteNote,
   onToggleNoteFormat,
@@ -187,80 +192,206 @@ export const NotesRail = ({
   onDisconnectFolder,
   theme,
   onToggleTheme,
-  organizeMode,
-  onOrganizeChange,
 }: NotesRailProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const isSmall = useMediaQuery(SMALL_QUERY);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  /* The rail is on screen: the drawer when it is open on a small screen, the
+     sidebar when it has not been collapsed on a wide one. The saved collapse
+     choice belongs to wide screens and is left alone here. */
+  const railShown = isSmall ? drawerOpen : !collapsed;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sections, setSections] = useState<SectionState>(readSections);
-  /** Only one flyout at a time: two panels open beside a one-icon-wide rail
-      would overlap each other. */
-  const [openFlyout, setOpenFlyout] = useState<SectionName | null>(null);
-  const booksOpen = sections.books;
-  const notesOpen = sections.notes;
+  const [tab, setTab] = useState<RailTab>(readTab);
+  /* Years the reader has folded. Per session: which years were shut last week
+     is not worth remembering. */
+  const [foldedYears, setFoldedYears] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
 
-  const toggleSection = useCallback((name: SectionName) => {
-    setSections((current) => {
-      const next = { ...current, [name]: !current[name] };
-      writeSections(next);
+  /* Null while the "New collection" link shows; a string once it has become
+     the name field. */
+  const [newName, setNewName] = useState<string | null>(null);
+
+  const chooseTab = useCallback((next: RailTab) => {
+    setTab(next);
+    writeTab(next);
+    setNewName(null);
+  }, []);
+
+  const toggleYear = useCallback((key: string) => {
+    setFoldedYears((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
       return next;
     });
   }, []);
+
+  /* Left and Right move between the two tabs, wrapping; Home and End jump to
+     the first and last. The tab that takes focus opens, so what is focused and
+     what is shown never disagree. */
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step =
+      event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    const edge = event.key === "Home" ? 0 : event.key === "End" ? -1 : null;
+    if (step === 0 && edge === null) return;
+    event.preventDefault();
+    const index = TABS.findIndex((t) => t.id === tab);
+    const next =
+      edge !== null
+        ? TABS.at(edge)!
+        : TABS[(index + step + TABS.length) % TABS.length];
+    onLeaveWriting?.(next.id);
+    chooseTab(next.id);
+    document.getElementById(`rail-tab-${next.id}`)?.focus();
+  };
   /** Held here rather than per row, so opening one menu closes any other. */
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
   const [pendingBookDelete, setPendingBookDelete] = useState<Book | null>(null);
-  /* A set rather than a single id: every book costs a fixed five rows when
-     open, so there is no reason to shut one to look at another. Per session,
-     because which books you had open is not worth remembering. */
-  const [expandedBooks, setExpandedBooks] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-
-  const toggleBook = useCallback((id: string) => {
-    setExpandedBooks((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-  }, []);
   /* Ask is a pane beside the note now rather than a place the rail can send
      you, so nothing competes with the open note for aria-current and this is
      simply whichever note is open. */
   const currentNoteId = selectedNoteId;
 
-  const byBook = organizeMode === "book";
-
-  /* Derived from the same map the rows use to name a note's book, so the list
-     and the badge can never disagree about what is shelved. */
-  const listedNotes = byBook
-    ? notes.filter((note) => !bookNameByNoteId.has(note.id))
-    : notes;
-
-  /* Resolved from the full set, not the filtered one: in book mode every
-     chapter has been taken out of listedNotes by definition.
-
-     The rows are the notes themselves rather than labels made from them. A
-     chapter row is the same note the Notes list shows, cosmetically moved
-     under its book, so it is rendered by the same component and answers to
-     the same name. Chapters whose note has been deleted are dropped rather
-     than shown as a dead row. */
+  /* For a collection row's year range. */
   const noteById = new Map(notes.map((note) => [note.id, note]));
-
-  const chaptersOf = (book: Book): Note[] =>
-    book.chapterIds
-      .map((id) => noteById.get(id))
-      .filter((note): note is Note => note !== undefined);
+  const orderedBooks = useMemo(
+    () => orderCollections(books, notes),
+    [books, notes],
+  );
+  /* Derived from the same map the rows use to name a note's collection, so
+     Posts can never show a note that a collection holds. */
+  const postNotes = notes.filter((note) => !bookNameByNoteId.has(note.id));
+  const yearGroups = groupByYear(postNotes);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  useScrollFades(listRef, [notes.length, collapsed]);
+  /* Search leaves the tab and the folded years alone, so closing it restores
+     them by simply showing them again. */
+  const searchQuery = normalizeQuery(query);
+  const results = searchOpen ? searchNotes(notes, query) : [];
+  useScrollFades(listRef, [notes.length, railShown, tab, searchOpen]);
 
-  /** Focus goes back to the glyph that opened the modal, never to the body. */
-  const closeSearch = useCallback(() => {
-    setSearchOpen(false);
-    searchToggleRef.current?.focus();
+  /* The marker follows the reader through the feed, so the row has to stay in
+     view without the reader having to look for it. Only the list moves, and
+     only when the row is outside a margin: the sticky year heading covers the
+     top of it, and a row hard against the bottom edge reads as cut off. */
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list || currentNoteId === null) return;
+    const row = Array.from(
+      list.querySelectorAll<HTMLElement>("[data-note-id]"),
+    ).find((el) => el.dataset.noteId === currentNoteId);
+    if (!row) return;
+    const listBox = list.getBoundingClientRect();
+    const rowBox = row.getBoundingClientRect();
+    const above = rowBox.top - (listBox.top + RAIL_SCROLL_TOP_MARGIN);
+    const below = rowBox.bottom - (listBox.bottom - RAIL_SCROLL_BOTTOM_MARGIN);
+    if (above < 0) list.scrollTop += above;
+    else if (below > 0) list.scrollTop += below;
+  }, [currentNoteId]);
+
+  const openSearch = useCallback(() => {
+    setQuery("");
+    setNewName(null);
+    setSearchOpen(true);
+    onSearchChange?.("");
+  }, [onSearchChange]);
+
+  const newBookToggleRef = useRef<HTMLButtonElement>(null);
+  const newBookInputRef = useRef<HTMLInputElement>(null);
+  /** Set on cancel so the link, which comes back, takes focus rather than
+      letting it drop to the body. */
+  const refocusNewBook = useRef(false);
+  const naming = newName !== null;
+
+  useEffect(() => {
+    if (naming) {
+      newBookInputRef.current?.focus();
+    } else if (refocusNewBook.current) {
+      refocusNewBook.current = false;
+      newBookToggleRef.current?.focus();
+    }
+  }, [naming]);
+
+  const cancelNewBook = useCallback(() => {
+    refocusNewBook.current = true;
+    setNewName(null);
   }, []);
+
+  const onNewBookKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelNewBook();
+      return;
+    }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const name = (newName ?? "").trim();
+    // An empty name is ignored: the field stays open for a real one.
+    if (name === "") return;
+    setNewName(null);
+    chosen(false);
+    onCreateBook(name);
+  };
+
+  /** Set on close so the Search link, which comes back, takes focus rather
+      than letting it drop to the body. */
+  const refocusSearchToggle = useRef(false);
+  const closeSearch = useCallback(() => {
+    refocusSearchToggle.current = true;
+    setSearchOpen(false);
+    setQuery("");
+    onSearchChange?.(null);
+  }, [onSearchChange]);
+
+  useEffect(() => {
+    if (searchOpen) {
+      searchInputRef.current?.focus();
+    } else if (refocusSearchToggle.current) {
+      refocusSearchToggle.current = false;
+      searchToggleRef.current?.focus();
+    }
+  }, [searchOpen]);
+
+  /* Opening a collection, from its row or from a post's collection line,
+     marks it in the Collections tab. Keyed on the collection alone, so choosing
+     the Posts tab afterwards is left as the reader chose it. A search that is
+     open is over: the page has taken the pane, and results would be left
+     listing posts beside it. */
+  const searchOpenRef = useRef(searchOpen);
+  const onSearchChangeRef = useRef(onSearchChange);
+  const seenNewPostCount = useRef(newPostCount);
+  useEffect(() => {
+    if (newPostCount === seenNewPostCount.current) return;
+    seenNewPostCount.current = newPostCount;
+    chooseTab("posts");
+    setSearchOpen(false);
+    setQuery("");
+  }, [newPostCount, chooseTab]);
+  useEffect(() => {
+    searchOpenRef.current = searchOpen;
+    onSearchChangeRef.current = onSearchChange;
+  });
+  useEffect(() => {
+    if (selectedBookId === null) return;
+    chooseTab("collections");
+    if (searchOpenRef.current) {
+      setSearchOpen(false);
+      setQuery("");
+      onSearchChangeRef.current?.(null);
+    }
+  }, [selectedBookId, chooseTab]);
+
+  const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeSearch();
+  };
 
   const cancelDelete = useCallback(() => {
     const id = pendingDelete?.id ?? null;
@@ -280,6 +411,80 @@ export const NotesRail = ({
     onDeleteNote(id);
   }, [pendingDelete, onDeleteNote]);
 
+  const asideRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  /** Set when the drawer closes, so the menu button, which comes back, takes
+      focus rather than letting it drop to the body. */
+  const refocusMenuButton = useRef(false);
+
+  const closeDrawer = useCallback((returnFocus: boolean) => {
+    refocusMenuButton.current = returnFocus;
+    setDrawerOpen(false);
+  }, []);
+
+  /* A choice that shows something in the page also puts the drawer away. */
+  const chosen = (returnFocus = true) => {
+    if (isSmall) closeDrawer(returnFocus);
+  };
+
+  useEffect(() => {
+    if (!isSmall) setDrawerOpen(false);
+  }, [isSmall]);
+
+  useEffect(() => {
+    if (!isSmall) return;
+    if (drawerOpen) {
+      closeButtonRef.current?.focus();
+    } else if (refocusMenuButton.current) {
+      refocusMenuButton.current = false;
+      menuButtonRef.current?.focus();
+    }
+  }, [isSmall, drawerOpen]);
+
+  /* Escape closes the drawer, unless a menu or dialog has the key first. Those
+     close themselves on the same press, so the drawer stays under them. */
+  useEffect(() => {
+    if (!isSmall || !drawerOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector('[role="menu"], [role="dialog"]')) return;
+      e.stopPropagation();
+      closeDrawer(true);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isSmall, drawerOpen, closeDrawer]);
+
+  /* The scrim hides the page, so Tab stays among the drawer's own controls. */
+  const onDrawerKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    const aside = asideRef.current;
+    if (
+      event.key !== "Tab" ||
+      !isSmall ||
+      !drawerOpen ||
+      !aside ||
+      !aside.contains(event.target as Node)
+    ) {
+      return;
+    }
+    const focusable = Array.from(
+      aside.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [tabindex="0"]',
+      ),
+    ).filter((el) => el.offsetParent !== null);
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && event.target === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && event.target === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   /* Mirrors the note dialog. Focus goes back to the row menu trigger that
      opened it, because the row is still there when you cancel. */
   const toggleCollapsed = useCallback(() => {
@@ -290,540 +495,457 @@ export const NotesRail = ({
     });
   }, []);
 
+  const openMenu = () => {
+    if (isSmall) setDrawerOpen(true);
+    else toggleCollapsed();
+  };
+
   return (
-    <aside
-      className={`notes-rail${collapsed ? " notes-rail--collapsed" : ""}`}
-      aria-label="Notes"
-    >
-      <div className="notes-rail__top-row">
-        {!collapsed && <div className="notes-rail__brand">Glassbox</div>}
-        {!collapsed && (
-          <div className="notes-rail__actions">
-            <button
-              ref={searchToggleRef}
-              type="button"
-              className="notes-rail__action"
-              onClick={() => setSearchOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={searchOpen}
-              aria-label="Search notes"
+    <>
+      {isSmall && drawerOpen && (
+        <div
+          className="notes-rail__scrim"
+          aria-hidden="true"
+          onClick={() => closeDrawer(true)}
+        />
+      )}
+      <aside
+        ref={asideRef}
+        className={`notes-rail${railShown ? "" : " notes-rail--collapsed"}${
+          isSmall && drawerOpen ? " notes-rail--drawer" : ""
+        }`}
+        aria-label="Notes"
+        onKeyDown={onDrawerKeyDown}
+      >
+        {/* Collapsed, there is no rail: only this button, which brings it back.
+          On a small screen it is always the way in, and opens the drawer. */}
+        {!railShown && (
+          <button
+            ref={menuButtonRef}
+            type="button"
+            className="notes-rail__open"
+            onClick={openMenu}
+            aria-label="Open sidebar"
+            aria-expanded={false}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              aria-hidden="true"
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="7.2"
-                  cy="7.2"
-                  r="4.2"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-                <path
-                  d="M10.4 10.4 13.5 13.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
+              <path
+                d="M3 5.5h14M3 10h14M3 14.5h14"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
         )}
 
-        {/* Last in the row and last in the tab order. It acts on the rail as a
-            whole, so it sits apart from the search glyph that acts on the
-            notes. Rendered outside the collapsed guard, because it is the only
-            way back once the rail is shut. */}
-        <button
-          type="button"
-          className="notes-rail__toggle rail-tip-host"
-          onClick={toggleCollapsed}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-          >
-            <rect
-              x="2.75"
-              y="3.75"
-              width="14.5"
-              height="12.5"
-              rx="2.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path d="M7.75 4v12" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-          <RailTip label={collapsed ? "Expand sidebar" : "Collapse sidebar"} />
-        </button>
-      </div>
-
-      {!collapsed && (
-        <>
-          <NewNoteMenu onCreate={onCreate} />
-
-          {/* In one list the shelf is a place to go, not a section of the
-              sidebar, so it sits with Ask and New note rather than
-              heading a list of its own. No count: the number of books is
-              what the page is for. */}
-          {!byBook && (
-            <button
-              type="button"
-              className="notes-rail__entry"
-              onClick={onOpenBooks}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
+        {railShown && (
+          <>
+            <div className="notes-rail__mast">
+              <div className="notes-rail__brand">Glassbox</div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                className="notes-rail__toggle"
+                onClick={() =>
+                  isSmall ? closeDrawer(true) : toggleCollapsed()
+                }
+                aria-label={isSmall ? "Close sidebar" : "Collapse sidebar"}
               >
-                {/* A closed book seen head on: the cover, the page block
-                    banded across the foot, and a title rule near the top.
-                    Same 16px grid and 1.4 stroke as the chat bubble beside
-                    it. */}
-                <path
-                  d="M4.75 2.25h7.5a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-7.5a2 2 0 0 1-2-2v-7.5a2 2 0 0 1 2-2Z"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M4.75 11.25h8.5"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M6.5 5.25h4.25"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-              {COPY.booksRow}
-            </button>
-          )}
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <rect
+                    x="2.75"
+                    y="3.75"
+                    width="14.5"
+                    height="12.5"
+                    rx="2.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M7.75 4v12"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </button>
+            </div>
+            <p className="notes-rail__tagline">{COPY.railTagline}</p>
 
-          {/* One scroll area for the lists, so the rail scrolls as a single
-              column instead of boxes that run out of room independently. */}
-          <div ref={listRef} className="notes-rail__list scroll-fades">
-            {byBook && (
-              <div className="notes-rail__section notes-rail__section--sticky">
-                <h2 className="notes-rail__title" id="rail-books-heading">
+            <div className="notes-rail__links">
+              {searchOpen ? (
+                <div className="notes-rail__search">
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    role="searchbox"
+                    className="notes-rail__search-input"
+                    placeholder={COPY.searchLabel}
+                    aria-label={COPY.searchLabel}
+                    autoComplete="off"
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      onSearchChange?.(e.target.value);
+                    }}
+                    onKeyDown={onSearchKeyDown}
+                  />
                   <button
                     type="button"
-                    className="notes-rail__title-toggle"
-                    onClick={() => toggleSection("books")}
-                    aria-expanded={booksOpen}
-                    aria-controls="rail-books-list"
+                    className="notes-rail__search-close"
+                    aria-label={COPY.searchCloseLabel}
+                    onClick={closeSearch}
                   >
-                    Books
-                    <Chevron open={booksOpen} />
+                    {COPY.searchClose}
                   </button>
-                </h2>
-              </div>
-            )}
-
-            <nav
-              id="rail-books-list"
-              aria-labelledby="rail-books-heading"
-              hidden={!byBook || !booksOpen}
-            >
-              {books.length === 0 ? (
-                <div className="notes-rail__empty">
-                  <p className="notes-rail__empty-body">
-                    {COPY.emptyBooksSidebar}
-                  </p>
                 </div>
               ) : (
-                <ul>
-                  {books.map((book) => (
-                    /* The chapters are a sibling row, not a child of the book
-                       row. Nesting one .note-row inside another made the two
-                       hover as one: the rail's rules reach descendants, so
-                       pointing at a chapter lit its book up and held every
-                       chapter's menu open at once. */
-                    <Fragment key={book.id}>
-                      <BookListItem
-                        book={book}
-                        expansion={
-                          byBook
-                            ? {
-                                open: expandedBooks.has(book.id),
-                                onToggle: () => toggleBook(book.id),
-                              }
-                            : undefined
-                        }
-                        isSelected={book.id === selectedBookId}
-                        menuOpen={openMenuId === book.id}
-                        onSelect={() => onSelectBook(book.id)}
-                        onMenuOpenChange={(open) =>
-                          setOpenMenuId(open ? book.id : null)
-                        }
-                        onRequestDelete={() => setPendingBookDelete(book)}
-                      />
-                      {byBook && expandedBooks.has(book.id) && (
-                        <li className="book-chapters-row">
-                          <BookChapterList
-                            listId={`book-chapters-${book.id}`}
-                            bookTitle={book.title.trim() || COPY.untitledBook}
-                            chapters={chaptersOf(book)}
-                            currentNoteId={currentNoteId}
-                            openMenuId={openMenuId}
-                            onOpenChapter={(noteId) =>
-                              onOpenChapter(book.id, noteId)
-                            }
-                            onMenuOpenChange={(noteId, open) =>
-                              setOpenMenuId(open ? noteId : null)
-                            }
-                            onRequestDelete={setPendingDelete}
-                            onToggleFormat={onToggleNoteFormat}
-                            onAddToBook={onAddNoteToBook}
-                          />
-                        </li>
-                      )}
-                    </Fragment>
-                  ))}
-                </ul>
-              )}
-            </nav>
+                <>
+                  <NewNoteMenu
+                    onCreate={(format) => {
+                      chosen(false);
+                      onCreate(format);
+                    }}
+                  />
 
-            <div className="notes-rail__section notes-rail__section--sticky">
-              <h2 className="notes-rail__title" id="rail-notes-heading">
-                <button
-                  type="button"
-                  className="notes-rail__title-toggle"
-                  onClick={() => toggleSection("notes")}
-                  aria-expanded={notesOpen}
-                  aria-controls="rail-notes-list"
-                >
-                  Notes
-                  <Chevron open={notesOpen} />
-                </button>
-              </h2>
-              <OrganizeMenu
-                mode={organizeMode}
-                open={openMenuId === ORGANIZE_MENU_ID}
-                onOpenChange={(open) =>
-                  setOpenMenuId(open ? ORGANIZE_MENU_ID : null)
-                }
-                onChoose={onOrganizeChange}
-              />
+                  <button
+                    ref={searchToggleRef}
+                    type="button"
+                    className="notes-rail__entry"
+                    onClick={openSearch}
+                    aria-label={COPY.searchLabel}
+                  >
+                    Search
+                  </button>
+                </>
+              )}
             </div>
 
-            {hasSampleNotes && notesOpen && (
-              <div className="notes-rail__banner" role="note">
-                <p className="notes-rail__banner-text">{COPY.sampleBanner}</p>
-                <button
-                  type="button"
-                  className="notes-rail__banner-action"
-                  onClick={onDeleteSamples}
-                >
-                  Delete all samples
-                </button>
+            {!searchOpen && (
+              <div
+                className="notes-rail__tabs"
+                role="tablist"
+                aria-label={COPY.railTabsLabel}
+              >
+                {TABS.map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    id={`rail-tab-${id}`}
+                    className="notes-rail__tab"
+                    aria-selected={tab === id}
+                    aria-controls="rail-panel"
+                    tabIndex={tab === id ? 0 : -1}
+                    onClick={() => {
+                      onLeaveWriting?.(id);
+                      chooseTab(id);
+                    }}
+                    onKeyDown={onTabKeyDown}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             )}
 
-            <nav
-              id="rail-notes-list"
-              aria-label="Note list"
-              hidden={!notesOpen}
+            {/* One scroll area for the list, so the rail scrolls as a single
+              column. It is the tab panel, so the headings inside are its
+              direct children and stick to its top. */}
+            <div
+              ref={listRef}
+              id="rail-panel"
+              {...(searchOpen
+                ? { role: "region", "aria-label": COPY.searchResultsLabel }
+                : { role: "tabpanel", "aria-labelledby": `rail-tab-${tab}` })}
+              className="notes-rail__list scroll-fades"
             >
-              {listedNotes.length === 0 ? (
-                <div className="notes-rail__empty">
-                  <p className="notes-rail__empty-body">
-                    {/* Telling someone with 566 notes to write their first
-                        one would be a lie. In book mode an empty list means
-                        everything is shelved, which is its own good news. */}
-                    {byBook && notes.length > 0
-                      ? COPY.emptyNotesAllBooked
-                      : COPY.emptyNotesSidebar}
-                  </p>
-                </div>
+              {searchOpen ? (
+                <>
+                  <div className="notes-rail__status" aria-live="polite">
+                    {searchQuery === "" ? (
+                      <p className="notes-rail__empty-body">
+                        {COPY.searchPrompt}
+                      </p>
+                    ) : results.length === 0 ? (
+                      <p className="notes-rail__empty-body">
+                        {COPY.searchNone(query.trim())}
+                      </p>
+                    ) : (
+                      <p className="notes-rail__count">
+                        {COPY.searchCount(results.length)}
+                      </p>
+                    )}
+                  </div>
+                  {results.length > 0 && (
+                    <ul>
+                      {results.map((note) => (
+                        <NoteListItem
+                          key={note.id}
+                          note={note}
+                          isSelected={note.id === currentNoteId}
+                          menuOpen={openMenuId === note.id}
+                          bookName={bookNameByNoteId.get(note.id) ?? null}
+                          dateLabel={fullDateOf(note)}
+                          query={query}
+                          snippet={
+                            titleHasHit(note, query)
+                              ? null
+                              : bodySnippet(note, query)
+                          }
+                          onSelect={() => {
+                            chosen();
+                            onSelect(note.id);
+                          }}
+                          onMenuOpenChange={(menuOpen) =>
+                            setOpenMenuId(menuOpen ? note.id : null)
+                          }
+                          onRequestDelete={() => setPendingDelete(note)}
+                          onToggleFormat={() => onToggleNoteFormat(note.id)}
+                          onAddToBook={() => onAddNoteToBook(note.id)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </>
+              ) : tab === "posts" ? (
+                <>
+                  {hasSampleNotes && yearGroups.length > 0 && (
+                    <div className="notes-rail__banner" role="note">
+                      <p className="notes-rail__banner-text">
+                        {COPY.sampleBanner}
+                      </p>
+                      <button
+                        type="button"
+                        className="notes-rail__banner-action"
+                        onClick={onDeleteSamples}
+                      >
+                        Delete all samples
+                      </button>
+                    </div>
+                  )}
+
+                  {yearGroups.length === 0 ? (
+                    <div className="notes-rail__empty">
+                      <p className="notes-rail__empty-body">
+                        {/* Telling someone with 566 notes to write their first
+                          one would be a lie. When everything is in a
+                          collection, that is the news. */}
+                        {notes.length > 0
+                          ? COPY.emptyNotesAllBooked
+                          : COPY.emptyNotesSidebar}
+                      </p>
+                    </div>
+                  ) : (
+                    yearGroups.map(({ key, notes: items }) => {
+                      const open =
+                        !foldedYears.has(key) ||
+                        items.some((note) => note.id === currentNoteId);
+                      return (
+                        <Fragment key={key}>
+                          <div className="notes-rail__section notes-rail__section--sticky">
+                            <h3
+                              className="notes-rail__title"
+                              id={`rail-year-${key}`}
+                            >
+                              <button
+                                type="button"
+                                className="notes-rail__title-toggle"
+                                onClick={() => toggleYear(key)}
+                                aria-expanded={open}
+                                aria-controls={`rail-year-list-${key}`}
+                              >
+                                <span className="notes-rail__title-label">
+                                  {key}
+                                </span>
+                                <span
+                                  className="notes-rail__title-mark"
+                                  aria-hidden="true"
+                                />
+                                <span
+                                  className="notes-rail__title-rule"
+                                  aria-hidden="true"
+                                />
+                                <span className="notes-rail__title-count">
+                                  {items.length}
+                                </span>
+                                <Chevron open={open} />
+                              </button>
+                            </h3>
+                          </div>
+                          <ul
+                            id={`rail-year-list-${key}`}
+                            aria-labelledby={`rail-year-${key}`}
+                            hidden={!open}
+                          >
+                            {items.map((note) => (
+                              <NoteListItem
+                                key={note.id}
+                                note={note}
+                                isSelected={note.id === currentNoteId}
+                                menuOpen={openMenuId === note.id}
+                                dateLabel={monthDayOf(note)}
+                                onSelect={() => {
+                                  chosen();
+                                  onSelect(note.id);
+                                }}
+                                onMenuOpenChange={(menuOpen) =>
+                                  setOpenMenuId(menuOpen ? note.id : null)
+                                }
+                                onRequestDelete={() => setPendingDelete(note)}
+                                onToggleFormat={() =>
+                                  onToggleNoteFormat(note.id)
+                                }
+                                onAddToBook={() => onAddNoteToBook(note.id)}
+                              />
+                            ))}
+                          </ul>
+                        </Fragment>
+                      );
+                    })
+                  )}
+                </>
               ) : (
-                <ul>
-                  {listedNotes.map((note) => (
-                    <NoteListItem
-                      key={note.id}
-                      note={note}
-                      isSelected={note.id === currentNoteId}
-                      menuOpen={openMenuId === note.id}
-                      onSelect={() => onSelect(note.id)}
-                      onMenuOpenChange={(open) =>
-                        setOpenMenuId(open ? note.id : null)
-                      }
-                      onRequestDelete={() => setPendingDelete(note)}
-                      onToggleFormat={() => onToggleNoteFormat(note.id)}
-                      bookName={bookNameByNoteId.get(note.id)}
-                      onAddToBook={() => onAddNoteToBook(note.id)}
-                    />
-                  ))}
-                </ul>
+                <>
+                  {books.length === 0 ? (
+                    <div className="notes-rail__empty">
+                      <p className="notes-rail__empty-body">
+                        {COPY.emptyBooksSidebar}
+                      </p>
+                    </div>
+                  ) : (
+                    <ul>
+                      {orderedBooks.map((book) => (
+                        <BookListItem
+                          key={book.id}
+                          book={book}
+                          chapters={book.chapterIds.map((id) =>
+                            noteById.get(id),
+                          )}
+                          isSelected={book.id === selectedBookId}
+                          menuOpen={openMenuId === book.id}
+                          onSelect={() => {
+                            chosen();
+                            onSelectBook(book.id);
+                          }}
+                          onMenuOpenChange={(open) =>
+                            setOpenMenuId(open ? book.id : null)
+                          }
+                          onRequestDelete={() => setPendingBookDelete(book)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+
+                  {newName === null ? (
+                    <button
+                      ref={newBookToggleRef}
+                      type="button"
+                      className="notes-rail__newbook"
+                      onClick={() => {
+                        onLeaveWriting?.("collections");
+                        setOpenMenuId(null);
+                        setNewName("");
+                      }}
+                    >
+                      {COPY.newBook}
+                    </button>
+                  ) : (
+                    <div className="notes-rail__search notes-rail__name-field">
+                      <input
+                        ref={newBookInputRef}
+                        type="text"
+                        className="notes-rail__search-input"
+                        aria-label={COPY.newCollectionLabel}
+                        placeholder="Name this collection"
+                        autoComplete="off"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        onKeyDown={onNewBookKeyDown}
+                      />
+                      <button
+                        type="button"
+                        className="notes-rail__search-close"
+                        aria-label="Cancel"
+                        onClick={cancelNewBook}
+                      >
+                        {COPY.searchClose}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
-            </nav>
-          </div>
+            </div>
 
-          <footer className="notes-rail__footer">
-            <button
-              type="button"
-              className="notes-rail__settings"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <GearIcon />
-              <span>Settings</span>
-            </button>
-          </footer>
-        </>
-      )}
-
-      {/* Collapsed, the rail keeps every action it had, as icons. A list
-          cannot shrink to an icon without losing its contents, so it hands its
-          rows to a flyout that opens beside it. */}
-      {collapsed && (
-        <div className="notes-rail__icons">
-          <button
-            type="button"
-            className="rail-flyout__trigger rail-tip-host"
-            /* The collapsed strip stays a single plus. A caret at 56px wide
-               would be a corner target barely bigger than the glyph, and
-               verse is still one step away through a row's own menu. */
-            onClick={() => onCreate("prose")}
-            aria-label="New note"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M8 3v10M3 8h10"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            <RailTip label="New note" />
-          </button>
-
-          <button
-            ref={searchToggleRef}
-            type="button"
-            className="rail-flyout__trigger rail-tip-host"
-            onClick={() => setSearchOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={searchOpen}
-            aria-label="Search notes"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              <circle
-                cx="7.2"
-                cy="7.2"
-                r="4.2"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M10.4 10.4 13.5 13.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            <RailTip label="Search notes" />
-          </button>
-
-          <div className="notes-rail__icons-divider" />
-
-          <RailFlyout
-            label="Books"
-            heading="Books"
-            open={openFlyout === "books"}
-            onOpenChange={(next) => setOpenFlyout(next ? "books" : null)}
-            isEmpty={books.length === 0}
-            emptyText={COPY.emptyBooksSidebar}
-            icon={
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+            <footer className="notes-rail__footer">
+              <button
+                type="button"
+                className="notes-rail__settings"
+                onClick={() => setSettingsOpen(true)}
               >
-                {/* The same shut book the chapter expander uses. The earlier
-                    glyph left its left edge open to suggest a spine folding
-                    back, which read as an icon that had been cut off. */}
-                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
-              </svg>
-            }
-          >
-            <ul>
-              {books.map((book) => (
-                <BookListItem
-                  key={book.id}
-                  book={book}
-                  isSelected={book.id === selectedBookId}
-                  menuOpen={openMenuId === book.id}
-                  onSelect={() => {
-                    onSelectBook(book.id);
-                    setOpenFlyout(null);
-                  }}
-                  onMenuOpenChange={(open) =>
-                    setOpenMenuId(open ? book.id : null)
-                  }
-                  onRequestDelete={() => setPendingBookDelete(book)}
-                />
-              ))}
-            </ul>
-          </RailFlyout>
+                <GearIcon />
+                <span>Settings</span>
+              </button>
+            </footer>
+          </>
+        )}
 
-          <RailFlyout
-            label="Notes"
-            heading="Notes"
-            open={openFlyout === "notes"}
-            onOpenChange={(next) => setOpenFlyout(next ? "notes" : null)}
-            /* The collapsed rail is the same rail. If it listed notes the
-               expanded one hides, widening the sidebar would make notes
-               disappear. */
-            isEmpty={listedNotes.length === 0}
-            emptyText={
-              byBook && notes.length > 0
-                ? COPY.emptyNotesAllBooked
-                : COPY.emptyNotesSidebar
-            }
-            icon={
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M4.75 2.75h4.5l2 2v8.5h-6.5z"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M6.25 8.5h3.5M6.25 10.5h3.5"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            }
-          >
-            <ul>
-              {listedNotes.map((note) => (
-                <NoteListItem
-                  key={note.id}
-                  note={note}
-                  isSelected={note.id === currentNoteId}
-                  menuOpen={openMenuId === note.id}
-                  onSelect={() => {
-                    onSelect(note.id);
-                    setOpenFlyout(null);
-                  }}
-                  onMenuOpenChange={(open) =>
-                    setOpenMenuId(open ? note.id : null)
-                  }
-                  onRequestDelete={() => setPendingDelete(note)}
-                  onToggleFormat={() => onToggleNoteFormat(note.id)}
-                  bookName={bookNameByNoteId.get(note.id)}
-                  onAddToBook={() => onAddNoteToBook(note.id)}
-                />
-              ))}
-            </ul>
-          </RailFlyout>
+        {/* A collection is a running order, not a container. Deleting it must
+          leave every chapter in the library, and the description has to say so
+          outright: the word implies the pages go with it, and a reader who
+          believes that will not press the button. */}
+        <ConfirmDialog
+          open={pendingBookDelete !== null}
+          title={`Delete "${pendingBookDelete?.title.trim() || COPY.untitledBook}"?`}
+          description={COPY.deleteCollectionDescription}
+          confirmLabel={COPY.deleteCollection}
+          onConfirm={() => {
+            if (pendingBookDelete) onDeleteBook(pendingBookDelete.id);
+            setPendingBookDelete(null);
+          }}
+          onCancel={() => setPendingBookDelete(null)}
+        />
 
-          {/* Collapsed, the rail used to drop its footer entirely, so the
-              folder and the theme were unreachable without widening it
-              first. One entry is small enough to keep. */}
-          <button
-            type="button"
-            className="rail-flyout__trigger rail-tip-host notes-rail__settings-icon"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Settings"
-          >
-            <GearIcon />
-            <RailTip label="Settings" />
-          </button>
-        </div>
-      )}
-
-      {/* A book is a running order, not a container. Deleting it must leave
-          every chapter in the library, and the description has to say so
-          outright: the word "book" implies the pages go with it, and a reader
-          who believes that will not press the button. */}
-      <ConfirmDialog
-        open={pendingBookDelete !== null}
-        title={`Delete "${pendingBookDelete?.title.trim() || COPY.untitledBook}"?`}
-        description="This deletes the book and its running order. Every note in it stays in your library."
-        confirmLabel="Delete book"
-        onConfirm={() => {
-          if (pendingBookDelete) onDeleteBook(pendingBookDelete.id);
-          setPendingBookDelete(null);
-        }}
-        onCancel={() => setPendingBookDelete(null)}
-      />
-
-      {/* Names the conversation so the two dialogs in this rail are never
+        {/* Names the conversation so the two dialogs in this rail are never
           confusable, and says plainly that notes are unaffected. Deleting a
           transcript that quoted a note must not read as deleting the note. */}
 
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title={`Delete "${pendingDelete?.title.trim() || COPY.untitled}"?`}
-        description="This cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        destructive
-        onConfirm={confirmDelete}
-        onCancel={cancelDelete}
-      />
+        <ConfirmDialog
+          open={pendingDelete !== null}
+          title={`Delete "${pendingDelete?.title.trim() || COPY.untitled}"?`}
+          description="This cannot be undone."
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          destructive
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
 
-      <SettingsModal
-        open={settingsOpen}
-        folderState={folderState}
-        folderName={folderName}
-        connectError={connectError}
-        theme={theme}
-        onConnectFolder={onConnectFolder}
-        onReconnectFolder={onReconnectFolder}
-        onDisconnectFolder={onDisconnectFolder}
-        onToggleTheme={onToggleTheme}
-        onClose={() => setSettingsOpen(false)}
-      />
-
-      <NoteSearchModal
-        open={searchOpen}
-        notes={notes}
-        selectedNoteId={currentNoteId}
-        onSelect={onSelect}
-        onClose={closeSearch}
-      />
-    </aside>
+        <SettingsModal
+          open={settingsOpen}
+          folderState={folderState}
+          folderName={folderName}
+          connectError={connectError}
+          theme={theme}
+          onConnectFolder={onConnectFolder}
+          onReconnectFolder={onReconnectFolder}
+          onDisconnectFolder={onDisconnectFolder}
+          onToggleTheme={onToggleTheme}
+          onClose={() => setSettingsOpen(false)}
+        />
+      </aside>
+    </>
   );
 };

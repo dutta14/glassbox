@@ -92,7 +92,7 @@ export const Library = ({
           books
         </p>
         <button type="button" className="hud__new" onClick={onCreate}>
-          New book
+          New collection
         </button>
       </div>
       <div className="vig" />

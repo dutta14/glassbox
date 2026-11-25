@@ -1,0 +1,8 @@
+/* A quiet wash, never a bright colour. --color-surface-raised stays visible on
+   both the light and dark page. */
+mark {
+  padding: 0 1px;
+  border-radius: 2px;
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}

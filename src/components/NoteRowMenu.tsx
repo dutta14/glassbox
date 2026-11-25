@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useDismissable } from "../hooks/useDismissable";
 import type { NoteFormat } from "../types";
+import { COPY } from "../engine/copy";
 import { createPortal } from "react-dom";
 import "../styles/NoteRowMenu.css";
 
@@ -28,6 +29,8 @@ interface NoteRowMenuProps {
    * chapter, so a conversation row passes nothing and no book item renders.
    */
   onAddToBook?: () => void;
+  /** Collection rows name what they delete; note and chat rows say "Delete". */
+  deleteLabel?: string;
 }
 
 interface MenuPosition {
@@ -50,6 +53,7 @@ export const NoteRowMenu = ({
   format,
   onToggleFormat,
   onAddToBook,
+  deleteLabel = "Delete",
 }: NoteRowMenuProps) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -206,7 +210,7 @@ export const NoteRowMenu = ({
                     strokeLinejoin="round"
                   />
                 </svg>
-                Add to book
+                {COPY.addToCollection}
               </button>
             )}
 
@@ -235,7 +239,7 @@ export const NoteRowMenu = ({
                   strokeLinejoin="round"
                 />
               </svg>
-              Delete
+              {deleteLabel}
             </button>
           </div>,
           document.body,

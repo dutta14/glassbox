@@ -66,7 +66,7 @@ describe("NoteListItem", () => {
   describe("single-line contract", () => {
     /**
      * The row shows the title and nothing else, the way a chat app lists
-     * conversations. Detail lives in the search modal instead.
+     * conversations. Dates and search hits appear only when the caller passes them.
      */
     it("renders the title as the row's entire content", () => {
       renderItem();

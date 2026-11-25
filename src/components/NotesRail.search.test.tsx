@@ -5,24 +5,31 @@ import { NotesRail } from "./NotesRail";
 import type { Book, Conversation, Note } from "../types";
 
 /**
- * Wiring between the rail's search glyph and NoteSearchModal only. The modal's
- * own behaviour (matching, keyboard navigation, empty states) is covered
- * directly in NoteSearchModal.test.tsx.
+ * Inline search in the rail: the field, the flat result list, highlighting and
+ * how it opens and closes. The matcher itself is covered in
+ * utils/searchNotes.test.ts.
  *
  * Nothing covered NotesRail before this file, which is how a stale
  * `.notes-rail__new` selector in App.tsx survived a rename with a green build
  * and a green suite.
  */
 
-const iso = "2026-01-01T00:00:00.000Z";
+// Noon, so the year and day hold in any timezone.
+const iso = "2026-01-01T12:00:00.000Z";
 
-const mkNote = (id: string, title: string, body: string): Note => ({
+const mkNote = (
+  id: string,
+  title: string,
+  body: string,
+  tags: string[] = [],
+  createdAt = iso,
+): Note => ({
   id,
   title,
   body,
-  tags: [],
-  createdAt: iso,
-  updatedAt: iso,
+  tags,
+  createdAt,
+  updatedAt: createdAt,
 });
 
 const notes = [
@@ -35,7 +42,8 @@ const renderRail = (
     notes?: Note[];
     conversations?: Conversation[];
     books?: Book[];
-    organizeMode?: "list" | "book";
+    bookNames?: Map<string, string>;
+    selectedNoteId?: string | null;
   } = {},
 ) => {
   const onCreate = vi.fn();
@@ -43,7 +51,7 @@ const renderRail = (
   render(
     <NotesRail
       notes={overrides.notes ?? notes}
-      selectedNoteId={null}
+      selectedNoteId={overrides.selectedNoteId ?? null}
       hasSampleNotes={false}
       folderState="unsupported"
       folderName={null}
@@ -59,132 +67,277 @@ const renderRail = (
       theme="dark"
       books={overrides.books ?? []}
       selectedBookId={null}
-      bookNameByNoteId={new Map<string, string>()}
+      bookNameByNoteId={overrides.bookNames ?? new Map<string, string>()}
       onSelectBook={vi.fn()}
-      onOpenBooks={vi.fn()}
-      onOpenChapter={vi.fn()}
       onDeleteBook={vi.fn()}
+      onCreateBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
-      organizeMode={overrides.organizeMode ?? "list"}
-      onOrganizeChange={vi.fn()}
     />,
   );
   return { onCreate, onSelect };
 };
 
 const glyph = () => screen.getByRole("button", { name: "Search notes" });
-const dialog = () => screen.getByRole("dialog");
+const field = () => screen.getByRole("searchbox", { name: "Search notes" });
+const results = () => screen.getByRole("region", { name: "Search results" });
+const rowTitles = () =>
+  within(results())
+    .getAllByRole("listitem")
+    .map((li) => li.querySelector(".note-item__title")?.textContent);
 
 describe("NotesRail search wiring", () => {
   /**
-   * The glyph used to sit beside the "Notes" label. Role-based queries find it
-   * wherever it lives, so its position needs asserting separately.
+   * The glyph used to sit beside the "Notes" label, then in the masthead row.
+   * Role-based queries find it wherever it lives, so its position needs
+   * asserting separately.
    */
-  it("puts the search glyph in the top row beside the brand", () => {
+  it("puts Search in the links row, under the masthead", () => {
     renderRail();
-    const topRow = document.querySelector(".notes-rail__top-row");
+    const mast = document.querySelector(".notes-rail__mast");
+    const links = document.querySelector(".notes-rail__links");
 
-    expect(topRow).not.toBeNull();
-    expect(topRow!.contains(glyph())).toBe(true);
-    expect(topRow!.textContent).toContain("Glassbox");
+    expect(mast).not.toBeNull();
+    expect(links).not.toBeNull();
+    expect(mast!.textContent).toContain("Glassbox");
+    expect(links!.contains(glyph())).toBe(true);
+    expect(glyph()).toHaveTextContent("Search");
   });
 
-  /* There are two section headers now, Chats and Notes. Targeting the
-     heading and walking up means this keeps testing the Notes header rather
-     than whichever one happens to come first in the DOM. */
-  it("no longer keeps a search control beside the Notes heading", () => {
+  it("keeps the search control out of the year headings", () => {
     renderRail();
-    const section = screen
-      .getByRole("heading", { name: "Notes" })
-      .closest(".notes-rail__section");
+    const headings = screen.getAllByRole("heading", { level: 3 });
 
-    expect(section).not.toBeNull();
-    expect(section!.textContent).toContain("Notes");
-    // The heading owns two buttons now: the accordion toggle and the organize
-    // menu. Naming both, rather than counting them, keeps the claim about
-    // search while leaving room for controls that are not search.
-    const toggle = section!.querySelector("button[aria-expanded]");
-    expect(toggle).not.toBeNull();
-    expect(toggle!.textContent).toContain("Notes");
+    expect(headings.length).toBeGreaterThan(0);
+    for (const heading of headings) {
+      expect(heading.querySelector('[aria-label="Search notes"]')).toBeNull();
+    }
+  });
+
+  it("keeps the field closed and the tabs shown until Search is used", () => {
+    renderRail();
+
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("tablist")).toBeInTheDocument();
+  });
+
+  it("swaps New and Search for the field, and hides the tabs, when Search is used", async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(glyph());
+
+    expect(field()).toHaveFocus();
+    expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Search notes" })).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("asks for a query before showing anything", async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(glyph());
+
     expect(
-      section!.querySelector('[aria-label="Organize notes"]'),
-    ).not.toBeNull();
-    expect(section!.querySelector('[aria-label="Search notes"]')).toBeNull();
+      within(results()).getByText("Search every post and collection."),
+    ).toBeInTheDocument();
+    expect(within(results()).queryAllByRole("listitem")).toHaveLength(0);
   });
 
-  it("keeps the modal closed until the glyph is used", () => {
-    renderRail();
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(glyph()).toHaveAttribute("aria-expanded", "false");
-  });
-
-  it("opens the modal from the glyph and reflects that on the button", async () => {
+  it("shows a flat list of matches with a polite count", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(glyph());
+    await user.type(field(), "o");
 
-    expect(dialog()).toBeInTheDocument();
-    expect(glyph()).toHaveAttribute("aria-expanded", "true");
+    expect(rowTitles()).toEqual(["Postgres tuning", "Sourdough"]);
+    expect(within(results()).queryAllByRole("heading")).toHaveLength(0);
+    const count = within(results()).getByText("2 results");
+    expect(count.parentElement).toHaveAttribute("aria-live", "polite");
   });
 
-  it("announces the glyph as opening a dialog", () => {
-    renderRail();
-
-    expect(glyph()).toHaveAttribute("aria-haspopup", "dialog");
-  });
-
-  it("hands the rail's notes to the modal", async () => {
+  it("uses the singular for one result", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(glyph());
+    await user.type(field(), "sourdough");
 
-    expect(within(dialog()).getAllByRole("option")).toHaveLength(notes.length);
+    expect(within(results()).getByText("1 result")).toBeInTheDocument();
   });
 
-  /** Dismissing must not drop focus onto the body; it goes back to the glyph. */
-  it("returns focus to the glyph when the modal closes", async () => {
+  it("names the query when nothing matches", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(glyph());
-    await user.keyboard("{Escape}");
+    await user.type(field(), "zzz");
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(glyph()).toHaveFocus();
+    expect(
+      within(results()).getByText("Nothing matches “zzz”."),
+    ).toBeInTheDocument();
   });
 
-  it("passes a chosen note through to the rail's own onSelect", async () => {
+  it("searches notes inside collections too and names the collection", async () => {
+    const user = userEvent.setup();
+    renderRail({
+      bookNames: new Map([["n2", "Bread"]]),
+    });
+
+    await user.click(glyph());
+    await user.type(field(), "sourdough");
+
+    const row = within(results()).getByRole("button", { name: /^Sourdough/ });
+    expect(row).toHaveAccessibleName("Sourdough, in Bread");
+    expect(row.querySelector(".note-item__meta")?.textContent).toMatch(
+      /January 1, 2026 · Bread$/,
+    );
+  });
+
+  it("lists matches newest first across years, with the year on each date line", async () => {
+    const user = userEvent.setup();
+    renderRail({
+      notes: [
+        mkNote("old", "Pool old", "", [], "2019-05-03T12:00:00.000Z"),
+        mkNote("new", "Pool new", "", [], "2024-11-20T12:00:00.000Z"),
+        mkNote("mid", "Pool mid", "", [], "2022-02-14T12:00:00.000Z"),
+      ],
+    });
+
+    await user.click(glyph());
+    await user.type(field(), "pool");
+
+    expect(rowTitles()).toEqual(["Pool new", "Pool mid", "Pool old"]);
+    const meta = within(results())
+      .getAllByRole("listitem")
+      .map((li) => li.querySelector(".note-item__meta")?.textContent);
+    expect(meta).toEqual([
+      expect.stringMatching(/2024$/),
+      expect.stringMatching(/2022$/),
+      expect.stringMatching(/2019$/),
+    ]);
+  });
+
+  it("marks every occurrence of the query in a title", async () => {
+    const user = userEvent.setup();
+    renderRail({ notes: [mkNote("n1", "Ship it, then ship again", "")] });
+
+    await user.click(glyph());
+    await user.type(field(), "ship");
+
+    const marks = results().querySelectorAll(".note-item__title mark");
+    expect(Array.from(marks).map((m) => m.textContent)).toEqual([
+      "Ship",
+      "ship",
+    ]);
+    expect(results().querySelector(".note-item__snippet")).toBeNull();
+  });
+
+  it("shows one marked body line when only the body matches", async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(glyph());
+    await user.type(field(), "underfed");
+
+    const snippet = results().querySelector(".note-item__snippet");
+    expect(snippet).toHaveTextContent("the starter was underfed");
+    expect(snippet!.querySelector("mark")).toHaveTextContent("underfed");
+    expect(results().querySelector(".note-item__title mark")).toBeNull();
+  });
+
+  it("matches on tags without inventing a snippet", async () => {
+    const user = userEvent.setup();
+    renderRail({
+      notes: [mkNote("n1", "Sourdough", "the starter", ["baking"])],
+    });
+
+    await user.click(glyph());
+    await user.type(field(), "baking");
+
+    expect(rowTitles()).toEqual(["Sourdough"]);
+    expect(results().querySelector(".note-item__snippet")).toBeNull();
+  });
+
+  it("leaves the accessible name of a row as the title, marks or not", async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(glyph());
+    await user.type(field(), "underfed");
+
+    expect(
+      within(results()).getByRole("button", { name: "Sourdough" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens a chosen note and keeps the search open", async () => {
     const user = userEvent.setup();
     const { onSelect } = renderRail();
 
     await user.click(glyph());
-    await user.click(within(dialog()).getByText("Sourdough"));
+    await user.type(field(), "sourdough");
+    await user.click(
+      within(results()).getByRole("button", { name: /^Sourdough/ }),
+    );
 
     expect(onSelect).toHaveBeenCalledWith("n2");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(field()).toHaveValue("sourdough");
   });
 
-  /**
-   * Search lives entirely in the modal. The rail list behind it must keep
-   * showing every note, since filtering something the modal covers is invisible.
-   */
-  it("leaves the rail list unfiltered while the modal narrows its own results", async () => {
+  it("closes on Escape, brings the tabs back and returns focus to Search", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(glyph());
-    await user.type(
-      screen.getByRole("combobox", { name: "Search notes" }),
-      "sourdough",
-    );
+    await user.type(field(), "sour");
+    await user.keyboard("{Escape}");
 
-    const rail = screen.getByRole("navigation", { name: "Note list" });
-    expect(within(rail).getByText("Postgres tuning")).toBeInTheDocument();
-    expect(within(rail).getByText("Sourdough")).toBeInTheDocument();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    expect(screen.getByRole("tablist")).toBeInTheDocument();
+    expect(glyph()).toHaveFocus();
+    expect(screen.getByRole("tabpanel")).toBeInTheDocument();
+  });
+
+  it("closes from the esc button and clears the query for next time", async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(glyph());
+    await user.type(field(), "sour");
+    await user.click(screen.getByRole("button", { name: "Close search" }));
+    await user.click(glyph());
+
+    expect(field()).toHaveValue("");
+    expect(
+      within(results()).getByText("Search every post and collection."),
+    ).toBeInTheDocument();
+  });
+
+  it("restores the previous tab and folded years after search closes", async () => {
+    const user = userEvent.setup();
+    localStorage.clear();
+    renderRail({ notes: [mkNote("a", "Alpha", "")] });
+
+    await user.click(screen.getByRole("button", { name: /2026/ }));
+    await user.click(screen.getByRole("tab", { name: "Collections" }));
+    await user.click(glyph());
+    await user.type(field(), "alpha");
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByRole("tab", { name: "Collections" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await user.click(screen.getByRole("tab", { name: "Posts" }));
+    expect(screen.getByRole("button", { name: /2026/ })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    localStorage.clear();
   });
 
   it("still exposes the new-note button as a separate control", async () => {
@@ -221,42 +374,32 @@ describe("NotesRail search wiring", () => {
       .getAllByRole("button")
       .map((b) => b.textContent?.trim());
 
-    expect(buttons).toContain("New note");
+    expect(buttons).toContain("New");
     expect(buttons).not.toContain("Create your first note");
     expect(document.querySelector(".notes-rail__empty-action")).toBeNull();
   });
 
   /**
-   * Three sections share one rail, so an empty list has to say which list it
-   * is by its copy alone. The headings that used to do that were removed
-   * because an empty section was taller than a full one; the wording now
-   * carries the whole job, and identical wording in two sections would leave
-   * the reader unable to tell chats from books from notes.
+   * Posts and Collections share one rail, so an empty list has to say which
+   * list it is by its copy alone.
    */
-  it("gives each empty section wording that no other section repeats", () => {
-    /* Arranged by book, because that is the only arrangement in which both
-       sections can be empty at once. In one list the Books section is a
-       single row into the Books page and has no empty state to read. */
-    renderRail({
-      notes: [],
-      books: [],
-      organizeMode: "book",
-    });
+  it("gives each empty tab wording that the other does not repeat", async () => {
+    const user = userEvent.setup();
+    localStorage.clear();
+    renderRail({ notes: [], books: [] });
 
-    const bodyOf = (listId: string): string => {
-      const list = document.getElementById(listId);
-      if (!list) throw new Error(`no list ${listId}`);
-      const body = list.querySelector(".notes-rail__empty-body");
-      if (!body) throw new Error(`no empty state in ${listId}`);
-      return body.textContent?.trim() ?? "";
-    };
+    const bodyOf = (): string =>
+      screen.getByRole("tabpanel").querySelector(".notes-rail__empty-body")
+        ?.textContent ?? "";
 
-    const books = bodyOf("rail-books-list");
-    const notes = bodyOf("rail-notes-list");
+    const posts = bodyOf();
+    await user.click(screen.getByRole("tab", { name: "Collections" }));
+    const collections = bodyOf();
 
-    expect(books).toBeTruthy();
-    expect(notes).toBeTruthy();
-    expect(new Set([books, notes]).size).toBe(2);
+    expect(posts).toBeTruthy();
+    expect(collections).toBeTruthy();
+    expect(posts).not.toBe(collections);
+    localStorage.clear();
   });
 
   /* The heading was a second, larger copy of the same message stacked above

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Routes, Route, useParams } from "react-router-dom";
-import { notePath, bookPath } from "./routes";
+import { notePath, noteEditPath, isEditSearch, bookPath } from "./routes";
 
 describe("notePath and bookPath", () => {
   it("percent-encodes an id so a slash in it cannot break the path structure", () => {
@@ -12,6 +12,18 @@ describe("notePath and bookPath", () => {
   it("percent-encodes a space and a hash so the segment survives the URL", () => {
     expect(notePath("weird id/#")).toBe("/note/weird%20id%2F%23");
     expect(bookPath("weird id/#")).toBe("/book/weird%20id%2F%23");
+  });
+});
+
+describe("noteEditPath and isEditSearch", () => {
+  it("keeps the note's own path and asks for the editor in the query", () => {
+    expect(noteEditPath("a/b")).toBe("/note/a%2Fb?edit=1");
+  });
+
+  it("reads the editor flag back from a location's query string", () => {
+    expect(isEditSearch("?edit=1")).toBe(true);
+    expect(isEditSearch("")).toBe(false);
+    expect(isEditSearch("?edit=0")).toBe(false);
   });
 });
 

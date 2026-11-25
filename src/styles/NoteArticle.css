@@ -1,0 +1,40 @@
+/* A post in the feed. It borrows the editor's type and ornament (see
+   NoteEditor.css, which NoteReading pulls in) and only adds what a heading
+   and a link need that a textarea did not. */
+.note-article {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  scroll-margin-top: 40px;
+}
+
+.note-article > * {
+  flex-shrink: 0;
+}
+
+/* The editor's title is a textarea with 3rem of air above it, which puts a
+   chapter down the page. Between posts the feed's own 140px does that job, so
+   the heading starts where the article does. */
+.note-article__title {
+  margin: 0;
+  padding-block-start: 0;
+  overflow-wrap: anywhere;
+}
+
+.note-article__edit {
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 3px;
+}
+
+.note-article__edit:hover,
+.note-article__edit:focus-visible {
+  color: var(--color-text);
+}
+
+/* The editor keeps a 300px floor under a short note as a place to click and
+   start writing. A post is only read, so it is as tall as its words. */
+.note-article .editor__body {
+  min-height: 0;
+}

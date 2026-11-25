@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { useEffect } from "react";
 import { render, screen, waitFor, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -201,10 +201,10 @@ describe("deep links open the right thing (AC 1)", () => {
     renderApp(["/note/n1"], {
       notes: [makeNote("n1", ISO, "First note")],
     });
-    const editor = await screen.findByRole("region", { name: "Note editor" });
-    expect(within(editor).getByLabelText("Note title")).toHaveValue(
-      "First note",
-    );
+    const feed = await screen.findByRole("region", { name: "Posts" });
+    expect(
+      within(feed).getByRole("article", { name: "First note" }),
+    ).toBeInTheDocument();
   });
 
   /* Conversations no longer have addresses. A link someone saved or a tab
@@ -257,7 +257,8 @@ describe("deep links open the right thing (AC 1)", () => {
   it("says so plainly at / when there is nothing to open", async () => {
     renderApp(["/"], { notes: [] });
 
-    expect(await screen.findByText(COPY.emptyLibraryTitle)).toBeInTheDocument();
+    // The rail and the pane say the same thing, so there are two.
+    expect(await screen.findAllByText(COPY.feedEmpty)).toHaveLength(2);
     expect(pathname()).toBe("/");
   });
 });
@@ -316,7 +317,7 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
       ],
     });
     const user = userEvent.setup();
-    await screen.findByRole("region", { name: "Note editor" });
+    await screen.findByRole("region", { name: "Posts" });
 
     await openAsk(user);
 
@@ -331,7 +332,7 @@ describe("selecting from the rail sets the URL and adds one history entry (AC 2,
       ],
     });
     const user = userEvent.setup();
-    await screen.findByRole("region", { name: "Note editor" });
+    await screen.findByRole("region", { name: "Posts" });
 
     // Go n1 -> n2 -> click n2 again (no-op) -> back should land on n1, not n2.
     await user.click(screen.getByRole("button", { name: "Beta note" }));
@@ -394,7 +395,7 @@ describe("asking a question leaves the address bar alone (AC 7)", () => {
   it("submitting a prompt keeps the URL on the note and shows the thread", async () => {
     renderApp(["/note/n1"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("region", { name: "Note editor" });
+    await screen.findByRole("region", { name: "Posts" });
 
     const input = await openAsk(user);
     await user.type(input, "what did I write about bread");
@@ -415,7 +416,7 @@ describe("asking a question leaves the address bar alone (AC 7)", () => {
   it("keeps the first answer's reasoning panel auto-expanded", async () => {
     renderApp(["/note/n1"], { notes: [makeNote("n1", ISO, "Alpha note")] });
     const user = userEvent.setup();
-    await screen.findByRole("region", { name: "Note editor" });
+    await screen.findByRole("region", { name: "Posts" });
 
     const input = await openAsk(user);
     await user.type(input, "what did I write about bread");
@@ -445,7 +446,7 @@ describe("the composer survives moving around the app", () => {
       ],
     });
     const user = userEvent.setup();
-    await screen.findByRole("region", { name: "Note editor" });
+    await screen.findByRole("region", { name: "Posts" });
 
     const input = await openAsk(user);
     await user.type(input, "six hours");
@@ -472,7 +473,7 @@ describe("deleting the open thread replaces the URL (AC 8)", () => {
       ],
     });
     const user = userEvent.setup();
-    await screen.findByRole("region", { name: "Note editor" });
+    await screen.findByRole("region", { name: "Posts" });
     await openAsk(user);
 
     await user.click(screen.getByRole("button", { name: COPY.askHistoryOpen }));
@@ -494,7 +495,7 @@ describe("deleting the open thread replaces the URL (AC 8)", () => {
       notes: [makeNote("n1", ISO, "Only note")],
     });
     const user = userEvent.setup();
-    await screen.findByRole("region", { name: "Note editor" });
+    await screen.findByRole("region", { name: "Posts" });
 
     await user.click(
       screen.getByRole("button", { name: "More actions for Only note" }),
@@ -529,7 +530,7 @@ describe("dead links show a calm not-found (AC 9)", () => {
        route; only truly unmatched shapes land here. */
     await waitFor(() => expect(pathname()).toBe("/note/n1"));
     expect(
-      await screen.findByRole("region", { name: "Note editor" }),
+      await screen.findByRole("region", { name: "Posts" }),
     ).toBeInTheDocument();
   });
 });
@@ -548,10 +549,17 @@ describe("editing a note does not touch history (AC 12)", () => {
     await user.click(screen.getByRole("button", { name: "Beta note" }));
     await waitFor(() => expect(pathname()).toBe("/note/n2"));
 
-    const body = screen.getByLabelText("Note body");
+    // The feed only reads. Writing starts from the post's Edit link.
+    await user.click(screen.getByRole("link", { name: /^Edit Beta note$/ }));
+    const body = await screen.findByLabelText("Note body");
     await user.type(body, "some new words");
     expect(pathname()).toBe("/note/n2");
 
+    // Edit is one history entry, so back leaves the editor, then the note.
+    act(() => {
+      testNavigate?.(-1);
+    });
+    await screen.findByRole("region", { name: "Posts" });
     act(() => {
       testNavigate?.(-1);
     });
@@ -580,7 +588,375 @@ describe("the document title reflects what is open (AC 15)", () => {
   it("falls back to the bare app name when the library is empty", async () => {
     renderApp(["/"], { notes: [] });
 
-    await screen.findByText(COPY.emptyLibraryTitle);
+    await screen.findAllByText(COPY.feedEmpty);
     expect(document.title).toBe("Glassbox");
+  });
+});
+
+describe("reading in the feed", () => {
+  const threePosts = () => [
+    makeNote("n1", "2026-03-01T12:00:00", "Newest post", "lantern light"),
+    makeNote("n2", "2026-02-01T12:00:00", "Middle post", "a quiet lantern"),
+    makeNote("n3", "2026-01-01T12:00:00", "Oldest post", "nothing to see"),
+  ];
+
+  it("shows every post as an article, newest first, with the open one marked in the rail", async () => {
+    renderApp(["/note/n2"], { notes: threePosts() });
+
+    const feed = await screen.findByRole("region", { name: "Posts" });
+    expect(
+      within(feed)
+        .getAllByRole("article")
+        .map((a) => a.getAttribute("aria-labelledby")),
+    ).toEqual(["post-title-n1", "post-title-n2", "post-title-n3"]);
+    expect(
+      screen.getByRole("button", { name: /^Middle post/ }),
+    ).toHaveAttribute("aria-current", "true");
+  });
+
+  it("opens the editor from a post's Edit link, and Escape returns to the feed on that post", async () => {
+    renderApp(["/note/n2"], { notes: threePosts() });
+    const user = userEvent.setup();
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("link", { name: "Edit Middle post" }));
+
+    const editor = await screen.findByRole("region", { name: "Note editor" });
+    expect(within(editor).getByLabelText("Note title")).toHaveValue(
+      "Middle post",
+    );
+    expect(pathname()).toBe("/note/n2");
+
+    await user.keyboard("{Escape}");
+
+    expect(
+      await screen.findByRole("region", { name: "Posts" }),
+    ).toBeInTheDocument();
+    expect(pathname()).toBe("/note/n2");
+  });
+
+  it("shows search results in the pane with the hits marked, and closing search returns to the open post", async () => {
+    renderApp(["/note/n3"], { notes: threePosts() });
+    const user = userEvent.setup();
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("button", { name: COPY.searchLabel }));
+    await user.type(screen.getByRole("searchbox"), "lantern");
+
+    const results = await screen.findByRole("region", {
+      name: "Matching notes",
+    });
+    expect(
+      within(results)
+        .getAllByRole("article")
+        .map((a) => a.getAttribute("aria-labelledby")),
+    ).toEqual(["post-title-n1", "post-title-n2"]);
+    expect(
+      Array.from(results.querySelectorAll("mark")).map((m) => m.textContent),
+    ).toEqual(["lantern", "lantern"]);
+
+    await user.click(
+      screen.getByRole("button", { name: COPY.searchCloseLabel }),
+    );
+
+    expect(await screen.findByRole("region", { name: "Posts" })).toBeVisible();
+    expect(pathname()).toBe("/note/n3");
+  });
+
+  describe("scroll-spy", () => {
+    let cross: (id: string) => void;
+    const original = window.IntersectionObserver;
+
+    beforeEach(() => {
+      const bands: {
+        cb: (e: Partial<IntersectionObserverEntry>[]) => void;
+        targets: Element[];
+        margin?: string;
+      }[] = [];
+      class FakeIO {
+        private w: (typeof bands)[number];
+        constructor(
+          cb: (typeof bands)[number]["cb"],
+          options?: IntersectionObserverInit,
+        ) {
+          this.w = { cb, targets: [], margin: options?.rootMargin };
+          bands.push(this.w);
+        }
+        observe(el: Element) {
+          this.w.targets.push(el);
+        }
+        unobserve() {}
+        disconnect() {
+          this.w.targets = [];
+        }
+        takeRecords() {
+          return [];
+        }
+      }
+      window.IntersectionObserver =
+        FakeIO as unknown as typeof IntersectionObserver;
+      cross = (id) => {
+        const band = bands.find(
+          (b) =>
+            b.margin === "-25% 0px -65% 0px" &&
+            b.targets.some((t) => t.getAttribute("data-post-id") === id),
+        );
+        if (!band) throw new Error(`Nothing watches ${id}`);
+        const target = band.targets.find(
+          (t) => t.getAttribute("data-post-id") === id,
+        );
+        act(() => band.cb([{ isIntersecting: true, target }]));
+      };
+    });
+
+    afterEach(() => {
+      window.IntersectionObserver = original;
+    });
+
+    it("moves the address and the rail marker to the post being read, without adding history", async () => {
+      renderApp(["/note/n1"], { notes: threePosts() });
+      await screen.findByRole("region", { name: "Posts" });
+
+      cross("n3");
+
+      await waitFor(() => expect(pathname()).toBe("/note/n3"));
+      expect(
+        screen.getByRole("button", { name: /^Oldest post/ }),
+      ).toHaveAttribute("aria-current", "true");
+
+      act(() => {
+        testNavigate?.(-1);
+      });
+      // Replaced, so there was nothing behind it to go back to.
+      expect(pathname()).toBe("/note/n3");
+    });
+
+    it("scrolls the feed to a post chosen in the rail instead of leaving the pane", async () => {
+      const user = userEvent.setup();
+      renderApp(["/note/n1"], { notes: threePosts() });
+      await screen.findByRole("region", { name: "Posts" });
+
+      await user.click(screen.getByRole("button", { name: /^Oldest post/ }));
+
+      await waitFor(() => expect(pathname()).toBe("/note/n3"));
+      expect(screen.getByRole("region", { name: "Posts" })).toBeVisible();
+    });
+  });
+});
+
+describe("writing swaps the feed for the editor", () => {
+  const threePosts = () => [
+    makeNote("n1", "2026-03-01T12:00:00", "Newest post", "lantern light"),
+    makeNote("n2", "2026-02-01T12:00:00", "Middle post", "a quiet lantern"),
+    makeNote("n3", "2026-01-01T12:00:00", "Oldest post", "nothing to see"),
+  ];
+
+  /* A store that says what was written and removed, since "leaves no trace"
+     is a claim about the disk as much as the screen. */
+  const spyStore = (initial: Note[]) => {
+    const inner = makeNotesStore(initial);
+    const put = vi.fn(inner.put.bind(inner));
+    const remove = vi.fn(inner.remove.bind(inner));
+    return { store: { ...inner, put, remove } as NotesStore, put, remove };
+  };
+
+  const newPost = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole("button", { name: "New note" }));
+    return screen.findByRole("region", { name: "Note editor" });
+  };
+
+  it("says what is being written and offers Done, on a new post and on an edit", async () => {
+    const user = userEvent.setup();
+    renderApp(["/note/n2"], { notes: threePosts() });
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("link", { name: "Edit Middle post" }));
+    const editing = await screen.findByRole("region", { name: "Note editor" });
+    expect(
+      within(editing).getByText(COPY.editorBarEditing),
+    ).toBeInTheDocument();
+    expect(
+      within(editing).getByRole("button", { name: "Done" }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "New note options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Verse" }));
+    const fresh = await screen.findByText(COPY.editorBarNewVerse);
+    expect(fresh).toBeInTheDocument();
+  });
+
+  it("Done returns to the feed on the post that was being edited, with focus on the feed", async () => {
+    const user = userEvent.setup();
+    renderApp(["/note/n2"], { notes: threePosts() });
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("link", { name: "Edit Middle post" }));
+    const editor = await screen.findByRole("region", { name: "Note editor" });
+    await user.click(within(editor).getByRole("button", { name: "Done" }));
+
+    const feed = await screen.findByRole("region", { name: "Posts" });
+    expect(pathname()).toBe("/note/n2");
+    expect(
+      screen.getByRole("button", { name: /^Middle post/ }),
+    ).toHaveAttribute("aria-current", "true");
+    await waitFor(() => expect(feed).toHaveFocus());
+  });
+
+  it("New then Done with nothing typed leaves no trace, on screen or on disk", async () => {
+    const user = userEvent.setup();
+    const { store, put, remove } = spyStore(threePosts());
+    renderApp(["/note/n2"], { notesStore: store });
+    await screen.findByRole("region", { name: "Posts" });
+
+    const editor = await newPost(user);
+    // The draft is on screen at the top of the list while it is being written.
+    expect(
+      screen.getAllByRole("button", { name: /^Untitled/ }).length,
+    ).toBeGreaterThan(0);
+    await user.click(within(editor).getByRole("button", { name: "Done" }));
+
+    const feed = await screen.findByRole("region", { name: "Posts" });
+    expect(pathname()).toBe("/note/n2");
+    expect(within(feed).getAllByRole("article")).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: /^Untitled/ })).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(put).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("Escape on an untouched new post discards it the same way", async () => {
+    const user = userEvent.setup();
+    renderApp(["/note/n3"], { notes: threePosts() });
+    await screen.findByRole("region", { name: "Posts" });
+
+    await newPost(user);
+    await user.keyboard("{Escape}");
+
+    const feed = await screen.findByRole("region", { name: "Posts" });
+    expect(within(feed).getAllByRole("article")).toHaveLength(3);
+    expect(pathname()).toBe("/note/n3");
+  });
+
+  it("a new post shows its title in the rail as it is typed, and Done lands on it at the top of the feed", async () => {
+    const user = userEvent.setup();
+    const { store, put } = spyStore(threePosts());
+    renderApp(["/note/n2"], { notesStore: store });
+    await screen.findByRole("region", { name: "Posts" });
+
+    const editor = await newPost(user);
+    const title = within(editor).getByLabelText("Note title");
+    await user.type(title, "On waiting");
+    expect(screen.getByRole("button", { name: /^On waiting/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+
+    await user.click(within(editor).getByRole("button", { name: "Done" }));
+
+    const feed = await screen.findByRole("region", { name: "Posts" });
+    const articles = within(feed).getAllByRole("article");
+    expect(articles).toHaveLength(4);
+    expect(articles[0]).toHaveAccessibleName("On waiting");
+    expect(pathname()).toMatch(/^\/note\/(?!n[123]$)/);
+    expect(screen.getByRole("button", { name: /^On waiting/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "On waiting" }),
+      ),
+    );
+  });
+
+  it("starting a new post while searching closes the search and opens Posts", async () => {
+    const user = userEvent.setup();
+    renderApp(["/note/n2"], { notes: threePosts() });
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("tab", { name: "Collections" }));
+    await user.click(screen.getByRole("button", { name: COPY.searchLabel }));
+    await user.type(screen.getByRole("searchbox"), "lantern");
+    await screen.findByRole("region", { name: "Matching notes" });
+
+    await user.keyboard("{Control>}n{/Control}");
+
+    expect(await screen.findByLabelText("Note title")).toBeInTheDocument();
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    expect(screen.getByRole("tab", { name: "Posts" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("New from the Collections tab switches the rail to Posts", async () => {
+    const user = userEvent.setup();
+    renderApp(["/note/n2"], { notes: threePosts() });
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("tab", { name: "Collections" }));
+    await newPost(user);
+
+    expect(screen.getByRole("tab", { name: "Posts" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("clicking another row while writing saves the edit at once and shows that post", async () => {
+    const user = userEvent.setup();
+    const { store, put } = spyStore(threePosts());
+    renderApp(["/note/n2"], { notesStore: store });
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("link", { name: "Edit Middle post" }));
+    await user.type(await screen.findByLabelText("Note body"), " and more");
+    await user.click(screen.getByRole("button", { name: /^Oldest post/ }));
+
+    await waitFor(
+      () =>
+        expect(put).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: "n2",
+            body: expect.stringContaining("and more"),
+          }),
+        ),
+      { timeout: 300 },
+    );
+    expect(await screen.findByRole("region", { name: "Posts" })).toBeVisible();
+    expect(pathname()).toBe("/note/n3");
+  });
+
+  it("switching tab while writing saves and returns to the feed", async () => {
+    const user = userEvent.setup();
+    const { store, put } = spyStore(threePosts());
+    renderApp(["/note/n2"], { notesStore: store });
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("link", { name: "Edit Middle post" }));
+    await user.type(await screen.findByLabelText("Note body"), "!");
+    await user.click(screen.getByRole("tab", { name: "Collections" }));
+
+    expect(await screen.findByRole("region", { name: "Posts" })).toBeVisible();
+    expect(pathname()).toBe("/note/n2");
+    await waitFor(() => expect(put).toHaveBeenCalled(), { timeout: 300 });
+  });
+
+  it("deleting the note being edited moves to the post below it, else the one above", async () => {
+    const user = userEvent.setup();
+    renderApp(["/note/n2"], { notes: threePosts() });
+    await screen.findByRole("region", { name: "Posts" });
+
+    await user.click(screen.getByRole("link", { name: "Edit Middle post" }));
+    await screen.findByRole("region", { name: "Note editor" });
+    await user.click(
+      screen.getByRole("button", { name: "More actions for Middle post" }),
+    );
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(pathname()).toBe("/note/n3"));
+    expect(await screen.findByRole("region", { name: "Posts" })).toBeVisible();
   });
 });

@@ -6,6 +6,9 @@ interface NoteImageProps {
   src: string;
   alt: string;
   readAsset: (path: string) => Promise<Blob | null>;
+  /** The note's only copy of the picture, so it says what it shows. The editor
+      leaves this off: its field already holds the alt text. */
+  announced?: boolean;
 }
 
 type Resolution =
@@ -22,7 +25,12 @@ type Resolution =
  * twice. The alt text is in that Markdown, so nothing is lost by not repeating
  * it here.
  */
-export const NoteImage = ({ src, alt, readAsset }: NoteImageProps) => {
+export const NoteImage = ({
+  src,
+  alt,
+  readAsset,
+  announced = false,
+}: NoteImageProps) => {
   const [resolved, setResolved] = useState<Resolution>({ state: "loading" });
 
   useEffect(() => {
@@ -63,7 +71,10 @@ export const NoteImage = ({ src, alt, readAsset }: NoteImageProps) => {
    */
   if (resolved.state === "missing") {
     return (
-      <p className="note-image__missing" aria-hidden="true">
+      <p
+        className="note-image__missing"
+        aria-hidden={announced ? undefined : "true"}
+      >
         {alt}
       </p>
     );
@@ -77,8 +88,8 @@ export const NoteImage = ({ src, alt, readAsset }: NoteImageProps) => {
     <img
       className="note-image"
       src={resolved.url}
-      alt=""
-      aria-hidden="true"
+      alt={announced ? alt : ""}
+      aria-hidden={announced ? undefined : "true"}
       /* Async, so a large scan cannot hold up the first paint of the prose. */
       decoding="async"
     />

@@ -292,7 +292,7 @@ const BookHarness = ({
 };
 
 const addToBookItem = () =>
-  screen.queryByRole("menuitem", { name: "Add to book" });
+  screen.queryByRole("menuitem", { name: "Add to collection" });
 
 describe("the add-to-book action in a note's menu", () => {
   it("offers to add the note to a book", async () => {
@@ -311,7 +311,7 @@ describe("the add-to-book action in a note's menu", () => {
     await user.click(trigger());
 
     expect(screen.getAllByRole("menuitem").map((el) => el.textContent)).toEqual(
-      ["Turn into verse", "Add to book", "Delete"],
+      ["Turn into verse", "Add to collection", "Delete"],
     );
   });
 

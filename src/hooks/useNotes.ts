@@ -103,6 +103,13 @@ export interface UseNotesResult {
   storeLabel: string;
   storeKind: NotesStore["kind"];
   createNote: (format?: NoteFormat) => Note;
+  /**
+   * A note that exists only on screen until its first edit. Nothing is written
+   * for it, so abandoning it leaves no file behind. Edits make it a real note.
+   */
+  createDraft: (format?: NoteFormat) => Note;
+  /** Drops a draft that was never edited, or deletes a note that was. */
+  discardNote: (id: string) => void;
   updateNote: (id: string, patch: { title?: string; body?: string }) => void;
   /** Prose is stored as the absence of the key, which a patch cannot express. */
   setNoteFormat: (id: string, format: NoteFormat) => void;
@@ -118,6 +125,8 @@ export interface UseNotesResult {
   /** Notes whose on-disk copy changed while a local edit was in flight. */
   externalConflicts: ExternalConflict[];
   dismissConflict: (id: string) => void;
+  /** Writes every edit still waiting on its autosave timer, now. */
+  flushPending: () => Promise<void>;
 }
 
 /**
@@ -142,6 +151,9 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
 
   const writeStates = useRef<Map<string, NoteWriteState>>(new Map());
   const pendingDeletions = useRef<Set<string>>(new Set());
+  /* Drafts not yet written. They are on screen but not on disk, so a
+     reconcile must not read their absence there as an outside delete. */
+  const draftIds = useRef<Set<string>>(new Set());
   const storeRef = useRef(store);
   storeRef.current = store;
   const notesRef = useRef<Note[]>(notes);
@@ -189,6 +201,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
         state = { timer: null, pending: null, running: null };
         writeStates.current.set(note.id, state);
       }
+      draftIds.current.delete(note.id);
       state.pending = note;
       if (state.timer !== null) window.clearTimeout(state.timer);
       state.timer = window.setTimeout(() => {
@@ -309,6 +322,10 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     const nextById = new Map<string, Note>();
 
     for (const local of prev) {
+      if (draftIds.current.has(local.id)) {
+        nextById.set(local.id, local);
+        continue;
+      }
       const remote = freshById.get(local.id);
       if (isDirty(local.id)) {
         if (remote && remote.updatedAt > local.updatedAt) {
@@ -384,6 +401,13 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     },
     [scheduleWrite],
   );
+
+  const createDraft = useCallback((format: NoteFormat = "prose"): Note => {
+    const note = newNote(format === "prose" ? {} : { format });
+    draftIds.current.add(note.id);
+    setNotes((prev) => sortByCreated([note, ...prev]));
+    return note;
+  }, []);
 
   /**
    * Format is its own kind of change, so it gets its own function rather than
@@ -495,6 +519,7 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
 
   const deleteNote = useCallback(
     (id: string) => {
+      draftIds.current.delete(id);
       setNotes((prev) => prev.filter((n) => n.id !== id));
       pendingDeletions.current.add(id);
       void (async () => {
@@ -509,6 +534,18 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
       })();
     },
     [retireWriteState],
+  );
+
+  const discardNote = useCallback(
+    (id: string) => {
+      if (!draftIds.current.has(id)) {
+        deleteNote(id);
+        return;
+      }
+      draftIds.current.delete(id);
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+    },
+    [deleteNote],
   );
 
   const deleteSampleNotes = useCallback(() => {
@@ -546,6 +583,8 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     storeLabel: store.label,
     storeKind: store.kind,
     createNote,
+    createDraft,
+    discardNote,
     updateNote,
     setNoteFormat,
     deleteNote,
@@ -553,5 +592,6 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     deleteSampleNotes,
     externalConflicts,
     dismissConflict,
+    flushPending: flushAllPending,
   };
 };
