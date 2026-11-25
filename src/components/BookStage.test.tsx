@@ -274,6 +274,28 @@ describe("BookStage — chapter actions", () => {
     expect(onRemoveChapter).toHaveBeenCalledWith("n2");
   });
 
+  it("ends each chapter with its written date, then Edit and Remove on one line", () => {
+    const one = makeNote({
+      id: "n1",
+      title: "One",
+      createdAt: "2011-06-15T12:00:00",
+      updatedAt: "2024-01-01T12:00:00",
+    });
+    renderStage({ book: makeBook(["n1"]), chapters: [one] });
+    const foot = screen.getByRole("link", { name: "Edit One" }).closest("p");
+    expect(foot).toHaveTextContent(
+      "June 15, 2011 · Edit · Remove from collection",
+    );
+    expect(foot).not.toHaveTextContent(/written|min read/i);
+  });
+
+  it("leaves the date and its separator off a chapter whose date cannot be read", () => {
+    const one = makeNote({ id: "n1", title: "One", createdAt: "garbled" });
+    renderStage({ book: makeBook(["n1"]), chapters: [one] });
+    const foot = screen.getByRole("link", { name: "Edit One" }).closest("p");
+    expect(foot?.textContent?.trim()).toBe("Edit · Remove from collection");
+  });
+
   it("offers a missing chapter only its removal, since there is nothing to edit", () => {
     renderStage({ book: makeBook(["gone"]), chapters: [null] });
     expect(screen.queryByRole("link", { name: /^Edit/ })).toBeNull();

@@ -13,6 +13,7 @@ import { COPY } from "../engine/copy";
 import { noteEditPath } from "../engine/routes";
 import { groupChapters, suggestStories } from "../utils/chapterNumbering";
 import { collectionMeta } from "../utils/collectionMeta";
+import { fullDateOf } from "../utils/searchNotes";
 import { BookIndex } from "./BookIndex";
 import type { BookIndexChapter, BookIndexEditing } from "./BookIndex";
 import { BookContentsPanel } from "./BookContentsPanel";
@@ -515,15 +516,26 @@ export const BookStage = ({
                             editor lands on this chapter and not wherever the
                             observer last saw the reader. */}
                         <p className="book-chapter__foot">
+                          {note && fullDateOf(note) && (
+                            <>
+                              <span className="book-chapter__date">
+                                {fullDateOf(note)}
+                              </span>
+                              <span aria-hidden="true"> · </span>
+                            </>
+                          )}
                           {note && (
-                            <Link
-                              className="book-chapter__action"
-                              to={noteEditPath(id)}
-                              aria-label={`${COPY.feedEdit} ${titleOf(note)}`}
-                              onClick={() => onReadChapter(id)}
-                            >
-                              {COPY.feedEdit}
-                            </Link>
+                            <>
+                              <Link
+                                className="book-chapter__action"
+                                to={noteEditPath(id)}
+                                aria-label={`${COPY.feedEdit} ${titleOf(note)}`}
+                                onClick={() => onReadChapter(id)}
+                              >
+                                {COPY.feedEdit}
+                              </Link>
+                              <span aria-hidden="true"> · </span>
+                            </>
                           )}
                           <button
                             type="button"
