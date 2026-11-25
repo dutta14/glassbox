@@ -46,6 +46,7 @@ const props = (
   onSelectBook: vi.fn(),
   onAddNoteToBook: vi.fn(),
   onDeleteBook: vi.fn(),
+  onCreateBook: vi.fn(),
   onDeleteNote: vi.fn(),
   onToggleNoteFormat: vi.fn(),
   onDeleteSamples: vi.fn(),
@@ -291,7 +292,9 @@ describe("NotesRail Collections tab", () => {
     await user.click(tab("Collections"));
 
     expect(
-      screen.getByText("Add a note to a collection to start one."),
+      screen.getByText(
+        "No collections yet. Add a post to a collection from its ⋯ menu.",
+      ),
     ).toBeInTheDocument();
   });
 });

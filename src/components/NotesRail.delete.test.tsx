@@ -46,6 +46,7 @@ const renderRail = (onDeleteNote = vi.fn()) => {
       bookNameByNoteId={new Map<string, string>()}
       onSelectBook={vi.fn()}
       onDeleteBook={vi.fn()}
+      onCreateBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
     />,

@@ -163,6 +163,33 @@
   color: var(--color-text);
 }
 
+/* "New collection" sits under the list as a quiet link, and becomes the same
+   underline-only field as search, inset to line up with the rows. */
+.notes-rail__newbook {
+  margin: 14px 0 6px 16px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--color-text-secondary);
+  font: 400 13px var(--font-ui);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: color 150ms;
+}
+
+.notes-rail__newbook:hover {
+  color: var(--color-text);
+  text-decoration-color: var(--color-text);
+}
+
+.notes-rail__name-field {
+  width: calc(100% - 16px - 14px);
+  margin: 12px 0 6px 16px;
+}
+
 /* Posts and Collections: type only, no rule or underline. The open tab is ink,
    the other faint. */
 .notes-rail__tabs {
@@ -512,11 +539,6 @@
   border-color: var(--color-text);
 }
 
-/* A collection row that expands has its expander where the marker would be. */
-.notes-rail .note-row--expandable .note-item::before {
-  display: none;
-}
-
 @media (forced-colors: active) {
   .notes-rail .note-item--selected {
     outline: 2px solid Highlight;
@@ -541,6 +563,7 @@
   .notes-rail__toggle,
   .notes-rail__open,
   .notes-rail__entry,
+  .notes-rail__newbook,
   .notes-rail__search-close,
   .notes-rail__tab,
   .notes-rail__title-toggle,

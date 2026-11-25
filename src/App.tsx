@@ -27,6 +27,7 @@ import { AskResizer } from "./components/AskResizer";
 import { useAskPane } from "./hooks/useAskPane";
 import { Library } from "./components/Library";
 import { useNoteNeighbours } from "./hooks/useNoteNeighbours";
+import { groupByYear } from "./utils/groupByYear";
 import { NoteEditor } from "./components/NoteEditor";
 import { ChatPanel } from "./components/ChatPanel";
 import { NotFound } from "./components/NotFound";
@@ -500,7 +501,7 @@ export const AppReady = ({
     [notes, setNoteFormat],
   );
 
-  /* The note whose "Add to book" was chosen. Held as an id rather than the
+  /* The note whose "Add to collection" was chosen. Held as an id rather than the
      note itself so a rename or edit while the modal is open cannot show a
      stale title. */
   const [addToBookNoteId, setAddToBookNoteId] = useState<string | null>(null);
@@ -519,15 +520,33 @@ export const AppReady = ({
     [addToBookNoteId, notes],
   );
 
+  /* Once a post joins a collection it leaves Posts, so if it was the open one
+     the selection moves to the post below it in the rail, else the one above,
+     else to nothing. Only the open post moves the URL, as with a delete. */
+  const moveSelectionOffPost = useCallback(
+    (noteId: string) => {
+      if (noteId !== selectedNoteId) return;
+      const posts = groupByYear(
+        notes.filter((n) => !bookByNoteId.has(n.id)),
+      ).flatMap((group) => group.notes);
+      const idx = posts.findIndex((n) => n.id === noteId);
+      const neighbour =
+        idx >= 0 ? (posts[idx + 1] ?? posts[idx - 1] ?? null) : null;
+      navigate(neighbour ? notePath(neighbour.id) : "/", { replace: true });
+    },
+    [bookByNoteId, navigate, notes, selectedNoteId],
+  );
+
   const handleAddToBook = useCallback(
     (bookId: string) => {
       if (addToBookNoteId === null) return;
       // The title goes along so the book can tell a prologue from a chapter
       // and suggest whether it takes a number.
       void addChapter(bookId, addToBookNoteId, addToBookNote?.title ?? "");
+      moveSelectionOffPost(addToBookNoteId);
       setAddToBookNoteId(null);
     },
-    [addChapter, addToBookNote, addToBookNoteId],
+    [addChapter, addToBookNote, addToBookNoteId, moveSelectionOffPost],
   );
 
   /* Creating the book and adding the note are one action to the user, so a
@@ -539,13 +558,20 @@ export const AppReady = ({
       const noteId = addToBookNoteId;
       if (noteId === null) return;
       const noteTitle = addToBookNote?.title ?? "";
+      moveSelectionOffPost(noteId);
       setAddToBookNoteId(null);
       void (async () => {
         const book = await createBook(title);
         await addChapter(book.id, noteId, noteTitle);
       })();
     },
-    [addChapter, addToBookNote, createBook, addToBookNoteId],
+    [
+      addChapter,
+      addToBookNote,
+      createBook,
+      addToBookNoteId,
+      moveSelectionOffPost,
+    ],
   );
 
   const handleSelectBook = useCallback(
@@ -574,6 +600,16 @@ export const AppReady = ({
       navigate(bookPath(book.id));
     });
   }, [createBook, navigate]);
+
+  /* The rail's inline name field. Creates the empty collection and opens it. */
+  const handleCreateCollection = useCallback(
+    (title: string) => {
+      void createBook(title).then((book) => {
+        navigate(bookPath(book.id));
+      });
+    },
+    [createBook, navigate],
+  );
 
   /* Leaving the book's own URL behind matters here. Once the record is gone
      the address points at nothing, so staying put would leave a dead route in
@@ -724,6 +760,7 @@ export const AppReady = ({
             bookNameByNoteId={bookNameByNoteId}
             onSelectBook={handleSelectBook}
             onDeleteBook={handleDeleteBook}
+            onCreateBook={handleCreateCollection}
             onAddNoteToBook={handleRequestAddToBook}
             onDeleteNote={handleDeleteNote}
             onToggleNoteFormat={handleToggleNoteFormat}

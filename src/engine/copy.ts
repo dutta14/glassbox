@@ -75,7 +75,14 @@ export const COPY = {
      each other: three lists share the rail, and an unnamed row in one must
      never be mistaken for an unnamed row in another. */
   untitledBook: "Untitled collection",
-  emptyBooksSidebar: "Add a note to a collection to start one.",
+  emptyBooksSidebar:
+    "No collections yet. Add a post to a collection from its ⋯ menu.",
+  addToCollection: "Add to collection",
+  deleteCollection: "Delete collection",
+  /* The link under the collection list, and the label of the field it becomes. */
+  newCollectionLabel: "Collection name",
+  deleteCollectionDescription:
+    "This deletes the collection and its running order. Every post in it stays in your library.",
 
   emptyNotesSidebar: "Use New note to start one.",
   /* Posts lists only notes that are in no collection. Saying "Use
@@ -116,7 +123,6 @@ export const COPY = {
   /* Points at the button on this page rather than teaching the add-a-note
      gesture, which would send the reader past a control in front of them. */
   booksPageEmpty: "No collections yet. Use New collection to start one.",
-  emptyBookChapters: "No chapters yet.",
   emptyNotesChat: "Add a note to ask questions about it.",
   emptyChat: "Ask a question about your notes.",
 

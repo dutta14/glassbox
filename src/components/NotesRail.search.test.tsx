@@ -70,6 +70,7 @@ const renderRail = (
       bookNameByNoteId={overrides.bookNames ?? new Map<string, string>()}
       onSelectBook={vi.fn()}
       onDeleteBook={vi.fn()}
+      onCreateBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
     />,

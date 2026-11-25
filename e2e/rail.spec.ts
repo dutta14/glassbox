@@ -269,6 +269,41 @@ test.describe("rail behaviour", () => {
     await expect(tab(page, "Posts")).toHaveAttribute("aria-selected", "true");
   });
 
+  test("New collection turns into a name field, Esc cancels, Enter creates and opens an empty collection", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await tab(page, "Collections").click();
+    await expect(
+      noteList(page).getByRole("button", { name: /^Spring shelf/ }),
+    ).toContainText("1 chapter");
+
+    await noteList(page)
+      .getByRole("button", { name: "New collection" })
+      .click();
+    const field = noteList(page).getByRole("textbox", {
+      name: "Collection name",
+    });
+    await expect(field).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(field).toHaveCount(0);
+
+    await noteList(page)
+      .getByRole("button", { name: "New collection" })
+      .click();
+    await page.keyboard.press("Enter");
+    await expect(field).toBeVisible();
+    await page.keyboard.type("Winter drafts");
+    await page.keyboard.press("Enter");
+
+    const created = noteList(page).getByRole("button", {
+      name: /^Winter drafts/,
+    });
+    await expect(created).toContainText("Empty");
+    await expect(created).toHaveAttribute("aria-current", "true");
+    await expect(page).toHaveURL(/#\/book\//);
+  });
+
   test("Search opens inline over every note, marks the hit, and Esc puts the tabs back", async ({
     page,
   }) => {

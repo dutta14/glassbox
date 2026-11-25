@@ -104,34 +104,3 @@
   margin-right: -0.08em;
   color: var(--color-text-faint);
 }
-
-/* A book row in book mode carries an expander ahead of its title. The row
-   becomes a wrapper for the chapters too, so the list below sits inside the
-   same list item as the book it belongs to. */
-.note-row--expandable {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-}
-
-.book-row__expander {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out);
-}
-
-.book-row__expander:hover {
-  color: var(--color-text);
-  background: var(--color-surface-raised);
-}

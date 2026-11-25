@@ -124,6 +124,8 @@ interface NotesRailProps {
   onCreate: (format: NoteFormat) => void;
   onSelectBook: (id: string) => void;
   onDeleteBook: (id: string) => void;
+  /** Creates an empty collection with this name and opens it. */
+  onCreateBook: (title: string) => void;
   onAddNoteToBook: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onToggleNoteFormat: (id: string) => void;
@@ -149,6 +151,7 @@ export const NotesRail = ({
   onCreate,
   onSelectBook,
   onDeleteBook,
+  onCreateBook,
   onAddNoteToBook,
   onDeleteNote,
   onToggleNoteFormat,
@@ -170,9 +173,14 @@ export const NotesRail = ({
     () => new Set(),
   );
 
+  /* Null while the "New collection" link shows; a string once it has become
+     the name field. */
+  const [newName, setNewName] = useState<string | null>(null);
+
   const chooseTab = useCallback((next: RailTab) => {
     setTab(next);
     writeTab(next);
+    setNewName(null);
   }, []);
 
   const toggleYear = useCallback((key: string) => {
@@ -219,8 +227,46 @@ export const NotesRail = ({
 
   const openSearch = useCallback(() => {
     setQuery("");
+    setNewName(null);
     setSearchOpen(true);
   }, []);
+
+  const newBookToggleRef = useRef<HTMLButtonElement>(null);
+  const newBookInputRef = useRef<HTMLInputElement>(null);
+  /** Set on cancel so the link, which comes back, takes focus rather than
+      letting it drop to the body. */
+  const refocusNewBook = useRef(false);
+  const naming = newName !== null;
+
+  useEffect(() => {
+    if (naming) {
+      newBookInputRef.current?.focus();
+    } else if (refocusNewBook.current) {
+      refocusNewBook.current = false;
+      newBookToggleRef.current?.focus();
+    }
+  }, [naming]);
+
+  const cancelNewBook = useCallback(() => {
+    refocusNewBook.current = true;
+    setNewName(null);
+  }, []);
+
+  const onNewBookKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelNewBook();
+      return;
+    }
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const name = (newName ?? "").trim();
+    // An empty name is ignored: the field stays open for a real one.
+    if (name === "") return;
+    setNewName(null);
+    onCreateBook(name);
+  };
 
   /** Set on close so the Search link, which comes back, takes focus rather
       than letting it drop to the body. */
@@ -551,28 +597,68 @@ export const NotesRail = ({
                   })
                 )}
               </>
-            ) : books.length === 0 ? (
-              <div className="notes-rail__empty">
-                <p className="notes-rail__empty-body">
-                  {COPY.emptyBooksSidebar}
-                </p>
-              </div>
             ) : (
-              <ul>
-                {books.map((book) => (
-                  <BookListItem
-                    key={book.id}
-                    book={book}
-                    isSelected={book.id === selectedBookId}
-                    menuOpen={openMenuId === book.id}
-                    onSelect={() => onSelectBook(book.id)}
-                    onMenuOpenChange={(open) =>
-                      setOpenMenuId(open ? book.id : null)
-                    }
-                    onRequestDelete={() => setPendingBookDelete(book)}
-                  />
-                ))}
-              </ul>
+              <>
+                {books.length === 0 ? (
+                  <div className="notes-rail__empty">
+                    <p className="notes-rail__empty-body">
+                      {COPY.emptyBooksSidebar}
+                    </p>
+                  </div>
+                ) : (
+                  <ul>
+                    {books.map((book) => (
+                      <BookListItem
+                        key={book.id}
+                        book={book}
+                        isSelected={book.id === selectedBookId}
+                        menuOpen={openMenuId === book.id}
+                        onSelect={() => onSelectBook(book.id)}
+                        onMenuOpenChange={(open) =>
+                          setOpenMenuId(open ? book.id : null)
+                        }
+                        onRequestDelete={() => setPendingBookDelete(book)}
+                      />
+                    ))}
+                  </ul>
+                )}
+
+                {newName === null ? (
+                  <button
+                    ref={newBookToggleRef}
+                    type="button"
+                    className="notes-rail__newbook"
+                    onClick={() => {
+                      setOpenMenuId(null);
+                      setNewName("");
+                    }}
+                  >
+                    {COPY.newBook}
+                  </button>
+                ) : (
+                  <div className="notes-rail__search notes-rail__name-field">
+                    <input
+                      ref={newBookInputRef}
+                      type="text"
+                      className="notes-rail__search-input"
+                      aria-label={COPY.newCollectionLabel}
+                      placeholder="Name this collection"
+                      autoComplete="off"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={onNewBookKeyDown}
+                    />
+                    <button
+                      type="button"
+                      className="notes-rail__search-close"
+                      aria-label="Cancel"
+                      onClick={cancelNewBook}
+                    >
+                      {COPY.searchClose}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -589,15 +675,15 @@ export const NotesRail = ({
         </>
       )}
 
-      {/* A book is a running order, not a container. Deleting it must leave
-          every chapter in the library, and the description has to say so
-          outright: the word "book" implies the pages go with it, and a reader
-          who believes that will not press the button. */}
+      {/* A collection is a running order, not a container. Deleting it must
+          leave every chapter in the library, and the description has to say so
+          outright: the word implies the pages go with it, and a reader who
+          believes that will not press the button. */}
       <ConfirmDialog
         open={pendingBookDelete !== null}
         title={`Delete "${pendingBookDelete?.title.trim() || COPY.untitledBook}"?`}
-        description="This deletes the book and its running order. Every note in it stays in your library."
-        confirmLabel="Delete book"
+        description={COPY.deleteCollectionDescription}
+        confirmLabel={COPY.deleteCollection}
         onConfirm={() => {
           if (pendingBookDelete) onDeleteBook(pendingBookDelete.id);
           setPendingBookDelete(null);

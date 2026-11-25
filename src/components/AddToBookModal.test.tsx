@@ -64,7 +64,7 @@ const openModal = async (user: ReturnType<typeof userEvent.setup>) => {
 
 const bookButton = (name: RegExp) => screen.getByRole("button", { name });
 const createButton = () => screen.getByRole("button", { name: "Create" });
-const titleField = () => screen.getByPlaceholderText("Book title");
+const titleField = () => screen.getByPlaceholderText("Collection title");
 
 describe("AddToBookModal", () => {
   it("names the note it is adding in the description", async () => {
@@ -74,7 +74,7 @@ describe("AddToBookModal", () => {
     await openModal(user);
 
     expect(screen.getByRole("dialog")).toHaveTextContent(
-      "Add React from scratch to a book.",
+      "Add React from scratch to a collection.",
     );
   });
 
@@ -127,7 +127,7 @@ describe("AddToBookModal", () => {
     const button = bookButton(/Poems/);
 
     expect(
-      within(button).getByText("Already in this book"),
+      within(button).getByText("Already in this collection"),
     ).toBeInTheDocument();
     expect(button).toBeDisabled();
   });
@@ -183,7 +183,7 @@ describe("AddToBookModal", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("submits the new book when Enter is pressed in the title field", async () => {
+  it("submits the new collection when Enter is pressed in the title field", async () => {
     const user = userEvent.setup();
     const onCreateBook = vi.fn();
     render(<Harness books={[mkBook()]} onCreateBook={onCreateBook} />);
@@ -194,7 +194,7 @@ describe("AddToBookModal", () => {
     expect(onCreateBook).toHaveBeenCalledWith("Field notes");
   });
 
-  it("does not create a book when Enter is pressed on a whitespace-only title", async () => {
+  it("does not create a collection when Enter is pressed on a whitespace-only title", async () => {
     const user = userEvent.setup();
     const onCreateBook = vi.fn();
     render(<Harness books={[mkBook()]} onCreateBook={onCreateBook} />);
@@ -213,7 +213,7 @@ describe("AddToBookModal", () => {
       await openModal(user);
 
       expect(
-        screen.getByRole("textbox", { name: "Create a book" }),
+        screen.getByRole("textbox", { name: "Create a collection" }),
       ).toBeInTheDocument();
       expect(screen.queryByText("Your books")).not.toBeInTheDocument();
       expect(screen.queryByRole("list")).not.toBeInTheDocument();
@@ -277,7 +277,7 @@ describe("AddToBookModal", () => {
     render(<Harness books={[mkBook({ title: "Poems" })]} onClose={onClose} />);
 
     const dialog = await openModal(user);
-    await user.click(within(dialog).getByText("Add to book"));
+    await user.click(within(dialog).getByText("Add to collection"));
 
     expect(onClose).not.toHaveBeenCalled();
   });

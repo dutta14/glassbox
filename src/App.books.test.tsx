@@ -125,7 +125,7 @@ const openRowMenu = async (
   );
 };
 
-/** Drives the whole flow: row menu, modal, new book, note added. */
+/** Drives the whole flow: row menu, modal, new collection, note added. */
 const addNoteToNewBook = async (
   user: ReturnType<typeof userEvent.setup>,
   noteTitle: string,
@@ -133,7 +133,7 @@ const addNoteToNewBook = async (
 ): Promise<void> => {
   await openRowMenu(user, noteTitle);
   await user.click(
-    await screen.findByRole("menuitem", { name: /add to book/i }),
+    await screen.findByRole("menuitem", { name: /add to collection/i }),
   );
   const dialog = await screen.findByRole("dialog");
   await user.type(within(dialog).getByRole("textbox"), bookTitle);
@@ -155,8 +155,8 @@ const openTab = async (
   name: "Posts" | "Collections",
 ) => user.click(screen.getByRole("tab", { name }));
 
-describe("books, end to end through the interface", () => {
-  it("creates a book from a note's row menu and lists it in the rail", async () => {
+describe("collections, end to end through the interface", () => {
+  it("creates a collection from a note's row menu and lists it in the rail", async () => {
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
@@ -194,7 +194,7 @@ describe("books, end to end through the interface", () => {
     expect(await railRow("School")).toBeInTheDocument();
   });
 
-  it("opens the book and reads its chapters when its rail row is clicked", async () => {
+  it("opens the collection and reads its chapters when its rail row is clicked", async () => {
     const user = userEvent.setup();
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
@@ -207,7 +207,7 @@ describe("books, end to end through the interface", () => {
     expect(await within(main).findByText("Lunch is ready")).toBeInTheDocument();
   });
 
-  it("reads chapters in the book's order rather than the library's", async () => {
+  it("reads chapters in the collection's order rather than the library's", async () => {
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp(
@@ -223,7 +223,7 @@ describe("books, end to end through the interface", () => {
     await addNoteToNewBook(user, "School", "Childhood");
     await openRowMenu(user, "Luncheon");
     await user.click(
-      await screen.findByRole("menuitem", { name: /add to book/i }),
+      await screen.findByRole("menuitem", { name: /add to collection/i }),
     );
     const dialog = await screen.findByRole("dialog");
     await user.click(
@@ -242,7 +242,7 @@ describe("books, end to end through the interface", () => {
     expect(shown).toEqual(["second written", "first written"]);
   });
 
-  it("keeps every note in the library after its book is deleted", async () => {
+  it("keeps every note in the library after its collection is deleted", async () => {
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
@@ -252,7 +252,7 @@ describe("books, end to end through the interface", () => {
     await openRowMenu(user, "Childhood");
     await user.click(await screen.findByRole("menuitem", { name: /delete/i }));
     await user.click(
-      await screen.findByRole("button", { name: /delete book/i }),
+      await screen.findByRole("button", { name: /delete collection/i }),
     );
 
     await waitFor(() => expect(read()).toHaveLength(0));
@@ -265,34 +265,32 @@ describe("books, end to end through the interface", () => {
     expect(await railRow("Luncheon")).toBeInTheDocument();
   });
 
-  it("asks to add rather than to move when the note is in no book", async () => {
+  it("asks to add rather than to move when the note is in no collection", async () => {
     const user = userEvent.setup();
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
 
     await openRowMenu(user, "Luncheon");
     await user.click(
-      await screen.findByRole("menuitem", { name: /add to book/i }),
+      await screen.findByRole("menuitem", { name: /add to collection/i }),
     );
 
     const dialog = await screen.findByRole("dialog");
     expect(
-      within(dialog).getByRole("heading", { name: "Add to book" }),
+      within(dialog).getByRole("heading", { name: "Add to collection" }),
     ).toBeInTheDocument();
   });
 
-  it("names the book under the note's title, linked to that book", async () => {
+  it("names the collection under the note's title, linked to that collection", async () => {
     const user = userEvent.setup();
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
 
-    // Opened first: once shelved, its row is no longer in Posts to click.
-    await user.click(
-      within(await railRow("Luncheon")).getByRole("button", {
-        name: /^Luncheon/,
-      }),
-    );
     await addNoteToNewBook(user, "Luncheon", "Childhood");
+    // Once shelved its row is gone from Posts, so it is reached by search.
+    await user.click(screen.getByRole("button", { name: "Search notes" }));
+    await user.type(screen.getByRole("searchbox"), "Luncheon");
+    await user.click(await screen.findByRole("button", { name: /^Luncheon/ }));
 
     const main = await screen.findByRole("main");
     expect(
@@ -307,7 +305,7 @@ describe("books, end to end through the interface", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("says nothing about books on a note that is in none", async () => {
+  it("says nothing about collections on a note that is in none", async () => {
     const user = userEvent.setup();
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
@@ -323,6 +321,91 @@ describe("books, end to end through the interface", () => {
     expect(
       within(main).queryByText(/In the collection/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("moves the open post to the one below it when it is added to a collection", async () => {
+    const user = userEvent.setup();
+    const { store } = makeBookStore();
+    const dated = (id: string, title: string, createdAt: string): Note => ({
+      ...makeNote(id, title),
+      createdAt,
+      updatedAt: createdAt,
+    });
+    renderApp(
+      [
+        dated("n1", "Newest", "2026-03-01T12:00:00"),
+        dated("n2", "Middle", "2026-02-01T12:00:00"),
+        dated("n3", "Oldest", "2026-01-01T12:00:00"),
+      ],
+      store,
+      ["/note/n2"],
+    );
+
+    await addNoteToNewBook(user, "Middle", "Childhood");
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("main")).getByRole("textbox", {
+          name: /note title/i,
+        }),
+      ).toHaveValue("Oldest"),
+    );
+    expect(screen.getByRole("button", { name: /^Oldest/ })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+  });
+
+  it("moves the open post to the one above it when it was the last", async () => {
+    const user = userEvent.setup();
+    const { store } = makeBookStore();
+    const dated = (id: string, title: string, createdAt: string): Note => ({
+      ...makeNote(id, title),
+      createdAt,
+      updatedAt: createdAt,
+    });
+    renderApp(
+      [
+        dated("n1", "Newest", "2026-03-01T12:00:00"),
+        dated("n2", "Oldest", "2026-01-01T12:00:00"),
+      ],
+      store,
+      ["/note/n2"],
+    );
+
+    await addNoteToNewBook(user, "Oldest", "Childhood");
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("main")).getByRole("textbox", {
+          name: /note title/i,
+        }),
+      ).toHaveValue("Newest"),
+    );
+  });
+
+  it("creates an empty collection from the inline field and opens it", async () => {
+    const user = userEvent.setup();
+    const { store, read } = makeBookStore();
+    renderApp([makeNote("n1", "Luncheon")], store);
+
+    await railRow("Luncheon");
+    await openTab(user, "Collections");
+    await user.click(
+      await screen.findByRole("button", { name: "New collection" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Collection name" }),
+      "Winter drafts{Enter}",
+    );
+
+    const row = await screen.findByRole("button", { name: /^Winter drafts/ });
+    expect(row).toHaveAttribute("aria-current", "true");
+    expect(row).toHaveTextContent("Empty");
+    await waitFor(() => {
+      expect(read()).toHaveLength(1);
+      expect(read()[0].chapterIds).toEqual([]);
+    });
   });
 
   it("shows a calm message for a book id that does not exist", async () => {
