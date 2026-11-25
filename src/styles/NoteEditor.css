@@ -14,7 +14,7 @@
   width: 100%;
   max-width: calc(var(--editor-measure) + var(--space-6) * 2);
   margin-inline: auto;
-  padding-block: var(--space-6);
+  padding-block: var(--pane-pad-top) var(--space-6);
   padding-inline: var(--space-6);
   /* Sized by its content, not by the pane. It used to be pinned to the pane's
      height back when the body filled it and scrolled inside itself; left that

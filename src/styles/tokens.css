@@ -162,8 +162,17 @@
   --editor-measure: 42.5rem;
   --chat-column: 46rem;
   --chat-gutter: var(--space-8);
+  /* Air above the first thing in the main pane, so a title never touches the
+     window edge. It scrolls away with the content. */
+  --pane-pad-top: 72px;
 
   color-scheme: light;
+}
+
+@media (max-width: 899px) {
+  :root {
+    --pane-pad-top: 56px;
+  }
 }
 
 /* Warm, not neutral. Light mode is an oatmeal page with white panels, so a

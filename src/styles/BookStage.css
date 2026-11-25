@@ -110,13 +110,12 @@
      comfortable line length as the note it came from. */
   max-width: calc(var(--editor-measure) + var(--space-6) * 2);
   margin-inline: auto;
-  padding-block: var(--space-8);
+  padding-block: var(--pane-pad-top) var(--space-8);
   padding-inline: var(--space-6);
 }
 
 .book-stage__front {
   text-align: center;
-  padding-top: var(--space-8);
 }
 
 /* A field, not a heading, because the title is editable in place. It is given
