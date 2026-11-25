@@ -28,7 +28,6 @@ const renderRail = (onDeleteNote = vi.fn()) => {
     <NotesRail
       notes={notes}
       selectedNoteId={null}
-      hasSampleNotes={false}
       folderState="unsupported"
       folderName={null}
       connectError={null}
@@ -36,7 +35,6 @@ const renderRail = (onDeleteNote = vi.fn()) => {
       onCreate={vi.fn()}
       onDeleteNote={onDeleteNote}
       onToggleNoteFormat={vi.fn()}
-      onDeleteSamples={vi.fn()}
       onConnectFolder={vi.fn()}
       onReconnectFolder={vi.fn()}
       onDisconnectFolder={vi.fn()}

@@ -3,7 +3,6 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { AppReady } from "./App";
-import { markSeeded } from "./storage/notes";
 import type { Book, Conversation, Note } from "./types";
 import type {
   BookStore,
@@ -144,7 +143,6 @@ const addNoteToNewBook = async (
 };
 
 beforeEach(() => {
-  markSeeded();
   localStorage.clear();
 });
 

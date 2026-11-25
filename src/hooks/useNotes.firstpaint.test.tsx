@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useNotes } from "./useNotes";
-import { markSeeded } from "../storage/notes";
 import type { NotesStore } from "../storage/types";
 import type { Note } from "../types";
 
@@ -62,7 +61,6 @@ const pausedStore = (batches: Note[][], gapMs = 0) => {
 
 beforeEach(() => {
   localStorage.clear();
-  markSeeded();
 });
 
 describe("the nav draws from the first notes read, not the last", () => {

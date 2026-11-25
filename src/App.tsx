@@ -450,8 +450,6 @@ export const AppReady = ({
     updateNote,
     setNoteFormat,
     deleteNote,
-    hasSampleNotes,
-    deleteSampleNotes,
     readAsset,
     externalConflicts,
     dismissConflict,
@@ -1093,7 +1091,6 @@ export const AppReady = ({
           <NotesRail
             notes={notes}
             selectedNoteId={selectedNoteId}
-            hasSampleNotes={hasSampleNotes}
             folderState={folderState}
             folderName={folderName}
             connectError={connectError}
@@ -1111,7 +1108,6 @@ export const AppReady = ({
             onAddNoteToBook={handleRequestAddToBook}
             onDeleteNote={handleDeleteNote}
             onToggleNoteFormat={handleToggleNoteFormat}
-            onDeleteSamples={deleteSampleNotes}
             onConnectFolder={onConnect}
             onReconnectFolder={onReconnect}
             onDisconnectFolder={onDisconnect}

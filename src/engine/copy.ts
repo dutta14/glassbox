@@ -171,8 +171,6 @@ export const COPY = {
   storageUnavailable:
     "Your browser is not saving data. Notes and questions will disappear when you close this tab.",
 
-  sampleBanner:
-    "These are sample notes so you have something to ask about. Delete them anytime.",
   noteDeleted: "This note was deleted.",
 
   placeholderTitle: "Title",

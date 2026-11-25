@@ -84,9 +84,6 @@ const seed = async (
       localStorage.setItem("glassbox.conversations.v1", conversations);
       localStorage.setItem("glassbox.books.v1", books);
       localStorage.setItem("glassbox.theme.v1", mode);
-      // Marks the library as already seeded, so the app does not add its
-      // sample notes on top of the fixture and make the shot non-deterministic.
-      localStorage.setItem("glassbox.seeded.v1", "2024-01-01T00:00:00.000Z");
       for (const [key, value] of Object.entries(
         JSON.parse(more) as Record<string, string>,
       )) {
@@ -111,7 +108,7 @@ const tab = (page: Page, name: "Posts" | "Collections") =>
 const yearButton = (page: Page) =>
   rail(page).getByRole("heading", { level: 3 }).first().getByRole("button");
 
-/* The third seeded note is shelved in a collection, so Posts does not list it. */
+/* The third fixture note is shelved in a collection, so Posts does not list it. */
 const NOTE_TITLES = ["Postgres connection pooling", "Sourdough starter notes"];
 
 /** The rail is the Posts / Collections tabs. Questions live in the Ask pane. */

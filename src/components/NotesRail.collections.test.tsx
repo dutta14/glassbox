@@ -49,7 +49,6 @@ const props = (
 ): ComponentProps<typeof NotesRail> => ({
   notes: [note],
   selectedNoteId: null,
-  hasSampleNotes: false,
   folderState: "unsupported",
   folderName: null,
   connectError: null,
@@ -64,7 +63,6 @@ const props = (
   onCreateBook: vi.fn(),
   onDeleteNote: vi.fn(),
   onToggleNoteFormat: vi.fn(),
-  onDeleteSamples: vi.fn(),
   onConnectFolder: vi.fn(),
   onReconnectFolder: vi.fn(),
   onDisconnectFolder: vi.fn(),

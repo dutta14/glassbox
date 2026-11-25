@@ -130,7 +130,6 @@ interface NotesRailProps {
   selectedNoteId: string | null;
   /** Null unless a book is the thing currently open. */
   selectedBookId: string | null;
-  hasSampleNotes: boolean;
   /** Note ids that belong to at least one book, so a row can show it. */
   /* Note id to the name of the first book holding it. Absent means no book. */
   bookNameByNoteId: ReadonlyMap<string, string>;
@@ -157,7 +156,6 @@ interface NotesRailProps {
   onAddNoteToBook: (id: string) => void;
   onDeleteNote: (id: string) => void;
   onToggleNoteFormat: (id: string) => void;
-  onDeleteSamples: () => void;
   onConnectFolder: () => void;
   onReconnectFolder: () => void;
   onDisconnectFolder: () => void;
@@ -170,7 +168,6 @@ export const NotesRail = ({
   books,
   selectedNoteId,
   selectedBookId,
-  hasSampleNotes,
   bookNameByNoteId,
   folderState,
   folderName,
@@ -186,7 +183,6 @@ export const NotesRail = ({
   onAddNoteToBook,
   onDeleteNote,
   onToggleNoteFormat,
-  onDeleteSamples,
   onConnectFolder,
   onReconnectFolder,
   onDisconnectFolder,
@@ -722,21 +718,6 @@ export const NotesRail = ({
                 </>
               ) : tab === "posts" ? (
                 <>
-                  {hasSampleNotes && yearGroups.length > 0 && (
-                    <div className="notes-rail__banner" role="note">
-                      <p className="notes-rail__banner-text">
-                        {COPY.sampleBanner}
-                      </p>
-                      <button
-                        type="button"
-                        className="notes-rail__banner-action"
-                        onClick={onDeleteSamples}
-                      >
-                        Delete all samples
-                      </button>
-                    </div>
-                  )}
-
                   {yearGroups.length === 0 ? (
                     <div className="notes-rail__empty">
                       <p className="notes-rail__empty-body">

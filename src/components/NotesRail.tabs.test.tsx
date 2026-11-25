@@ -35,7 +35,6 @@ const props = (
 ): ComponentProps<typeof NotesRail> => ({
   notes: [recent, chapter, older, undated],
   selectedNoteId: null,
-  hasSampleNotes: false,
   folderState: "unsupported",
   folderName: null,
   connectError: null,
@@ -50,7 +49,6 @@ const props = (
   onCreateBook: vi.fn(),
   onDeleteNote: vi.fn(),
   onToggleNoteFormat: vi.fn(),
-  onDeleteSamples: vi.fn(),
   onConnectFolder: vi.fn(),
   onReconnectFolder: vi.fn(),
   onDisconnectFolder: vi.fn(),
@@ -244,14 +242,6 @@ describe("NotesRail Posts tab", () => {
       "aria-current",
       "true",
     );
-  });
-
-  it("shows the sample banner above the first year", () => {
-    renderRail({ hasSampleNotes: true });
-
-    expect(
-      screen.getByRole("button", { name: "Delete all samples" }),
-    ).toBeInTheDocument();
   });
 
   it("says so when every note is in a collection", () => {

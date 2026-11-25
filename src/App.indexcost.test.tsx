@@ -2,7 +2,6 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { markSeeded } from "./storage/notes";
 import { COPY } from "./engine/copy";
 import type { Note } from "./types";
 import type { BookStore, ConversationStore, NotesStore } from "./storage/types";
@@ -114,7 +113,6 @@ const ask = async (user: ReturnType<typeof userEvent.setup>, text: string) => {
 describe("the retrieval index is built only when it is read", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
     spy.builds = 0;
   });
 

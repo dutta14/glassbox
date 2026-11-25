@@ -29,7 +29,6 @@ const init = ({
   format?: "prose" | "verse";
 }) => {
   const now = new Date("2024-03-01T10:00:00Z").toISOString();
-  localStorage.setItem("glassbox.seeded.v1", "true");
   localStorage.setItem("glassbox.theme.v1", theme);
   localStorage.setItem(
     "glassbox.notes.v1",
@@ -68,11 +67,9 @@ const NOTE = "A note with a great deal to say";
 /**
  * Installs the fixture, loads the app and opens a note from the rail.
  *
- * The fixture lives in here rather than in each test because forgetting it does
- * not fail in any way that points at the cause: the app injects its sample
- * notes over an unseeded store, the wanted title never appears, and all you get
- * is a thirty second timeout on a click. The explicit check below turns that
- * into an immediate and legible failure if the seed ever stops taking.
+ * The fixture lives in here rather than in each test because forgetting it
+ * leaves an empty library, the wanted title never appears, and all you get is
+ * a thirty second timeout on a click.
  */
 const open = async (
   page: import("@playwright/test").Page,
@@ -85,7 +82,6 @@ const open = async (
 ) => {
   await page.addInitScript(init, { body, theme, format });
   await page.goto("/");
-  await expect(page.getByText("These are sample notes")).toHaveCount(0);
   // Targeted by data attribute rather than accessible name: the rail's notes
   // section can start collapsed, and the name would then match nothing.
   await page.locator(`[data-note-id]`, { hasText: title }).first().click();

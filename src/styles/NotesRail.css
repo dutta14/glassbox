@@ -335,40 +335,6 @@
   transform: rotate(90deg);
 }
 
-.notes-rail__banner {
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  background: var(--color-surface-alt);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.notes-rail__banner-text {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--color-text-secondary);
-  line-height: var(--leading-normal);
-}
-
-.notes-rail__banner-action {
-  align-self: flex-start;
-  font-size: var(--fs-xs);
-  color: var(--accent);
-  font-weight: var(--fw-medium);
-  /* Underlined at rest, because the accent is ink and colour alone would not
-     tell this from the sentence above it. */
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.notes-rail__banner-action:hover {
-  color: var(--accent-hover);
-  text-decoration-thickness: 2px;
-}
-
 /* The one scroll area. Full-bleed to the rail's right edge so the scrollbar
    rides the edge rather than floating inside the padding. */
 .notes-rail__list {

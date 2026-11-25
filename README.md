@@ -111,7 +111,6 @@ src/
   hooks/       useNotes, useChat, useStorageBackend
   components/  UI
   styles/      one CSS file per component, tokens in tokens.css
-  data/        sample notes
 ```
 
 `src/engine/` is deliberately free of React and of storage concerns. It is pure functions over plain data, which is why it is the most heavily tested part of the codebase.

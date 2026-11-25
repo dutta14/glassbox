@@ -4,7 +4,6 @@ import { render, screen, waitFor, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { AppReady } from "./App";
-import { markSeeded } from "./storage/notes";
 import { COPY } from "./engine/copy";
 import type {
   Answer,
@@ -181,8 +180,6 @@ beforeEach(() => {
      changes where the next test lands. Without this the file passes or fails
      by running order. */
   localStorage.clear();
-  // Skip sample seeding so each test controls exactly which notes exist.
-  markSeeded();
   testNavigate = null;
 });
 

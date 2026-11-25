@@ -1,25 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Note, NoteFormat } from "../types";
 import type { NotesStore } from "../storage/types";
-import { hasSeeded, markSeeded, newNote, parseTags } from "../storage/notes";
-import { sampleNotes } from "../data/sampleNotes";
+import { newNote, parseTags } from "../storage/notes";
 
 const AUTOSAVE_MS = 500;
 
 /**
  * Tags that describe where a note came from, not something the user wrote in
- * the body. These are preserved across edits so a user typing into a sample
- * note does not silently strip its provenance.
+ * the body. These are preserved across edits so typing into a note does not
+ * silently strip its provenance.
  *
  * `ai-generated` is here because it is load-bearing rather than descriptive:
  * it is what keeps writing the user did not write out of every answer. Losing
  * it does not show up as a missing label, it shows up months later as a poem
  * a machine wrote being quoted back as theirs.
  */
-const PROVENANCE_TAGS: ReadonlySet<string> = new Set([
-  "sample",
-  "ai-generated",
-]);
+const PROVENANCE_TAGS: ReadonlySet<string> = new Set(["ai-generated"]);
 
 const extractTagsFromBody = (body: string): string[] => {
   const matches = body.match(/#[a-z0-9][a-z0-9-]*/gi) ?? [];
@@ -114,8 +110,6 @@ export interface UseNotesResult {
   /** Prose is stored as the absence of the key, which a patch cannot express. */
   setNoteFormat: (id: string, format: NoteFormat) => void;
   deleteNote: (id: string) => void;
-  hasSampleNotes: boolean;
-  deleteSampleNotes: () => void;
   /**
    * Read a file a note points at, such as an image. Resolves to null on any
    * backend that has no folder to look in, so callers must handle absence as
@@ -230,54 +224,23 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     setError(null);
     (async () => {
       try {
-        // Only the returning reader streams. A first-run library is empty and
-        // about to be seeded, so there is nothing to show early and a partial
-        // paint would only flash before the samples land.
-        const streaming = hasSeeded();
         let shown = 0;
 
-        const existing = await store.list(
-          streaming
-            ? (batch) => {
-                if (cancelled) return;
-                // Paint the first batch immediately, then at most every 50ms.
-                // The read is paced by file count, so a large library would
-                // otherwise re-sort and re-render the whole list a few hundred
-                // times on the way up, spending more on showing progress than
-                // on the work it is reporting.
-                const now = performance.now();
-                if (shown !== 0 && now - shown < 50) return;
-                shown = now;
-                setNotes((prev) => mergeBatch(prev, batch));
-                setStatus("ready");
-              }
-            : undefined,
-        );
-        if (cancelled) return;
-
-        // Re-check hasSeeded after the first await. Under StrictMode the
-        // effect runs twice; if the first pass already marked seeded, this
-        // pass must NOT generate a fresh set of sample ids and write five
-        // more copies. Combined with the stable ids in sampleNotes.ts this
-        // makes the seeding path idempotent under any timing.
-        if (hasSeeded()) {
-          setNotes(sortByCreated(existing));
-          setStatus("ready");
-          return;
-        }
-
-        const seeded = sampleNotes();
-        for (const note of seeded) {
+        const existing = await store.list((batch) => {
           if (cancelled) return;
-          await store.put(note);
-        }
+          // Paint the first batch immediately, then at most every 50ms.
+          // The read is paced by file count, so a large library would
+          // otherwise re-sort and re-render the whole list a few hundred
+          // times on the way up, spending more on showing progress than
+          // on the work it is reporting.
+          const now = performance.now();
+          if (shown !== 0 && now - shown < 50) return;
+          shown = now;
+          setNotes((prev) => mergeBatch(prev, batch));
+          setStatus("ready");
+        });
         if (cancelled) return;
-        markSeeded();
-
-        const byId = new Map<string, Note>();
-        for (const n of existing) byId.set(n.id, n);
-        for (const n of seeded) byId.set(n.id, n);
-        setNotes(sortByCreated([...byId.values()]));
+        setNotes(sortByCreated(existing));
         setStatus("ready");
       } catch (e) {
         if (cancelled) return;
@@ -548,33 +511,6 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     [deleteNote],
   );
 
-  const deleteSampleNotes = useCallback(() => {
-    const toDelete = notesRef.current
-      .filter((n) => n.tags.includes("sample"))
-      .map((n) => n.id);
-    if (toDelete.length === 0) return;
-    const toDeleteSet = new Set(toDelete);
-    setNotes((prev) => prev.filter((n) => !toDeleteSet.has(n.id)));
-    for (const id of toDelete) pendingDeletions.current.add(id);
-    void (async () => {
-      for (const id of toDelete) {
-        try {
-          await retireWriteState(id);
-          await storeRef.current.remove(id);
-        } catch (err) {
-          console.error("Failed to delete sample note", err);
-        } finally {
-          pendingDeletions.current.delete(id);
-        }
-      }
-    })();
-  }, [retireWriteState]);
-
-  const hasSampleNotes = useMemo(
-    () => notes.some((n) => n.tags.includes("sample")),
-    [notes],
-  );
-
   return {
     notes,
     status,
@@ -588,8 +524,6 @@ export const useNotes = (store: NotesStore): UseNotesResult => {
     updateNote,
     setNoteFormat,
     deleteNote,
-    hasSampleNotes,
-    deleteSampleNotes,
     externalConflicts,
     dismissConflict,
     flushPending: flushAllPending,

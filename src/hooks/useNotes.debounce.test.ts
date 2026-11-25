@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useNotes } from "./useNotes";
-import { markSeeded } from "../storage/notes";
 import type { Note } from "../types";
 import type { NotesStore } from "../storage/types";
 
@@ -44,7 +43,6 @@ class InMemoryStore implements NotesStore {
 describe("useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote path)", () => {
   beforeEach(() => {
     localStorage.clear();
-    markSeeded();
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   });
 
@@ -132,9 +130,6 @@ describe("useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
-    // Pre-mark seeded so bootstrap does not stack sample-note puts on top of
-    // the ones we want to count.
-    markSeeded();
     const { result } = renderHook(() => useNotes(store));
     await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
@@ -171,7 +166,6 @@ describe("useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
-    markSeeded();
     const { result } = renderHook(() => useNotes(store));
     await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
@@ -201,7 +195,6 @@ describe("useNotes autosave — Gap #2 / AC 2 debounce semantics (via createNote
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
-    markSeeded();
     const { result } = renderHook(() => useNotes(store));
     await vi.waitFor(() => expect(result.current.status).toBe("ready"));
 
