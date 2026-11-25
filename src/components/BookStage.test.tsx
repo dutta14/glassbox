@@ -62,7 +62,7 @@ const renderStage = (over: StageOverrides = {}) =>
 
 const chapterHeadings = (): string[] =>
   screen
-    .getAllByRole("heading", { level: 3 })
+    .getAllByRole("heading", { level: 2 })
     .map((h) => h.textContent ?? "")
     .filter((t) => t.startsWith("Chapter "));
 
@@ -576,7 +576,7 @@ describe("BookStage — numbering", () => {
   /** Every chapter heading, less the contents heading that shares its level. */
   const headings = (): string[] =>
     screen
-      .getAllByRole("heading", { level: 3 })
+      .getAllByRole("heading", { level: 2 })
       .map((h) => h.textContent ?? "")
       .filter((t) => t !== "Contents");
 

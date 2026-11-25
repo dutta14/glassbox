@@ -22,6 +22,28 @@
   padding: 0;
 }
 
+/* Under 900px the rail is a drawer: fixed over the page, with a scrim behind
+   it. Closed it is the same zero-width aside as a collapsed rail, so only the
+   menu button shows. */
+.notes-rail__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 109;
+  background: var(--color-scrim);
+}
+
+.notes-rail--drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 110;
+  width: min(304px, calc(100vw - 48px));
+  padding-top: 28px;
+  border-right: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+}
+
 .notes-rail__mast {
   display: flex;
   align-items: flex-start;

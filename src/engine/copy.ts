@@ -84,7 +84,7 @@ export const COPY = {
   deleteCollectionDescription:
     "This deletes the collection and its running order. Every post in it stays in your library.",
 
-  emptyNotesSidebar: "Use New note to start one.",
+  emptyNotesSidebar: "Nothing here yet. Start with the first line.",
   /* Posts lists only notes that are in no collection. Saying "Use
      New note to start one." to someone whose 566 notes are all shelved would
      be a lie, so this states the fact instead. */

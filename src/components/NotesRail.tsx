@@ -5,6 +5,7 @@ import { NoteListItem } from "./NoteListItem";
 import { BookListItem } from "./BookListItem";
 import { NewNoteMenu } from "./NewNoteMenu";
 import { useScrollFades } from "../hooks/useScrollFades";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SettingsModal } from "./SettingsModal";
 import type { Theme } from "../hooks/useTheme";
@@ -23,6 +24,10 @@ import "../styles/NotesRail.css";
 /* Clear of the sticky year heading above and of the edge below. */
 const RAIL_SCROLL_TOP_MARGIN = 56;
 const RAIL_SCROLL_BOTTOM_MARGIN = 16;
+
+/* Under this width the rail is a drawer over the page. Kept in step with the
+   900px breakpoints in tokens.css and NoteFeed.css. */
+const SMALL_QUERY = "(max-width: 899px)";
 
 const COLLAPSE_KEY = "glassbox.rail.v1";
 const TAB_KEY = "glassbox.railTab.v1";
@@ -183,6 +188,12 @@ export const NotesRail = ({
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const isSmall = useMediaQuery(SMALL_QUERY);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  /* The rail is on screen: the drawer when it is open on a small screen, the
+     sidebar when it has not been collapsed on a wide one. The saved collapse
+     choice belongs to wide screens and is left alone here. */
+  const railShown = isSmall ? drawerOpen : !collapsed;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState<RailTab>(readTab);
   /* Years the reader has folded. Per session: which years were shut last week
@@ -209,15 +220,20 @@ export const NotesRail = ({
     });
   }, []);
 
-  /* Left and Right move between the two tabs, wrapping, and the tab that takes
-     focus opens, so what is focused and what is shown never disagree. */
+  /* Left and Right move between the two tabs, wrapping; Home and End jump to
+     the first and last. The tab that takes focus opens, so what is focused and
+     what is shown never disagree. */
   const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const step =
       event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
-    if (step === 0) return;
+    const edge = event.key === "Home" ? 0 : event.key === "End" ? -1 : null;
+    if (step === 0 && edge === null) return;
     event.preventDefault();
     const index = TABS.findIndex((t) => t.id === tab);
-    const next = TABS[(index + step + TABS.length) % TABS.length];
+    const next =
+      edge !== null
+        ? TABS.at(edge)!
+        : TABS[(index + step + TABS.length) % TABS.length];
     onLeaveWriting?.(next.id);
     chooseTab(next.id);
     document.getElementById(`rail-tab-${next.id}`)?.focus();
@@ -244,7 +260,7 @@ export const NotesRail = ({
      them by simply showing them again. */
   const searchQuery = normalizeQuery(query);
   const results = searchOpen ? searchNotes(notes, query) : [];
-  useScrollFades(listRef, [notes.length, collapsed, tab, searchOpen]);
+  useScrollFades(listRef, [notes.length, railShown, tab, searchOpen]);
 
   /* The marker follows the reader through the feed, so the row has to stay in
      view without the reader having to look for it. Only the list moves, and
@@ -306,6 +322,7 @@ export const NotesRail = ({
     // An empty name is ignored: the field stays open for a real one.
     if (name === "") return;
     setNewName(null);
+    chosen(false);
     onCreateBook(name);
   };
 
@@ -382,6 +399,80 @@ export const NotesRail = ({
     onDeleteNote(id);
   }, [pendingDelete, onDeleteNote]);
 
+  const asideRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  /** Set when the drawer closes, so the menu button, which comes back, takes
+      focus rather than letting it drop to the body. */
+  const refocusMenuButton = useRef(false);
+
+  const closeDrawer = useCallback((returnFocus: boolean) => {
+    refocusMenuButton.current = returnFocus;
+    setDrawerOpen(false);
+  }, []);
+
+  /* A choice that shows something in the page also puts the drawer away. */
+  const chosen = (returnFocus = true) => {
+    if (isSmall) closeDrawer(returnFocus);
+  };
+
+  useEffect(() => {
+    if (!isSmall) setDrawerOpen(false);
+  }, [isSmall]);
+
+  useEffect(() => {
+    if (!isSmall) return;
+    if (drawerOpen) {
+      closeButtonRef.current?.focus();
+    } else if (refocusMenuButton.current) {
+      refocusMenuButton.current = false;
+      menuButtonRef.current?.focus();
+    }
+  }, [isSmall, drawerOpen]);
+
+  /* Escape closes the drawer, unless a menu or dialog has the key first. Those
+     close themselves on the same press, so the drawer stays under them. */
+  useEffect(() => {
+    if (!isSmall || !drawerOpen) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (document.querySelector('[role="menu"], [role="dialog"]')) return;
+      e.stopPropagation();
+      closeDrawer(true);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [isSmall, drawerOpen, closeDrawer]);
+
+  /* The scrim hides the page, so Tab stays among the drawer's own controls. */
+  const onDrawerKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    const aside = asideRef.current;
+    if (
+      event.key !== "Tab" ||
+      !isSmall ||
+      !drawerOpen ||
+      !aside ||
+      !aside.contains(event.target as Node)
+    ) {
+      return;
+    }
+    const focusable = Array.from(
+      aside.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [tabindex="0"]',
+      ),
+    ).filter((el) => el.offsetParent !== null);
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && event.target === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && event.target === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   /* Mirrors the note dialog. Focus goes back to the row menu trigger that
      opened it, because the row is still there when you cancel. */
   const toggleCollapsed = useCallback(() => {
@@ -392,411 +483,457 @@ export const NotesRail = ({
     });
   }, []);
 
+  const openMenu = () => {
+    if (isSmall) setDrawerOpen(true);
+    else toggleCollapsed();
+  };
+
   return (
-    <aside
-      className={`notes-rail${collapsed ? " notes-rail--collapsed" : ""}`}
-      aria-label="Notes"
-    >
-      {/* Collapsed, there is no rail: only this button, which brings it back. */}
-      {collapsed && (
-        <button
-          type="button"
-          className="notes-rail__open"
-          onClick={toggleCollapsed}
-          aria-label="Open sidebar"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M3 5.5h14M3 10h14M3 14.5h14"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
+    <>
+      {isSmall && drawerOpen && (
+        <div
+          className="notes-rail__scrim"
+          aria-hidden="true"
+          onClick={() => closeDrawer(true)}
+        />
       )}
-
-      {!collapsed && (
-        <>
-          <div className="notes-rail__mast">
-            <div className="notes-rail__brand">Glassbox</div>
-            <button
-              type="button"
-              className="notes-rail__toggle"
-              onClick={toggleCollapsed}
-              aria-label="Collapse sidebar"
+      <aside
+        ref={asideRef}
+        className={`notes-rail${railShown ? "" : " notes-rail--collapsed"}${
+          isSmall && drawerOpen ? " notes-rail--drawer" : ""
+        }`}
+        aria-label="Notes"
+        onKeyDown={onDrawerKeyDown}
+      >
+        {/* Collapsed, there is no rail: only this button, which brings it back.
+          On a small screen it is always the way in, and opens the drawer. */}
+        {!railShown && (
+          <button
+            ref={menuButtonRef}
+            type="button"
+            className="notes-rail__open"
+            onClick={openMenu}
+            aria-label="Open sidebar"
+            aria-expanded={false}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              aria-hidden="true"
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 20 20"
-                fill="none"
-                aria-hidden="true"
+              <path
+                d="M3 5.5h14M3 10h14M3 14.5h14"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        )}
+
+        {railShown && (
+          <>
+            <div className="notes-rail__mast">
+              <div className="notes-rail__brand">Glassbox</div>
+              <button
+                ref={closeButtonRef}
+                type="button"
+                className="notes-rail__toggle"
+                onClick={() =>
+                  isSmall ? closeDrawer(true) : toggleCollapsed()
+                }
+                aria-label={isSmall ? "Close sidebar" : "Collapse sidebar"}
               >
-                <rect
-                  x="2.75"
-                  y="3.75"
-                  width="14.5"
-                  height="12.5"
-                  rx="2.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-                <path d="M7.75 4v12" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-            </button>
-          </div>
-          <p className="notes-rail__tagline">{COPY.railTagline}</p>
-
-          <div className="notes-rail__links">
-            {searchOpen ? (
-              <div className="notes-rail__search">
-                <input
-                  ref={searchInputRef}
-                  type="search"
-                  role="searchbox"
-                  className="notes-rail__search-input"
-                  placeholder={COPY.searchLabel}
-                  aria-label={COPY.searchLabel}
-                  autoComplete="off"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    onSearchChange?.(e.target.value);
-                  }}
-                  onKeyDown={onSearchKeyDown}
-                />
-                <button
-                  type="button"
-                  className="notes-rail__search-close"
-                  aria-label={COPY.searchCloseLabel}
-                  onClick={closeSearch}
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  aria-hidden="true"
                 >
-                  {COPY.searchClose}
-                </button>
-              </div>
-            ) : (
-              <>
-                <NewNoteMenu onCreate={onCreate} />
-
-                <button
-                  ref={searchToggleRef}
-                  type="button"
-                  className="notes-rail__entry"
-                  onClick={openSearch}
-                  aria-label={COPY.searchLabel}
-                >
-                  Search
-                </button>
-              </>
-            )}
-          </div>
-
-          {!searchOpen && (
-            <div
-              className="notes-rail__tabs"
-              role="tablist"
-              aria-label={COPY.railTabsLabel}
-            >
-              {TABS.map(({ id, label }) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  id={`rail-tab-${id}`}
-                  className="notes-rail__tab"
-                  aria-selected={tab === id}
-                  aria-controls="rail-panel"
-                  tabIndex={tab === id ? 0 : -1}
-                  onClick={() => {
-                    onLeaveWriting?.(id);
-                    chooseTab(id);
-                  }}
-                  onKeyDown={onTabKeyDown}
-                >
-                  {label}
-                </button>
-              ))}
+                  <rect
+                    x="2.75"
+                    y="3.75"
+                    width="14.5"
+                    height="12.5"
+                    rx="2.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                  <path
+                    d="M7.75 4v12"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </button>
             </div>
-          )}
+            <p className="notes-rail__tagline">{COPY.railTagline}</p>
 
-          {/* One scroll area for the list, so the rail scrolls as a single
+            <div className="notes-rail__links">
+              {searchOpen ? (
+                <div className="notes-rail__search">
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    role="searchbox"
+                    className="notes-rail__search-input"
+                    placeholder={COPY.searchLabel}
+                    aria-label={COPY.searchLabel}
+                    autoComplete="off"
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      onSearchChange?.(e.target.value);
+                    }}
+                    onKeyDown={onSearchKeyDown}
+                  />
+                  <button
+                    type="button"
+                    className="notes-rail__search-close"
+                    aria-label={COPY.searchCloseLabel}
+                    onClick={closeSearch}
+                  >
+                    {COPY.searchClose}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <NewNoteMenu
+                    onCreate={(format) => {
+                      chosen(false);
+                      onCreate(format);
+                    }}
+                  />
+
+                  <button
+                    ref={searchToggleRef}
+                    type="button"
+                    className="notes-rail__entry"
+                    onClick={openSearch}
+                    aria-label={COPY.searchLabel}
+                  >
+                    Search
+                  </button>
+                </>
+              )}
+            </div>
+
+            {!searchOpen && (
+              <div
+                className="notes-rail__tabs"
+                role="tablist"
+                aria-label={COPY.railTabsLabel}
+              >
+                {TABS.map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    id={`rail-tab-${id}`}
+                    className="notes-rail__tab"
+                    aria-selected={tab === id}
+                    aria-controls="rail-panel"
+                    tabIndex={tab === id ? 0 : -1}
+                    onClick={() => {
+                      onLeaveWriting?.(id);
+                      chooseTab(id);
+                    }}
+                    onKeyDown={onTabKeyDown}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* One scroll area for the list, so the rail scrolls as a single
               column. It is the tab panel, so the headings inside are its
               direct children and stick to its top. */}
-          <div
-            ref={listRef}
-            id="rail-panel"
-            {...(searchOpen
-              ? { role: "region", "aria-label": COPY.searchResultsLabel }
-              : { role: "tabpanel", "aria-labelledby": `rail-tab-${tab}` })}
-            className="notes-rail__list scroll-fades"
-          >
-            {searchOpen ? (
-              <>
-                <div className="notes-rail__status" aria-live="polite">
-                  {searchQuery === "" ? (
-                    <p className="notes-rail__empty-body">
-                      {COPY.searchPrompt}
-                    </p>
-                  ) : results.length === 0 ? (
-                    <p className="notes-rail__empty-body">
-                      {COPY.searchNone(query.trim())}
-                    </p>
-                  ) : (
-                    <p className="notes-rail__count">
-                      {COPY.searchCount(results.length)}
-                    </p>
-                  )}
-                </div>
-                {results.length > 0 && (
-                  <ul>
-                    {results.map((note) => (
-                      <NoteListItem
-                        key={note.id}
-                        note={note}
-                        isSelected={note.id === currentNoteId}
-                        menuOpen={openMenuId === note.id}
-                        bookName={bookNameByNoteId.get(note.id) ?? null}
-                        dateLabel={fullDateOf(note)}
-                        query={query}
-                        snippet={
-                          titleHasHit(note, query)
-                            ? null
-                            : bodySnippet(note, query)
-                        }
-                        onSelect={() => onSelect(note.id)}
-                        onMenuOpenChange={(menuOpen) =>
-                          setOpenMenuId(menuOpen ? note.id : null)
-                        }
-                        onRequestDelete={() => setPendingDelete(note)}
-                        onToggleFormat={() => onToggleNoteFormat(note.id)}
-                        onAddToBook={() => onAddNoteToBook(note.id)}
-                      />
-                    ))}
-                  </ul>
-                )}
-              </>
-            ) : tab === "posts" ? (
-              <>
-                {hasSampleNotes && yearGroups.length > 0 && (
-                  <div className="notes-rail__banner" role="note">
-                    <p className="notes-rail__banner-text">
-                      {COPY.sampleBanner}
-                    </p>
-                    <button
-                      type="button"
-                      className="notes-rail__banner-action"
-                      onClick={onDeleteSamples}
-                    >
-                      Delete all samples
-                    </button>
+            <div
+              ref={listRef}
+              id="rail-panel"
+              {...(searchOpen
+                ? { role: "region", "aria-label": COPY.searchResultsLabel }
+                : { role: "tabpanel", "aria-labelledby": `rail-tab-${tab}` })}
+              className="notes-rail__list scroll-fades"
+            >
+              {searchOpen ? (
+                <>
+                  <div className="notes-rail__status" aria-live="polite">
+                    {searchQuery === "" ? (
+                      <p className="notes-rail__empty-body">
+                        {COPY.searchPrompt}
+                      </p>
+                    ) : results.length === 0 ? (
+                      <p className="notes-rail__empty-body">
+                        {COPY.searchNone(query.trim())}
+                      </p>
+                    ) : (
+                      <p className="notes-rail__count">
+                        {COPY.searchCount(results.length)}
+                      </p>
+                    )}
                   </div>
-                )}
+                  {results.length > 0 && (
+                    <ul>
+                      {results.map((note) => (
+                        <NoteListItem
+                          key={note.id}
+                          note={note}
+                          isSelected={note.id === currentNoteId}
+                          menuOpen={openMenuId === note.id}
+                          bookName={bookNameByNoteId.get(note.id) ?? null}
+                          dateLabel={fullDateOf(note)}
+                          query={query}
+                          snippet={
+                            titleHasHit(note, query)
+                              ? null
+                              : bodySnippet(note, query)
+                          }
+                          onSelect={() => {
+                            chosen();
+                            onSelect(note.id);
+                          }}
+                          onMenuOpenChange={(menuOpen) =>
+                            setOpenMenuId(menuOpen ? note.id : null)
+                          }
+                          onRequestDelete={() => setPendingDelete(note)}
+                          onToggleFormat={() => onToggleNoteFormat(note.id)}
+                          onAddToBook={() => onAddNoteToBook(note.id)}
+                        />
+                      ))}
+                    </ul>
+                  )}
+                </>
+              ) : tab === "posts" ? (
+                <>
+                  {hasSampleNotes && yearGroups.length > 0 && (
+                    <div className="notes-rail__banner" role="note">
+                      <p className="notes-rail__banner-text">
+                        {COPY.sampleBanner}
+                      </p>
+                      <button
+                        type="button"
+                        className="notes-rail__banner-action"
+                        onClick={onDeleteSamples}
+                      >
+                        Delete all samples
+                      </button>
+                    </div>
+                  )}
 
-                {yearGroups.length === 0 ? (
-                  <div className="notes-rail__empty">
-                    <p className="notes-rail__empty-body">
-                      {/* Telling someone with 566 notes to write their first
+                  {yearGroups.length === 0 ? (
+                    <div className="notes-rail__empty">
+                      <p className="notes-rail__empty-body">
+                        {/* Telling someone with 566 notes to write their first
                           one would be a lie. When everything is in a
                           collection, that is the news. */}
-                      {notes.length > 0
-                        ? COPY.emptyNotesAllBooked
-                        : COPY.emptyNotesSidebar}
-                    </p>
-                  </div>
-                ) : (
-                  yearGroups.map(({ key, notes: items }) => {
-                    const open =
-                      !foldedYears.has(key) ||
-                      items.some((note) => note.id === currentNoteId);
-                    return (
-                      <Fragment key={key}>
-                        <div className="notes-rail__section notes-rail__section--sticky">
-                          <h3
-                            className="notes-rail__title"
-                            id={`rail-year-${key}`}
-                          >
-                            <button
-                              type="button"
-                              className="notes-rail__title-toggle"
-                              onClick={() => toggleYear(key)}
-                              aria-expanded={open}
-                              aria-controls={`rail-year-list-${key}`}
+                        {notes.length > 0
+                          ? COPY.emptyNotesAllBooked
+                          : COPY.emptyNotesSidebar}
+                      </p>
+                    </div>
+                  ) : (
+                    yearGroups.map(({ key, notes: items }) => {
+                      const open =
+                        !foldedYears.has(key) ||
+                        items.some((note) => note.id === currentNoteId);
+                      return (
+                        <Fragment key={key}>
+                          <div className="notes-rail__section notes-rail__section--sticky">
+                            <h3
+                              className="notes-rail__title"
+                              id={`rail-year-${key}`}
                             >
-                              <span className="notes-rail__title-label">
-                                {key}
-                              </span>
-                              <span
-                                className="notes-rail__title-mark"
-                                aria-hidden="true"
+                              <button
+                                type="button"
+                                className="notes-rail__title-toggle"
+                                onClick={() => toggleYear(key)}
+                                aria-expanded={open}
+                                aria-controls={`rail-year-list-${key}`}
+                              >
+                                <span className="notes-rail__title-label">
+                                  {key}
+                                </span>
+                                <span
+                                  className="notes-rail__title-mark"
+                                  aria-hidden="true"
+                                />
+                                <span
+                                  className="notes-rail__title-rule"
+                                  aria-hidden="true"
+                                />
+                                <span className="notes-rail__title-count">
+                                  {items.length}
+                                </span>
+                                <Chevron open={open} />
+                              </button>
+                            </h3>
+                          </div>
+                          <ul
+                            id={`rail-year-list-${key}`}
+                            aria-labelledby={`rail-year-${key}`}
+                            hidden={!open}
+                          >
+                            {items.map((note) => (
+                              <NoteListItem
+                                key={note.id}
+                                note={note}
+                                isSelected={note.id === currentNoteId}
+                                menuOpen={openMenuId === note.id}
+                                dateLabel={monthDayOf(note)}
+                                onSelect={() => {
+                                  chosen();
+                                  onSelect(note.id);
+                                }}
+                                onMenuOpenChange={(menuOpen) =>
+                                  setOpenMenuId(menuOpen ? note.id : null)
+                                }
+                                onRequestDelete={() => setPendingDelete(note)}
+                                onToggleFormat={() =>
+                                  onToggleNoteFormat(note.id)
+                                }
+                                onAddToBook={() => onAddNoteToBook(note.id)}
                               />
-                              <span
-                                className="notes-rail__title-rule"
-                                aria-hidden="true"
-                              />
-                              <span className="notes-rail__title-count">
-                                {items.length}
-                              </span>
-                              <Chevron open={open} />
-                            </button>
-                          </h3>
-                        </div>
-                        <ul
-                          id={`rail-year-list-${key}`}
-                          aria-labelledby={`rail-year-${key}`}
-                          hidden={!open}
-                        >
-                          {items.map((note) => (
-                            <NoteListItem
-                              key={note.id}
-                              note={note}
-                              isSelected={note.id === currentNoteId}
-                              menuOpen={openMenuId === note.id}
-                              dateLabel={monthDayOf(note)}
-                              onSelect={() => onSelect(note.id)}
-                              onMenuOpenChange={(menuOpen) =>
-                                setOpenMenuId(menuOpen ? note.id : null)
-                              }
-                              onRequestDelete={() => setPendingDelete(note)}
-                              onToggleFormat={() => onToggleNoteFormat(note.id)}
-                              onAddToBook={() => onAddNoteToBook(note.id)}
-                            />
-                          ))}
-                        </ul>
-                      </Fragment>
-                    );
-                  })
-                )}
-              </>
-            ) : (
-              <>
-                {books.length === 0 ? (
-                  <div className="notes-rail__empty">
-                    <p className="notes-rail__empty-body">
-                      {COPY.emptyBooksSidebar}
-                    </p>
-                  </div>
-                ) : (
-                  <ul>
-                    {books.map((book) => (
-                      <BookListItem
-                        key={book.id}
-                        book={book}
-                        chapters={book.chapterIds.map((id) => noteById.get(id))}
-                        isSelected={book.id === selectedBookId}
-                        menuOpen={openMenuId === book.id}
-                        onSelect={() => onSelectBook(book.id)}
-                        onMenuOpenChange={(open) =>
-                          setOpenMenuId(open ? book.id : null)
-                        }
-                        onRequestDelete={() => setPendingBookDelete(book)}
-                      />
-                    ))}
-                  </ul>
-                )}
+                            ))}
+                          </ul>
+                        </Fragment>
+                      );
+                    })
+                  )}
+                </>
+              ) : (
+                <>
+                  {books.length === 0 ? (
+                    <div className="notes-rail__empty">
+                      <p className="notes-rail__empty-body">
+                        {COPY.emptyBooksSidebar}
+                      </p>
+                    </div>
+                  ) : (
+                    <ul>
+                      {books.map((book) => (
+                        <BookListItem
+                          key={book.id}
+                          book={book}
+                          chapters={book.chapterIds.map((id) =>
+                            noteById.get(id),
+                          )}
+                          isSelected={book.id === selectedBookId}
+                          menuOpen={openMenuId === book.id}
+                          onSelect={() => {
+                            chosen();
+                            onSelectBook(book.id);
+                          }}
+                          onMenuOpenChange={(open) =>
+                            setOpenMenuId(open ? book.id : null)
+                          }
+                          onRequestDelete={() => setPendingBookDelete(book)}
+                        />
+                      ))}
+                    </ul>
+                  )}
 
-                {newName === null ? (
-                  <button
-                    ref={newBookToggleRef}
-                    type="button"
-                    className="notes-rail__newbook"
-                    onClick={() => {
-                      onLeaveWriting?.("collections");
-                      setOpenMenuId(null);
-                      setNewName("");
-                    }}
-                  >
-                    {COPY.newBook}
-                  </button>
-                ) : (
-                  <div className="notes-rail__search notes-rail__name-field">
-                    <input
-                      ref={newBookInputRef}
-                      type="text"
-                      className="notes-rail__search-input"
-                      aria-label={COPY.newCollectionLabel}
-                      placeholder="Name this collection"
-                      autoComplete="off"
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      onKeyDown={onNewBookKeyDown}
-                    />
+                  {newName === null ? (
                     <button
+                      ref={newBookToggleRef}
                       type="button"
-                      className="notes-rail__search-close"
-                      aria-label="Cancel"
-                      onClick={cancelNewBook}
+                      className="notes-rail__newbook"
+                      onClick={() => {
+                        onLeaveWriting?.("collections");
+                        setOpenMenuId(null);
+                        setNewName("");
+                      }}
                     >
-                      {COPY.searchClose}
+                      {COPY.newBook}
                     </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+                  ) : (
+                    <div className="notes-rail__search notes-rail__name-field">
+                      <input
+                        ref={newBookInputRef}
+                        type="text"
+                        className="notes-rail__search-input"
+                        aria-label={COPY.newCollectionLabel}
+                        placeholder="Name this collection"
+                        autoComplete="off"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        onKeyDown={onNewBookKeyDown}
+                      />
+                      <button
+                        type="button"
+                        className="notes-rail__search-close"
+                        aria-label="Cancel"
+                        onClick={cancelNewBook}
+                      >
+                        {COPY.searchClose}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
-          <footer className="notes-rail__footer">
-            <button
-              type="button"
-              className="notes-rail__settings"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <GearIcon />
-              <span>Settings</span>
-            </button>
-          </footer>
-        </>
-      )}
+            <footer className="notes-rail__footer">
+              <button
+                type="button"
+                className="notes-rail__settings"
+                onClick={() => setSettingsOpen(true)}
+              >
+                <GearIcon />
+                <span>Settings</span>
+              </button>
+            </footer>
+          </>
+        )}
 
-      {/* A collection is a running order, not a container. Deleting it must
+        {/* A collection is a running order, not a container. Deleting it must
           leave every chapter in the library, and the description has to say so
           outright: the word implies the pages go with it, and a reader who
           believes that will not press the button. */}
-      <ConfirmDialog
-        open={pendingBookDelete !== null}
-        title={`Delete "${pendingBookDelete?.title.trim() || COPY.untitledBook}"?`}
-        description={COPY.deleteCollectionDescription}
-        confirmLabel={COPY.deleteCollection}
-        onConfirm={() => {
-          if (pendingBookDelete) onDeleteBook(pendingBookDelete.id);
-          setPendingBookDelete(null);
-        }}
-        onCancel={() => setPendingBookDelete(null)}
-      />
+        <ConfirmDialog
+          open={pendingBookDelete !== null}
+          title={`Delete "${pendingBookDelete?.title.trim() || COPY.untitledBook}"?`}
+          description={COPY.deleteCollectionDescription}
+          confirmLabel={COPY.deleteCollection}
+          onConfirm={() => {
+            if (pendingBookDelete) onDeleteBook(pendingBookDelete.id);
+            setPendingBookDelete(null);
+          }}
+          onCancel={() => setPendingBookDelete(null)}
+        />
 
-      {/* Names the conversation so the two dialogs in this rail are never
+        {/* Names the conversation so the two dialogs in this rail are never
           confusable, and says plainly that notes are unaffected. Deleting a
           transcript that quoted a note must not read as deleting the note. */}
 
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title={`Delete "${pendingDelete?.title.trim() || COPY.untitled}"?`}
-        description="This cannot be undone."
-        confirmLabel="Delete"
-        cancelLabel="Cancel"
-        destructive
-        onConfirm={confirmDelete}
-        onCancel={cancelDelete}
-      />
+        <ConfirmDialog
+          open={pendingDelete !== null}
+          title={`Delete "${pendingDelete?.title.trim() || COPY.untitled}"?`}
+          description="This cannot be undone."
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          destructive
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+        />
 
-      <SettingsModal
-        open={settingsOpen}
-        folderState={folderState}
-        folderName={folderName}
-        connectError={connectError}
-        theme={theme}
-        onConnectFolder={onConnectFolder}
-        onReconnectFolder={onReconnectFolder}
-        onDisconnectFolder={onDisconnectFolder}
-        onToggleTheme={onToggleTheme}
-        onClose={() => setSettingsOpen(false)}
-      />
-    </aside>
+        <SettingsModal
+          open={settingsOpen}
+          folderState={folderState}
+          folderName={folderName}
+          connectError={connectError}
+          theme={theme}
+          onConnectFolder={onConnectFolder}
+          onReconnectFolder={onReconnectFolder}
+          onDisconnectFolder={onDisconnectFolder}
+          onToggleTheme={onToggleTheme}
+          onClose={() => setSettingsOpen(false)}
+        />
+      </aside>
+    </>
   );
 };

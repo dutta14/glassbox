@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { NotesRail } from "./NotesRail";
 import type { Book, Note } from "../types";
+import { COPY } from "../engine/copy";
 
 /* Local time, so the year and day hold in any timezone the suite runs in. */
 const mk = (id: string, title: string, createdAt: string): Note => ({
@@ -264,7 +265,7 @@ describe("NotesRail Posts tab", () => {
   it("says to start one when there are no notes at all", () => {
     renderRail({ notes: [], books: [], bookNameByNoteId: new Map() });
 
-    expect(screen.getByText("Use New note to start one.")).toBeInTheDocument();
+    expect(screen.getByText(COPY.emptyNotesSidebar)).toBeInTheDocument();
   });
 });
 

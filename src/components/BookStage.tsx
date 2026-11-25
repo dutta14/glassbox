@@ -406,7 +406,7 @@ export const BookStage = ({
                         si === 0 ? "book-story book-story--first" : "book-story"
                       }
                     >
-                      <h3 className="book-story__title">{section.title}</h3>
+                      <h2 className="book-story__title">{section.title}</h2>
                     </div>
                   )}
                   {section.chapters.map(({ id, number, title }, ci) => {
@@ -445,7 +445,7 @@ export const BookStage = ({
                           </div>
                         )}
 
-                        <h3 className="book-chapter__heading">
+                        <h2 className="book-chapter__heading">
                           {!note ? (
                             <>
                               <span className="book-chapter__number">
@@ -485,7 +485,7 @@ export const BookStage = ({
                               {eyebrow}
                             </Link>
                           )}
-                        </h3>
+                        </h2>
 
                         {!note && (
                           <p className="book-chapter__missing">

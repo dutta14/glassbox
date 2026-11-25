@@ -168,3 +168,16 @@
     padding-right: var(--space-4);
   }
 }
+
+/* The feed, the editor and the collection page set their own side padding, and
+   the stage's would stack on top of it. */
+@media (max-width: 899px) {
+  .stage {
+    min-width: 0;
+  }
+
+  .stage__panels {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}

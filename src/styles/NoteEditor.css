@@ -303,17 +303,22 @@ textarea.editor__body:not([data-editing]) {
   }
 }
 
-@media (max-width: 479px) {
+/* The same measures as the feed, so a post does not change size when it is
+   opened for writing. */
+@media (max-width: 899px) {
   .editor__title {
-    font-size: 1.875rem;
+    font-size: 2rem;
   }
 
   .editor__inner {
-    padding-block: var(--space-4);
+    padding-inline: 20px;
   }
 
-  .editor__inner {
-    padding-inline: var(--space-4);
+  .editor__done {
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 

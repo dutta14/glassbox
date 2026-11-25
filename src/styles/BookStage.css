@@ -409,11 +409,21 @@
   font-size: var(--fs-md);
 }
 
-@media (max-width: 479px) {
-  .book-stage__inner {
-    padding-inline: var(--space-4);
-  }
+/* The menu button is fixed at the top left whenever the rail is not on screen:
+   collapsed, or a small screen's closed drawer. The running bar clears it and
+   is as tall as its middle, so the button does not straddle the bar's rule. */
+.app:has(.notes-rail--collapsed) .book-stage__bar {
+  min-height: 80px;
+  padding-inline-start: 68px;
+}
 
+@media (max-width: 899px) {
+  .book-stage__inner {
+    padding-inline: 20px;
+  }
+}
+
+@media (max-width: 479px) {
   .book-stage__title {
     font-size: 1.875rem;
   }

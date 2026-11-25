@@ -257,7 +257,8 @@ describe("deep links open the right thing (AC 1)", () => {
   it("says so plainly at / when there is nothing to open", async () => {
     renderApp(["/"], { notes: [] });
 
-    expect(await screen.findByText(COPY.feedEmpty)).toBeInTheDocument();
+    // The rail and the pane say the same thing, so there are two.
+    expect(await screen.findAllByText(COPY.feedEmpty)).toHaveLength(2);
     expect(pathname()).toBe("/");
   });
 });
@@ -587,7 +588,7 @@ describe("the document title reflects what is open (AC 15)", () => {
   it("falls back to the bare app name when the library is empty", async () => {
     renderApp(["/"], { notes: [] });
 
-    await screen.findByText(COPY.feedEmpty);
+    await screen.findAllByText(COPY.feedEmpty);
     expect(document.title).toBe("Glassbox");
   });
 });

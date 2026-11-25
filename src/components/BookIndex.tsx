@@ -164,9 +164,9 @@ export const BookIndex = ({
 
   return (
     <nav className="book-index" aria-label="Contents">
-      <h3 className="book-index__heading" id={headingId}>
+      <h2 className="book-index__heading" id={headingId}>
         Contents
-      </h3>
+      </h2>
       {/* An imported book arrives with its structure written into the chapter
           titles and nowhere else. Marking five stories by hand is tedious
           enough that nobody would, so the book offers. It is an offer rather

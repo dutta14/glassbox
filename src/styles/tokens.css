@@ -73,6 +73,8 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.02), 0 12px 24px rgba(0, 0, 0, 0.08);
+  /* The dimming behind the rail drawer on a small screen. */
+  --color-scrim: rgba(24, 23, 21, 0.35);
 
   /* Spacing, leading, mono and easing curves beyond --ease-out do not exist in
      Finance yet. They are promoted upward rather than flattened to literals. */
@@ -253,6 +255,7 @@ body.dark {
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.45), 0 16px 32px rgba(0, 0, 0, 0.4);
+  --color-scrim: rgba(0, 0, 0, 0.55);
 
   color-scheme: dark;
 }

@@ -376,3 +376,218 @@ test.describe("rail behaviour", () => {
     ).toBeVisible();
   });
 });
+
+const EMPTY_NOTES_COPY = "Nothing here yet. Start with the first line.";
+const SMALL = { width: 390, height: 800 };
+const EMPTY_LIBRARY = {
+  "glassbox.notes.v1": "[]",
+  "glassbox.books.v1": "[]",
+};
+
+test.describe("rail on a small screen", () => {
+  test.use({ viewport: SMALL });
+  test.beforeEach(async ({ page }) => {
+    await seed(page, "light");
+    await page.goto("/");
+  });
+
+  test("starts closed, and the menu button opens a drawer over a scrim", async ({
+    page,
+  }) => {
+    await expect(noteList(page)).toHaveCount(0);
+    const menu = page.getByRole("button", { name: "Open sidebar" });
+    await menu.click();
+    await expectExpandedRail(page);
+    await expect(rail(page)).toHaveClass(/notes-rail--drawer/);
+    await expect(page.locator(".notes-rail__scrim")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Close sidebar" }),
+    ).toBeFocused();
+  });
+
+  test("choosing a row closes the drawer and scrolls the feed to that post", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Open sidebar" }).click();
+    await noteList(page).getByText("Sourdough starter notes").click();
+    await expect(noteList(page)).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Open sidebar" }),
+    ).toBeFocused();
+    await expect(
+      page.getByRole("heading", { name: "Sourdough starter notes" }).first(),
+    ).toBeInViewport();
+  });
+
+  test("Esc closes the drawer and returns focus to the menu button", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "Open sidebar" }).click();
+    await expectExpandedRail(page);
+    await page.keyboard.press("Escape");
+    await expect(noteList(page)).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Open sidebar" }),
+    ).toBeFocused();
+  });
+
+  test("clicking the scrim closes the drawer", async ({ page }) => {
+    await page.getByRole("button", { name: "Open sidebar" }).click();
+    await page
+      .locator(".notes-rail__scrim")
+      .click({ position: { x: 370, y: 400 } });
+    await expect(noteList(page)).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Open sidebar" }),
+    ).toBeFocused();
+  });
+
+  test("Tab stays inside the open drawer", async ({ page }) => {
+    await page.getByRole("button", { name: "Open sidebar" }).click();
+    for (let i = 0; i < 30; i++) {
+      await page.keyboard.press("Tab");
+      expect(
+        await page.evaluate(
+          () => !!document.activeElement?.closest(".notes-rail"),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  test("the feed has 20px side padding, 32px titles and 96px between posts", async ({
+    page,
+  }) => {
+    const inner = page.locator(".note-feed__inner");
+    await expect(inner).toHaveCSS("padding-left", "20px");
+    await expect(inner).toHaveCSS("padding-right", "20px");
+    const posts = page.locator(".note-article");
+    await expect(posts.first().getByRole("heading").first()).toHaveCSS(
+      "font-size",
+      "32px",
+    );
+    await expect(posts.nth(1)).toHaveCSS("margin-top", "96px");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+  });
+
+  test("the editor's Done button is at least 44px square", async ({ page }) => {
+    await page.goto("/#/note/n2?edit=1");
+    const done = page.getByRole("button", { name: "Done" });
+    await expect(done).toBeVisible();
+    await expect
+      .poll(async () => (await done.boundingBox())?.width ?? 0)
+      .toBeGreaterThanOrEqual(44);
+    await expect
+      .poll(async () => (await done.boundingBox())?.height ?? 0)
+      .toBeGreaterThanOrEqual(44);
+  });
+});
+
+test.describe("rail empty and first-run states", () => {
+  test("with no notes the rail says so, the feed message is centred and New stays available", async ({
+    page,
+  }) => {
+    await seed(page, "light", EMPTY_LIBRARY);
+    await page.goto("/");
+    await expect(noteList(page)).toContainText(EMPTY_NOTES_COPY);
+    const message = page.locator(".note-feed__empty");
+    await expect(message).toHaveText(EMPTY_NOTES_COPY);
+    await expect(message).toHaveCSS("text-align", "center");
+    await expect(
+      rail(page).getByRole("button", { name: "New note", exact: true }),
+    ).toBeEnabled();
+  });
+
+  test("with no collections the Collections tab says how to start one", async ({
+    page,
+  }) => {
+    await seed(page, "light", { "glassbox.books.v1": "[]" });
+    await page.goto("/");
+    await tab(page, "Collections").click();
+    await expect(noteList(page)).toContainText("No collections yet.");
+  });
+
+  test("an empty collection's page says it is empty", async ({ page }) => {
+    await seed(page, "light", {
+      "glassbox.books.v1": JSON.stringify([
+        {
+          id: "b2",
+          title: "Winter",
+          chapterIds: [],
+          createdAt: iso("2024-02-21"),
+          updatedAt: iso("2024-02-21"),
+        },
+      ]),
+    });
+    await page.goto("/#/book/b2");
+    await expect(page.getByText("No chapters yet.")).toBeVisible();
+  });
+
+  test("search prompts before typing and says 'Nothing to show.' when nothing matches", async ({
+    page,
+  }) => {
+    await seed(page, "light");
+    await page.goto("/");
+    await rail(page).getByRole("button", { name: "Search notes" }).click();
+    await expect(page.locator(".note-feed__empty")).toHaveText(
+      "Results open here as you type.",
+    );
+    await rail(page).getByRole("searchbox").fill("zzzzz");
+    await expect(page.locator(".note-feed__empty")).toHaveText(
+      "Nothing to show.",
+    );
+    await expect(page.locator(".notes-rail__status")).toContainText("Nothing");
+  });
+});
+
+test.describe("rail keyboard", () => {
+  test.beforeEach(async ({ page }) => {
+    await seed(page, "light");
+    await page.goto("/");
+  });
+
+  test("the tablist moves with the arrow keys, Home and End, and the focused tab opens", async ({
+    page,
+  }) => {
+    await tab(page, "Posts").focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(tab(page, "Collections")).toBeFocused();
+    await expect(tab(page, "Collections")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await page.keyboard.press("ArrowRight");
+    await expect(tab(page, "Posts")).toBeFocused();
+    await page.keyboard.press("End");
+    await expect(tab(page, "Collections")).toBeFocused();
+    await page.keyboard.press("Home");
+    await expect(tab(page, "Posts")).toBeFocused();
+    await expect(noteList(page)).toHaveAttribute("aria-labelledby", /.+/);
+  });
+
+  test("the open post's row carries aria-current and a visible focus ring on Tab", async ({
+    page,
+  }) => {
+    await page.goto("/#/note/n2");
+    await expect(
+      noteList(page).locator('[aria-current="true"], [aria-current="page"]'),
+    ).toHaveCount(1);
+    await tab(page, "Posts").focus();
+    await page.keyboard.press("Tab");
+    const shadow = await page.evaluate(
+      () => getComputedStyle(document.activeElement as Element).boxShadow,
+    );
+    expect(shadow).not.toBe("none");
+  });
+
+  test("Tab leaves the search field without a trap", async ({ page }) => {
+    await rail(page).getByRole("button", { name: "Search notes" }).click();
+    const field = rail(page).getByRole("searchbox");
+    await expect(field).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(field).not.toBeFocused();
+  });
+});
