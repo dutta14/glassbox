@@ -317,7 +317,7 @@ describe("collections, end to end through the interface", () => {
     );
 
     const main = await screen.findByRole("main");
-    await within(main).findByRole("textbox", { name: /note title/i });
+    await within(main).findByRole("article", { name: "Luncheon" });
     expect(
       within(main).queryByText(/In the collection/i),
     ).not.toBeInTheDocument();
@@ -344,11 +344,10 @@ describe("collections, end to end through the interface", () => {
     await addNoteToNewBook(user, "Middle", "Childhood");
 
     await waitFor(() =>
-      expect(
-        within(screen.getByRole("main")).getByRole("textbox", {
-          name: /note title/i,
-        }),
-      ).toHaveValue("Oldest"),
+      expect(screen.getByRole("button", { name: /^Oldest/ })).toHaveAttribute(
+        "aria-current",
+        "true",
+      ),
     );
     expect(screen.getByRole("button", { name: /^Oldest/ })).toHaveAttribute(
       "aria-current",
@@ -376,11 +375,10 @@ describe("collections, end to end through the interface", () => {
     await addNoteToNewBook(user, "Oldest", "Childhood");
 
     await waitFor(() =>
-      expect(
-        within(screen.getByRole("main")).getByRole("textbox", {
-          name: /note title/i,
-        }),
-      ).toHaveValue("Newest"),
+      expect(screen.getByRole("button", { name: /^Newest/ })).toHaveAttribute(
+        "aria-current",
+        "true",
+      ),
     );
   });
 

@@ -135,6 +135,8 @@ for (const theme of ["dark", "light"] as const) {
     });
 
     test("year collapsed", async ({ page }) => {
+      // The year holding the open post stays open, so nothing is open here.
+      await page.goto("/#/books");
       await yearButton(page).click();
       await expect(yearButton(page)).toHaveAttribute("aria-expanded", "false");
       await expect(noteList(page).getByRole("listitem")).toHaveCount(0);
@@ -217,9 +219,9 @@ test.describe("rail behaviour", () => {
 
     await expect(page).toHaveURL(/#\/note\/n2$/);
     await expect(row).toHaveAttribute("aria-current", "true");
-    await expect(page.getByLabel("Note title")).toHaveValue(
-      "Sourdough starter notes",
-    );
+    await expect(
+      page.getByRole("article", { name: "Sourdough starter notes" }),
+    ).toBeVisible();
     // Exactly one row is current, so the previous note is not still marked.
     await expect(noteList(page).locator('[aria-current="true"]')).toHaveCount(
       1,
@@ -229,7 +231,9 @@ test.describe("rail behaviour", () => {
   test("a year heading folds its posts and the open tab survives a reload", async ({
     page,
   }) => {
-    await page.goto("/");
+    // The year holding the open post stays open, and the feed always has one,
+    // so this starts on a page with no open post.
+    await page.goto("/#/books");
     await expectExpandedRail(page);
     await expect(yearButton(page)).toHaveAttribute("aria-expanded", "true");
 

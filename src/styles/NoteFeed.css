@@ -1,0 +1,70 @@
+/* The reading pane: a column of posts that scrolls as one. The column matches
+   the editor's measure so a post does not change width when it is opened for
+   writing. */
+.note-feed {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--color-bg);
+}
+
+.note-feed:focus {
+  outline: none;
+}
+
+.note-feed__inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: calc(var(--editor-measure) + var(--space-6) * 2);
+  margin-inline: auto;
+  padding-block: var(--space-6);
+  padding-inline: var(--space-6);
+}
+
+.note-feed__inner > * {
+  flex-shrink: 0;
+}
+
+.note-feed__inner > .note-article + .note-article {
+  margin-block-start: 140px;
+}
+
+.note-feed__sentinel {
+  height: 1px;
+}
+
+/* The room under the last post is what lets a short one scroll far enough to
+   cross the reading band and become the open post. */
+.note-feed__foot {
+  min-height: 1.5rem;
+  margin-block-start: var(--space-12);
+  padding-block-end: 320px;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+}
+
+.note-feed--empty {
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.note-feed__empty {
+  margin: 0;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 480px) {
+  .note-feed__inner {
+    padding-inline: var(--space-4);
+  }
+
+  .note-feed__inner > .note-article + .note-article {
+    margin-block-start: 96px;
+  }
+}

@@ -89,6 +89,8 @@ const open = async (
   // Targeted by data attribute rather than accessible name: the rail's notes
   // section can start collapsed, and the name would then match nothing.
   await page.locator(`[data-note-id]`, { hasText: title }).first().click();
+  // The rail opens a note in the reading feed. Writing starts from its Edit link.
+  await page.getByRole("link", { name: `Edit ${title}` }).click();
   await expect(page.getByLabel("Note body")).toBeVisible();
 };
 

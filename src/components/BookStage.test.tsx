@@ -212,7 +212,7 @@ describe("BookStage — chapters", () => {
     // copyable as an address, which a button would not be.
     expect(screen.getByRole("link", { name: "Only" })).toHaveAttribute(
       "href",
-      "/note/n1",
+      "/note/n1?edit=1",
     );
   });
 
@@ -542,7 +542,7 @@ describe("BookStage — numbering", () => {
 
     expect(screen.getByRole("link", { name: "Prologue" })).toHaveAttribute(
       "href",
-      "/note/p",
+      "/note/p?edit=1",
     );
   });
 
@@ -579,7 +579,7 @@ describe("BookStage — numbering", () => {
     expect(headings()).toEqual(["Chapter 1"]);
     expect(screen.getByRole("link", { name: "Chapter 1" })).toHaveAttribute(
       "href",
-      "/note/a",
+      "/note/a?edit=1",
     );
   });
 

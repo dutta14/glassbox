@@ -112,6 +112,15 @@ export const COPY = {
   searchNone: (query: string) => `Nothing matches “${query}”.`,
   searchCount: (n: number) => (n === 1 ? "1 result" : `${n} results`),
   searchResultsLabel: "Search results",
+  /* The reading feed in the main pane. */
+  feedLabel: "Posts",
+  feedSearchLabel: "Matching notes",
+  feedEmpty: "Nothing here yet. Start with the first line.",
+  feedLoading: "Loading more…",
+  feedEnd: "That’s everything.",
+  feedNoResults: "Nothing to show.",
+  feedSearchPrompt: "Results open here as you type.",
+  feedEdit: "Edit",
   booksPageTitle: "Collections",
   /* Placeholder and label share their words: a placeholder is not a label, but
      there is no reason for the two to say different things. */

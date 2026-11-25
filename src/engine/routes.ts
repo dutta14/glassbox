@@ -17,3 +17,11 @@ export const notePath = (id: string): string =>
 /** Percent-encoded id path, on the same contract as notePath. */
 export const bookPath = (id: string): string =>
   `/book/${encodeURIComponent(id)}`;
+
+/** The note opened in the editor rather than read in the feed. The flag is a
+    search param, so the path, and everything keyed on it, stays the note's. */
+export const noteEditPath = (id: string): string => `${notePath(id)}?edit=1`;
+
+/** Whether a location's query string asks for the editor. */
+export const isEditSearch = (search: string): boolean =>
+  new URLSearchParams(search).get("edit") === "1";

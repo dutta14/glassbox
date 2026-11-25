@@ -20,6 +20,10 @@ import {
 } from "../utils/searchNotes";
 import "../styles/NotesRail.css";
 
+/* Clear of the sticky year heading above and of the edge below. */
+const RAIL_SCROLL_TOP_MARGIN = 56;
+const RAIL_SCROLL_BOTTOM_MARGIN = 16;
+
 const COLLAPSE_KEY = "glassbox.rail.v1";
 const TAB_KEY = "glassbox.railTab.v1";
 
@@ -121,6 +125,9 @@ interface NotesRailProps {
   folderName: string | null;
   connectError: string | null;
   onSelect: (id: string) => void;
+  /** The search text as it changes, and null once search closes, so the
+      reading pane can show the same results the rail lists. */
+  onSearchChange?: (query: string | null) => void;
   onCreate: (format: NoteFormat) => void;
   onSelectBook: (id: string) => void;
   onDeleteBook: (id: string) => void;
@@ -148,6 +155,7 @@ export const NotesRail = ({
   folderName,
   connectError,
   onSelect,
+  onSearchChange,
   onCreate,
   onSelectBook,
   onDeleteBook,
@@ -225,11 +233,31 @@ export const NotesRail = ({
   const results = searchOpen ? searchNotes(notes, query) : [];
   useScrollFades(listRef, [notes.length, collapsed, tab, searchOpen]);
 
+  /* The marker follows the reader through the feed, so the row has to stay in
+     view without the reader having to look for it. Only the list moves, and
+     only when the row is outside a margin: the sticky year heading covers the
+     top of it, and a row hard against the bottom edge reads as cut off. */
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list || currentNoteId === null) return;
+    const row = Array.from(
+      list.querySelectorAll<HTMLElement>("[data-note-id]"),
+    ).find((el) => el.dataset.noteId === currentNoteId);
+    if (!row) return;
+    const listBox = list.getBoundingClientRect();
+    const rowBox = row.getBoundingClientRect();
+    const above = rowBox.top - (listBox.top + RAIL_SCROLL_TOP_MARGIN);
+    const below = rowBox.bottom - (listBox.bottom - RAIL_SCROLL_BOTTOM_MARGIN);
+    if (above < 0) list.scrollTop += above;
+    else if (below > 0) list.scrollTop += below;
+  }, [currentNoteId]);
+
   const openSearch = useCallback(() => {
     setQuery("");
     setNewName(null);
     setSearchOpen(true);
-  }, []);
+    onSearchChange?.("");
+  }, [onSearchChange]);
 
   const newBookToggleRef = useRef<HTMLButtonElement>(null);
   const newBookInputRef = useRef<HTMLInputElement>(null);
@@ -275,7 +303,8 @@ export const NotesRail = ({
     refocusSearchToggle.current = true;
     setSearchOpen(false);
     setQuery("");
-  }, []);
+    onSearchChange?.(null);
+  }, [onSearchChange]);
 
   useEffect(() => {
     if (searchOpen) {
@@ -395,7 +424,10 @@ export const NotesRail = ({
                   aria-label={COPY.searchLabel}
                   autoComplete="off"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    onSearchChange?.(e.target.value);
+                  }}
                   onKeyDown={onSearchKeyDown}
                 />
                 <button

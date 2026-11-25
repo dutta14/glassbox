@@ -3,21 +3,18 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router-dom";
 import { useScrollFades } from "../hooks/useScrollFades";
 import type { Book, Note } from "../types";
 import { COPY } from "../engine/copy";
-import { bookPath } from "../engine/routes";
-import { readingTime } from "../utils/readingTime";
-import { dropCapDepth } from "../utils/dropCap";
-import { leadingImage } from "../utils/noteImage";
-import { splitSectionBreaks } from "../utils/sectionBreaks";
+import { CollectionLine } from "./CollectionLine";
+import { NoteColophon } from "./NoteColophon";
 import { NoteImage } from "./NoteImage";
 import { NoteNav } from "./NoteNav";
+import { useNoteReading } from "../hooks/useNoteReading";
+import { ReadingView } from "./NoteReading";
 import "../styles/NoteEditor.css";
 
 interface NoteEditorProps {
@@ -78,26 +75,6 @@ const verseOpticalShift = (read: HTMLElement, columnWidth: number): number => {
   // Never past the point where the longest line would leave the column.
   const room = Math.max(0, (columnWidth - longest) / 2);
   return Math.min((longest - mean) / 2, room);
-};
-
-const formatWritten = (iso: string): string => {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const now = Date.now();
-  const diff = Math.max(0, now - d.getTime());
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} h ago`;
-  // The year is always carried. Notes here go back well over a decade, and a
-  // bare "Dec 28" on something written in 2010 reads as though it were written
-  // last winter.
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 };
 
 /** Matches .editor__body's line-height, as a floor if the computed value is
@@ -189,7 +166,8 @@ export const NoteEditor = ({
 
   // A poem is set as it was written. The capital that opens a chapter would
   // indent the first three lines of it out of shape, so verse never takes one.
-  const verse = (note.format ?? "prose") === "verse";
+  const reading = useNoteReading(note);
+  const { verse, image, readOffset } = reading;
 
   // One scroller, not two. The body grows to fit its text rather than scrolling
   // inside itself, so the note reads as a single document and the navigation at
@@ -409,30 +387,6 @@ export const NoteEditor = ({
     onScrollHandled();
   }, [scrollToOffset, note.body, onScrollHandled]);
 
-  const isEmpty = note.body === "";
-
-  /* A picture that opens the note is shown as a picture and held out of the
-     reading view, so the note does not also print its own source line. The
-     field underneath is untouched and still holds the whole note, Markdown
-     and all, because the file is the thing being edited. */
-  const image = leadingImage(note.body);
-  const readOffset = image ? image.bodyOffset : 0;
-  const readBody = note.body.slice(readOffset);
-
-  // 0 when the note is too short to carry one; otherwise the number of lines
-  // the capital sinks, which is also the value the stylesheet keys on.
-  // Measured on what is actually shown: a sketch note's first words are its
-  // prose, not the image line that no longer appears above them.
-  const cap = verse ? 0 : dropCapDepth(readBody);
-
-  // A poem is set as it was written, so only prose gets its section breaks
-  // drawn. With none in the note the reading view stays a single text node.
-  const segments = useMemo(
-    () => (verse || isEmpty ? [] : splitSectionBreaks(readBody)),
-    [verse, isEmpty, readBody],
-  );
-  const hasBreaks = segments.some((seg) => seg.kind === "break");
-
   /**
    * Puts the caret where the reader actually pointed. Without this, moving from
    * reading to writing would drop you at one fixed place in the note and you
@@ -479,17 +433,8 @@ export const NoteEditor = ({
           onChange={(e) => handleTitleChange(e.target.value)}
         />
         {/* Placed above the rule rather than below it, because it says where
-            this note sits rather than anything about the writing that follows.
-            A real link and not a button: this is a navigation, so it should
-            survive a middle click and be copyable as an address. */}
-        {book && (
-          <p className="editor__from-book">
-            {"In the collection – "}
-            <Link className="editor__from-book-link" to={bookPath(book.id)}>
-              {book.title.trim() || COPY.untitledBook}
-            </Link>
-          </p>
-        )}
+            this note sits rather than anything about the writing that follows. */}
+        {book && <CollectionLine book={book} />}
 
         {/* A chapter rule. Decorative only, so it is kept out of the
             accessibility tree: there is nothing here to announce. */}
@@ -515,41 +460,13 @@ export const NoteEditor = ({
                meeting both would hear the note twice. Sighted readers get the
                prose, everyone else gets the textarea, and neither knows about
                the other. */
-            <div
+            <ReadingView
               ref={readRef}
-              aria-hidden="true"
-              className={`editor__body editor__read${
-                isEmpty ? " editor__read--empty" : ""
-              }`}
-              data-dropcap={cap === 0 ? undefined : String(cap)}
-              data-measuring={editing ? "on" : undefined}
+              reading={reading}
+              decorative
+              measuring={editing}
               onMouseDown={handleReadMouseDown}
-            >
-              {isEmpty
-                ? COPY.placeholderBody
-                : hasBreaks
-                  ? segments.map((seg) =>
-                      seg.kind === "text" ? (
-                        <span key={seg.start} data-offset={seg.start}>
-                          {seg.text}
-                        </span>
-                      ) : (
-                        <span
-                          key={seg.start}
-                          className={`editor__break${
-                            seg.opening ? " editor__break--opening" : ""
-                          }`}
-                          data-offset={seg.start}
-                          data-break="true"
-                        >
-                          <span className="editor__break-number">
-                            {seg.number}
-                          </span>
-                        </span>
-                      ),
-                    )
-                  : readBody}
-            </div>
+            />
           )}
           <textarea
             ref={bodyRef}
@@ -572,39 +489,7 @@ export const NoteEditor = ({
             onChange={(e) => onChangeBody(e.target.value)}
           />
         </div>
-        {/* A chapter opens with its title and nothing else, so when the note
-            was written and what it is tagged with are held back to the foot.
-            They are still the first thing after the prose ends, just no longer
-            standing between the title and the first line.
-
-            The date is createdAt, not updatedAt. A poem from 2011 belongs to
-            2011, and correcting a typo in it this afternoon does not make it a
-            poem from this afternoon. The rail orders on createdAt for the same
-            reason, so the foot of the note now agrees with the list it came
-            from. */}
-        <footer className="editor__colophon">
-          <p className="editor__written">
-            Written{" "}
-            <time dateTime={note.createdAt}>
-              {formatWritten(note.createdAt)}
-            </time>
-            <span className="editor__meta-separator" aria-hidden="true">
-              {" · "}
-            </span>
-            <span className="editor__reading-time">
-              {readingTime(note.body)} min read
-            </span>
-          </p>
-          {note.tags.length > 0 && (
-            <div className="editor__tags" role="group" aria-label="Tags">
-              {note.tags.map((tag) => (
-                <span key={tag} className="tag">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-        </footer>
+        <NoteColophon note={note} />
         <NoteNav
           previous={previousNote}
           next={nextNote}

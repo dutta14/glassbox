@@ -10,7 +10,7 @@ import {
 import { Link } from "react-router-dom";
 import type { Book, Note, StoryMark } from "../types";
 import { COPY } from "../engine/copy";
-import { notePath } from "../engine/routes";
+import { noteEditPath } from "../engine/routes";
 import { readingTime } from "../utils/readingTime";
 import { groupChapters, suggestStories } from "../utils/chapterNumbering";
 import { BookIndex } from "./BookIndex";
@@ -473,7 +473,7 @@ export const BookStage = ({
                               a column of controls. */}
                               <Link
                                 className="book-chapter__title"
-                                to={notePath(id)}
+                                to={noteEditPath(id)}
                               >
                                 {display}
                               </Link>
@@ -485,7 +485,7 @@ export const BookStage = ({
                            what it is made of. */
                             <Link
                               className="book-chapter__number book-chapter__number--sole"
-                              to={notePath(id)}
+                              to={noteEditPath(id)}
                             >
                               {eyebrow}
                             </Link>

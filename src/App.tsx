@@ -3,6 +3,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
   useMatch,
   useNavigate,
   useParams,
@@ -16,7 +17,12 @@ import { useStorageBackend } from "./hooks/useStorageBackend";
 import { useTheme } from "./hooks/useTheme";
 import { createIndex, route } from "./engine/router";
 import type { TfIdfIndex } from "./engine/tfidf";
-import { notePath, bookPath } from "./engine/routes";
+import {
+  notePath,
+  noteEditPath,
+  bookPath,
+  isEditSearch,
+} from "./engine/routes";
 import { COPY } from "./engine/copy";
 import { NotesRail } from "./components/NotesRail";
 import { AddToBookModal } from "./components/AddToBookModal";
@@ -28,7 +34,9 @@ import { useAskPane } from "./hooks/useAskPane";
 import { Library } from "./components/Library";
 import { useNoteNeighbours } from "./hooks/useNoteNeighbours";
 import { groupByYear } from "./utils/groupByYear";
+import { searchNotes } from "./utils/searchNotes";
 import { NoteEditor } from "./components/NoteEditor";
+import { NoteFeed, type ScrollRequest } from "./components/NoteFeed";
 import { ChatPanel } from "./components/ChatPanel";
 import { NotFound } from "./components/NotFound";
 import "./styles/App.css";
@@ -120,27 +128,35 @@ const readLastNote = (): string | null => {
 };
 
 interface HomeRouteProps {
-  notes: Note[];
+  /** The posts in reading order. Notes inside a collection are not among them. */
+  posts: Note[];
+  readAsset: (path: string) => Promise<Blob | null>;
 }
 
 /* Resolved at render rather than in an effect, so there is no frame where the
    reader sees an empty stage before being sent on. The remembered id is
-   checked against the library because a note deleted on another machine would
-   otherwise send every load to a "not found". */
-const HomeRoute = ({ notes }: HomeRouteProps) => {
-  if (notes.length === 0) {
+   checked against the posts because a note deleted on another machine, or
+   since moved into a collection, would otherwise send every load somewhere
+   that is not in the feed. */
+const HomeRoute = ({ posts, readAsset }: HomeRouteProps) => {
+  if (posts.length === 0) {
     return (
-      <div className="stage__empty">
-        <p className="stage__empty-title">{COPY.emptyLibraryTitle}</p>
-        <p className="stage__empty-body">{COPY.emptyLibraryBody}</p>
-      </div>
+      <NoteFeed
+        list={posts}
+        query={null}
+        currentId={null}
+        scrollRequest={null}
+        bookByNoteId={new Map()}
+        readAsset={readAsset}
+        onCurrentChange={() => {}}
+      />
     );
   }
   const remembered = readLastNote();
   const target =
-    remembered !== null && notes.some((n) => n.id === remembered)
+    remembered !== null && posts.some((n) => n.id === remembered)
       ? remembered
-      : notes[0].id;
+      : posts[0].id;
   return <Navigate to={notePath(target)} replace />;
 };
 
@@ -193,6 +209,65 @@ const NoteStage = ({
       onSelectNote={onSelectNote}
       readAsset={readAsset}
       book={bookByNoteId.get(note.id) ?? null}
+    />
+  );
+};
+
+interface NoteRouteProps extends NoteStageProps {
+  posts: Note[];
+  scrollRequest: ScrollRequest | null;
+  onCurrentChange: (id: string) => void;
+  /** Previous and next inside the editor stay in the editor. */
+  onEditNote: (id: string) => void;
+}
+
+/* /note/:id reads the note in the feed, scrolled to it. The same path with
+   ?edit=1 opens it for writing. A note that is not a post (it sits in a
+   collection) has no place in the feed, so it opens only for writing, and
+   reaching it any other way lands on the first post. */
+const NoteRoute = ({
+  posts,
+  scrollRequest,
+  onCurrentChange,
+  onEditNote,
+  ...stage
+}: NoteRouteProps) => {
+  const { id } = useParams();
+  const { search } = useLocation();
+  const navigate = useNavigate();
+  const editing = isEditSearch(search);
+  const exists = stage.notes.some((n) => n.id === id);
+
+  /* Escape leaves the editor for the feed at this note. It yields to anything
+     that has already used the key, and to a dialog or pane, so closing one of
+     those does not also close the note. */
+  useEffect(() => {
+    if (!editing || !id) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const target = e.target as Element | null;
+      const inEditor =
+        target === document.body || target?.closest(".editor") != null;
+      if (!inEditor) return;
+      navigate(notePath(id), { replace: true });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing, id, navigate]);
+
+  if (!exists) return <NotFound what="note" />;
+
+  if (editing) return <NoteStage {...stage} onSelectNote={onEditNote} />;
+
+  return (
+    <NoteFeed
+      list={posts}
+      query={null}
+      currentId={id ?? null}
+      scrollRequest={scrollRequest}
+      bookByNoteId={stage.bookByNoteId}
+      readAsset={stage.readAsset}
+      onCurrentChange={onCurrentChange}
     />
   );
 };
@@ -316,6 +391,8 @@ export const AppReady = ({
   // chat draft, and reviving that effect would send every empty draft into a
   // note instead.
   const noteMatch = useMatch("/note/:id");
+  const { pathname, search } = useLocation();
+  const editing = isEditSearch(search);
   const bookMatch = useMatch("/book/:id");
   const selectedNoteId = noteMatch?.params.id ?? null;
 
@@ -399,6 +476,64 @@ export const AppReady = ({
     return byNote;
   }, [bookByNoteId]);
 
+  /* Posts are the notes no collection holds, in the order the rail lists them,
+     so the feed and the rail always agree on what comes next. */
+  const posts = useMemo(
+    () =>
+      groupByYear(notes.filter((n) => !bookByNoteId.has(n.id))).flatMap(
+        (group) => group.notes,
+      ),
+    [notes, bookByNoteId],
+  );
+
+  /* The rail's search is shown in the reading pane as well, so its text lives
+     here. Null means not searching. */
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const searchActiveRef = useRef(false);
+  const returnToRef = useRef("/");
+  const searchResults = useMemo(
+    () => (searchQuery === null ? [] : searchNotes(notes, searchQuery)),
+    [notes, searchQuery],
+  );
+  /* A collection or the shelf, reached by a link in a result, takes the pane
+     over from the results; so does the editor. */
+  const showSearchFeed =
+    searchQuery !== null &&
+    !editing &&
+    selectedBookId === null &&
+    pathname !== "/books";
+
+  /* Closing search puts the pane back on whatever was open when it began. The
+     address is remembered at that moment, since the feed rewrites it as the
+     reader moves through results. */
+  const handleSearchChange = useCallback(
+    (value: string | null) => {
+      if (value === null) {
+        searchActiveRef.current = false;
+        setSearchQuery(null);
+        // Only the feed was carrying the route. Anywhere else, the reader has
+        // already gone somewhere on purpose and stays there.
+        if (pathname.startsWith("/note/")) {
+          navigate(returnToRef.current, { replace: true });
+        }
+        return;
+      }
+      if (!searchActiveRef.current) {
+        searchActiveRef.current = true;
+        returnToRef.current = `${pathname}${search}`;
+      }
+      setSearchQuery(value);
+    },
+    [navigate, pathname, search],
+  );
+
+  /* Each ask to go to a post carries a number, so asking for the same post
+     twice still scrolls twice. */
+  const [scrollRequest, setScrollRequest] = useState<ScrollRequest | null>(
+    null,
+  );
+  const scrollRequestCount = useRef(0);
+
   const [pendingScrollOffset, setPendingScrollOffset] = useState<number | null>(
     null,
   );
@@ -447,7 +582,7 @@ export const AppReady = ({
   const handleCreateNote = useCallback(
     (format: NoteFormat = "prose") => {
       const note = createNote(format);
-      navigate(notePath(note.id));
+      navigate(noteEditPath(note.id));
     },
     [createNote, navigate],
   );
@@ -466,11 +601,30 @@ export const AppReady = ({
 
   const handleSelectNote = useCallback(
     (id: string) => {
-      if (selectedNoteId === id) return;
       setPendingScrollOffset(null);
+      scrollRequestCount.current += 1;
+      setScrollRequest({ id, n: scrollRequestCount.current });
+      // Choosing the post already open leaves the history alone, unless it is
+      // open for writing, which choosing it from the rail closes.
+      if (selectedNoteId === id && !editing) return;
       navigate(notePath(id));
     },
-    [selectedNoteId, navigate],
+    [selectedNoteId, editing, navigate],
+  );
+
+  /* The reader moved through the feed. Replace, not push: scrolling is not a
+     series of places to go back to. */
+  const handleFeedCurrentChange = useCallback(
+    (id: string) => navigate(notePath(id), { replace: true }),
+    [navigate],
+  );
+
+  const handleEditNote = useCallback(
+    (id: string) => {
+      setPendingScrollOffset(null);
+      navigate(noteEditPath(id));
+    },
+    [navigate],
   );
 
   const handleJumpToNote = useCallback(
@@ -480,10 +634,10 @@ export const AppReady = ({
       // is the note already open, so the scroll request is set unconditionally
       // and only the navigation is skipped to avoid a duplicate history entry.
       setPendingScrollOffset(0);
-      if (selectedNoteId === noteId) return;
-      navigate(notePath(noteId));
+      if (selectedNoteId === noteId && editing) return;
+      navigate(noteEditPath(noteId));
     },
-    [notes, selectedNoteId, navigate],
+    [notes, selectedNoteId, editing, navigate],
   );
 
   /* Reached from any row in the rail, so it works on a note the reader is not
@@ -526,15 +680,12 @@ export const AppReady = ({
   const moveSelectionOffPost = useCallback(
     (noteId: string) => {
       if (noteId !== selectedNoteId) return;
-      const posts = groupByYear(
-        notes.filter((n) => !bookByNoteId.has(n.id)),
-      ).flatMap((group) => group.notes);
       const idx = posts.findIndex((n) => n.id === noteId);
       const neighbour =
         idx >= 0 ? (posts[idx + 1] ?? posts[idx - 1] ?? null) : null;
       navigate(neighbour ? notePath(neighbour.id) : "/", { replace: true });
     },
-    [bookByNoteId, navigate, notes, selectedNoteId],
+    [navigate, posts, selectedNoteId],
   );
 
   const handleAddToBook = useCallback(
@@ -628,9 +779,9 @@ export const AppReady = ({
 
   const handleDeleteNote = useCallback(
     (id: string) => {
-      const idx = notes.findIndex((n) => n.id === id);
+      const idx = posts.findIndex((n) => n.id === id);
       const neighbour =
-        idx >= 0 ? (notes[idx + 1] ?? notes[idx - 1] ?? null) : null;
+        idx >= 0 ? (posts[idx + 1] ?? posts[idx - 1] ?? null) : null;
       deleteNote(id);
       /* A book holding a deleted note would render a missing chapter forever.
          The book view tolerates that for a file deleted outside the app, but
@@ -648,7 +799,7 @@ export const AppReady = ({
       }
       setPendingFocus("note-list");
     },
-    [deleteNote, removeNoteFromAllBooks, navigate, notes, selectedNoteId],
+    [deleteNote, removeNoteFromAllBooks, navigate, posts, selectedNoteId],
   );
 
   /* removeConversation already moves the selection to a neighbour, and the
@@ -754,6 +905,7 @@ export const AppReady = ({
             folderName={folderName}
             connectError={connectError}
             onSelect={handleSelectNote}
+            onSearchChange={handleSearchChange}
             onCreate={handleCreateNote}
             books={books}
             selectedBookId={selectedBookId}
@@ -844,71 +996,93 @@ export const AppReady = ({
             })}
 
             <div className="stage__panels">
-              <Routes>
-                <Route path="/" element={<HomeRoute notes={notes} />} />
-                {/* Conversations used to be places you could link to. They are
+              {showSearchFeed ? (
+                <NoteFeed
+                  list={searchResults}
+                  query={searchQuery}
+                  currentId={selectedNoteId}
+                  scrollRequest={scrollRequest}
+                  bookByNoteId={bookByNoteId}
+                  readAsset={readAsset}
+                  onCurrentChange={handleFeedCurrentChange}
+                />
+              ) : (
+                <Routes>
+                  <Route
+                    path="/"
+                    element={<HomeRoute posts={posts} readAsset={readAsset} />}
+                  />
+                  {/* Conversations used to be places you could link to. They are
                     not any more: Ask opens beside whatever you are reading
                     rather than replacing it, and a pane is not a location.
                     Old links still resolve rather than dying, they just land
                     home, and the stored chats themselves are untouched. */}
-                <Route path="/chat/:id" element={<Navigate to="/" replace />} />
-                <Route
-                  path="/note/:id"
-                  element={
-                    <NoteStage
-                      notes={notes}
-                      scrollToOffset={pendingScrollOffset}
-                      onUpdateNote={updateNote}
-                      onScrollHandled={() => setPendingScrollOffset(null)}
-                      onSelectNote={handleSelectNote}
-                      readAsset={readAsset}
-                      bookByNoteId={bookByNoteId}
-                    />
-                  }
-                />
-                {/* Any path that is not the draft, a chat, or a note is sent
+                  <Route
+                    path="/chat/:id"
+                    element={<Navigate to="/" replace />}
+                  />
+                  <Route
+                    path="/note/:id"
+                    element={
+                      <NoteRoute
+                        notes={notes}
+                        posts={posts}
+                        scrollToOffset={pendingScrollOffset}
+                        onUpdateNote={updateNote}
+                        onScrollHandled={() => setPendingScrollOffset(null)}
+                        onSelectNote={handleSelectNote}
+                        onEditNote={handleEditNote}
+                        scrollRequest={scrollRequest}
+                        onCurrentChange={handleFeedCurrentChange}
+                        readAsset={readAsset}
+                        bookByNoteId={bookByNoteId}
+                      />
+                    }
+                  />
+                  {/* Any path that is not the draft, a chat, or a note is sent
                     home rather than shown as an error, matching the finance
                     app's catch-all. A dead /chat/<id> or /note/<id> still
                     resolves to a calm "not found" inside its own route, because
                     those paths match above and never reach this line. */}
-                <Route
-                  path="/book/:id"
-                  element={
-                    <BookStageRoute
-                      books={books}
-                      notes={notes}
-                      booksLoaded={booksLoaded}
-                      onReorder={reorderChapters}
-                      onRemoveChapter={removeChapter}
-                      onSetNumbered={setChapterNumbered}
-                      onSetStory={setStoryStart}
-                      onApplyStories={setStories}
-                      onRename={(bookId, title) => {
-                        void renameBook(bookId, title);
-                      }}
-                      positionFor={readingPositionFor}
-                      onReadChapter={rememberReadingPosition}
-                      openAt={openAt}
-                      onOpenedAtChapter={handleOpenedAtChapter}
-                    />
-                  }
-                />
-                {/* Before the catch-all, or it would redirect away. */}
-                <Route
-                  path="/books"
-                  element={
-                    <Library
-                      notes={notes}
-                      books={books}
-                      onOpenSpine={(spine) => {
-                        if (spine.kind === "book") handleSelectBook(spine.id);
-                      }}
-                      onCreate={handleCreateBook}
-                    />
-                  }
-                />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+                  <Route
+                    path="/book/:id"
+                    element={
+                      <BookStageRoute
+                        books={books}
+                        notes={notes}
+                        booksLoaded={booksLoaded}
+                        onReorder={reorderChapters}
+                        onRemoveChapter={removeChapter}
+                        onSetNumbered={setChapterNumbered}
+                        onSetStory={setStoryStart}
+                        onApplyStories={setStories}
+                        onRename={(bookId, title) => {
+                          void renameBook(bookId, title);
+                        }}
+                        positionFor={readingPositionFor}
+                        onReadChapter={rememberReadingPosition}
+                        openAt={openAt}
+                        onOpenedAtChapter={handleOpenedAtChapter}
+                      />
+                    }
+                  />
+                  {/* Before the catch-all, or it would redirect away. */}
+                  <Route
+                    path="/books"
+                    element={
+                      <Library
+                        notes={notes}
+                        books={books}
+                        onOpenSpine={(spine) => {
+                          if (spine.kind === "book") handleSelectBook(spine.id);
+                        }}
+                        onCreate={handleCreateBook}
+                      />
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              )}
             </div>
 
             {/* Only when the pane is shut. A button that opens something, still
