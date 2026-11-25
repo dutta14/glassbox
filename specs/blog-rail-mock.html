@@ -70,6 +70,7 @@ section.doc > p { margin: 0 0 14px; font-size: 13px; line-height: 1.55; color: v
 .feed__more::before { content: ""; display: block; width: 6px; height: 6px; margin: 0 auto 14px; border: 1px solid var(--faint); transform: rotate(45deg); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .25; } }
 @media (prefers-reduced-motion: reduce) { .feed__more::before { animation: none; } }
+.written--chapter { font: 400 11px var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .written a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
 .written a:hover { color: var(--text); }
 .bookhead h3 { font-size: 44px; }
@@ -273,8 +274,8 @@ mark { background: var(--raised); color: var(--text); border-radius: 2px; paddin
     <tr><td>Motion</td><td>150ms colour / opacity, 150ms chevron turn. All off under <code>prefers-reduced-motion</code>.</td></tr>
     <tr><td>Grouping</td><td>Posts tab: by <code>createdAt</code> year, newest first, all open by default, fold state per session. A year holding the selected note or a search match is forced open. Invalid dates fall into a final “Undated” group.</td></tr>
     <tr><td>Tabs</td><td>Posts and Collections under the action links. Garamond 16px, no rule or underline; the open tab is <code>--color-text</code>, the other <code>--color-text-faint</code>. <code>role="tablist"</code>, arrow keys move between tabs, the list is the <code>tabpanel</code>. The open tab is remembered per device. While searching the tabs are hidden (see Search) and return when search closes.</td></tr>
-    <tr><td>Posts / Collections</td><td><b>Posts</b>: notes without a collection, grouped by year, then “New” lives in the action links. <b>Collections</b>: a flat list of collections, one row each: the name (Garamond 14px, same row as a post) and beneath it “N chapters” (Inter 11px, uppercase, 0.08em, faint; “1 chapter”; “Empty” at zero). No year headings, no collection headings, no fold, no posts underneath. Ordered by most recently updated. The open collection takes the filled ◇ and full ink, as a post does. Below the list: “New collection”. No Organize menu. A collection’s posts never show under Posts. The existing <code>BookListItem</code> is this row.</td></tr>
-    <tr><td>Collection page</td><td>Opens in the main pane when a collection is chosen in the rail, or its line is followed from a post. Title (Garamond 44px), “N chapters” beneath (Inter 12px, uppercase), the ornament, then every chapter as an article in the collection’s own running order (the order chosen on the page, not by date). No infinite scroll and no loader: all chapters render, as <code>BookStage</code> does today. Ends with “End of Name.” Each chapter has an Edit link; Done returns to the page at that chapter. Rename and reorder stay as in <code>BookStage</code>. Empty: title, “Empty”, “No chapters yet.” The mock orders chapters by date, oldest first, as a stand-in for the running order.</td></tr>
+    <tr><td>Posts / Collections</td><td><b>Posts</b>: notes without a collection, grouped by year, then “New” lives in the action links. <b>Collections</b>: a flat list of collections, one row each: the name (Garamond 14px, same row as a post) and beneath it “N chapters · YYYY–YYYY” (Inter 11px, uppercase, 0.08em, faint; “1 chapter”; the years are the first and last year in the chapters’ written dates, a single year reads “2011”, never “2011–2011”; “Empty”, with no years, at zero). No year headings, no collection headings, no fold, no posts underneath. Ordered by most recently updated. The open collection takes the filled ◇ and full ink, as a post does. Below the list: “New collection”. No Organize menu. A collection’s posts never show under Posts. The existing <code>BookListItem</code> is this row.</td></tr>
+    <tr><td>Collection page</td><td>Opens in the main pane when a collection is chosen in the rail, or its line is followed from a post. Title (Garamond 44px), “N chapters · YYYY–YYYY” beneath (Inter 12px, uppercase; same years rule as the rail row), the ornament, then every chapter as an article in the collection’s own running order (the order chosen on the page, not by date). No infinite scroll and no loader: all chapters render, as <code>BookStage</code> does today. Ends with “End of Name.” Each chapter ends with a quiet line: its written date, then “Edit” and “Remove from collection” (Inter 11px, uppercase, 0.08em, faint; the date is “MONTH D, YYYY”; no “Written” and no read time here). These are the two actions the app has today. Done returns to the page at that chapter. Rename and reorder stay as in <code>BookStage</code>. Empty: title, “Empty”, “No chapters yet.” The mock orders chapters by date, oldest first, as a stand-in for the running order.</td></tr>
     <tr><td>Search</td><td>Inline, not a modal. “Search” swaps the New / Search links for a field in the same spot (Garamond italic 17px, underline only, no box). While it is open the Posts / Collections tabs are hidden and the list becomes one flat set of results from every post and every collection, newest first, with no year or collection headings. Each row’s date line carries the year and the collection name. A small count (“3 results”) sits above the list. Matches title, body and tags, as the modal does today. A match wash marks the title hit; a body-only match shows one muted line of text under the date (this mock filters titles only, so the snippet is not shown). Empty field: “Search every post and collection.” No results: “Nothing matches “zzz”.” Esc or the “esc” button closes search, restores the tabs, the previous tab and fold state. Field: <code>role="searchbox"</code> labelled “Search notes”; the count is a polite live region. No scrim, no focus trap, so the page stays readable and clickable.</td></tr>
     <tr><td>Collection line</td><td>Shown on any post that is in a collection: in the feed (search results only, since the Posts feed holds no collection posts), on the collection page chapters’ editor, and in the editor. Copy: “In the collection – <i>Name</i>” (the real app says “In the Book - ” today; the hyphen becomes an en dash). Inter 12px / 1.6, 0.08em tracking, uppercase, <code>--color-text-muted</code>; the name is a link underlined at rest, 4px offset, <code>--color-border-strong</code>, full ink on hover and focus. Spacing: 20px under the title’s last line (the old −8px pulled it into the title), then the ornament 22px below, measured from the line’s box. Centred, max 30em, wraps on long names (<code>overflow-wrap: anywhere</code>). An empty name reads “Untitled collection”. Not shown for a post outside a collection. The link goes to that collection’s page, scrolled to this chapter (the existing <code>/book/:id</code> route with a chapter target); the rail switches to Collections and marks the collection. From the editor it saves first.</td></tr>
     <tr><td>Search highlighting</td><td>Search matches title, body and tags, case-insensitive, as a substring. Every occurrence is marked with <code>&lt;mark&gt;</code> (<code>--color-raised</code> wash, full ink, 2px radius, 1px side padding), never a bright colour. Marked in three places: the rail row’s title; the rail row’s body snippet (shown only when the title has no hit: one line of text around the first hit, about 40 characters before, clipped to two lines, with … at a cut end); and, in the feed, each result’s title and body. Marks are cleared when search closes or the query is emptied. The feed scrolls to the top of the first result, not to a hit inside it. No “next match” control in this iteration. Screen readers hear the text unchanged (<code>mark</code> is not announced as a change).</td></tr>
@@ -320,6 +321,8 @@ const booksList = () => {
   EXTRA_BOOKS.forEach(b => { if (b.made > (upd.get(b.name) ?? "")) upd.set(b.name, b.made); });
   return [...upd].map(([name, u]) => ({ name, upd: u, chapters: chaptersOf(name) })).sort((a, b) => b.upd.localeCompare(a.upd));
 };
+const yearSpan = ch => { const ys = ch.map(n => +n.date.slice(0, 4)); if (!ys.length) return ""; const a = Math.min(...ys), z = Math.max(...ys); return a === z ? `${a}` : `${a}–${z}`; };
+const bookMeta = ch => ch.length ? `${chapterCount(ch.length)} · ${yearSpan(ch)}` : "Empty";
 const chapterCount = n => n === 0 ? "Empty" : n === 1 ? "1 chapter" : `${n} chapters`;
 const esc = s => s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 const yearOf = n => n.date.slice(0,4);
@@ -380,7 +383,7 @@ const bookRowHTML = (b, o = {}) => `
   <li class="rp${o.sel ? " is-sel" : ""}${o.hover ? " is-hover" : ""}${o.focus ? " is-focus" : ""}${o.menu ? " menu-open" : ""}" data-id="book:${esc(b.name)}">
     <a class="rp__link" href="#" data-act="openbook" data-book="${esc(b.name)}" ${o.sel ? 'aria-current="true"' : ""}>
       <span class="rp__title">${esc(b.name.trim() || "Untitled collection")}</span>
-      <span class="rp__meta">${chapterCount(b.chapters.length)}</span>
+      <span class="rp__meta">${bookMeta(b.chapters)}</span>
     </a>
     <button class="rp__more" data-act="menu" data-id="book:${esc(b.name)}" aria-haspopup="menu" aria-label="Actions for ${esc(b.name)}">${ICON.more}</button>
     ${o.menu ? `<div class="menu" role="menu" style="right:-6px; top:30px"><button class="menu__item menu__item--danger" role="menuitem" data-act="delbook" data-book="${esc(b.name)}">Delete collection</button></div>` : ""}
@@ -463,7 +466,7 @@ function articleHTML(n0, q = "", o = {}) {
     ${o.noCrumb ? "" : crumbHTML(n)}
     <div class="orn" aria-hidden="true"><i></i></div>
     ${body}
-    <div class="written">Written ${MONTHS[+m-1]} ${+d}, ${y} · 1 min read · <a href="#" data-act="edit" data-id="${n.id}">Edit</a></div></article>`;
+    <div class="written${o.noCrumb ? " written--chapter" : ""}">${o.noCrumb ? "" : "Written "}${MONTHS[+m-1]} ${+d}, ${y}${o.noCrumb ? "" : " · 1 min read"} · <a href="#" data-act="edit" data-id="${n.id}">Edit</a>${o.noCrumb ? ` · <a href="#" data-act="unchapter" data-id="${n.id}">Remove from collection</a>` : ""}</div></article>`;
 }
 
 /* ---------- reading feed ---------- */
@@ -485,7 +488,7 @@ function closeSearch() { S.searching = false; S.q = ""; S.book = S.prevBook; S.s
 function bookPageHTML(name) {
   const b = booksList().find(x => x.name === name); if (!b) return feedHTML();
   const ch = b.chapters.map(n => ({ ...n, fmt: S.verseOverride[n.id] ?? n.fmt }));
-  return `<div class="inner"><header class="bookhead"><h3>${esc(b.name.trim() || "Untitled collection")}</h3><p class="bk__meta">${chapterCount(ch.length)}</p><div class="orn" aria-hidden="true"><i></i></div></header>
+  return `<div class="inner"><header class="bookhead"><h3>${esc(b.name.trim() || "Untitled collection")}</h3><p class="bk__meta">${bookMeta(ch)}</p><div class="orn" aria-hidden="true"><i></i></div></header>
     ${ch.length ? ch.map(n => articleHTML(n, "", { noCrumb: true })).join("") + `<p class="bk__end">End of ${esc(b.name)}.</p>` : `<p class="feed__empty" style="margin-top:24px">No chapters yet.<br>Add a post from its ⋯ menu.</p>`}</div>`;
 }
 const paneHTML = () => S.editing ? editorHTML() : (S.book && !S.searching) ? bookPageHTML(S.book) : feedHTML();
@@ -589,6 +592,7 @@ document.addEventListener("click", e => {
   else if (a === "crumb") { const cid = t.closest(".post")?.dataset.id ?? S.editing?.id ?? S.sel; S.searching = false; S.q = ""; S.tab = "books"; S.book = t.dataset.book; S.menuId = null; S.sel = cid; S.scrollTo = cid; S.smooth = false; }
   else if (a === "openbook") { S.book = t.dataset.book; S.menuId = null; S.feedTop = true; }
   else if (a === "delbook") { const nm = t.dataset.book; NOTES.forEach(n => { if (n.book === nm) delete n.book; }); const i = EXTRA_BOOKS.findIndex(x => x.name === nm); if (i >= 0) EXTRA_BOOKS.splice(i, 1); if (S.book === nm) { S.book = null; S.feedTop = true; } S.menuId = null; }
+  else if (a === "unchapter") { const n = NOTES.find(x => x.id === t.dataset.id); delete n.book; }
   else if (a === "tab") { S.tab = t.dataset.tab; S.menuId = null; S.newMenu = false; S.naming = false; }
   else if (a === "newbook") { S.naming = true; S.newName = ""; S.menuId = null; }
   else if (a === "cancelname") { S.naming = false; }
@@ -637,7 +641,8 @@ document.getElementById("row-states").innerHTML = [
   card("Verse", wrapList(rowHTML(byId("n1"))), "Italic title is the only cue."),
   card("Collection row", `<div style="width:236px">${ulWrap(bookRowHTML(booksList()[1]))}</div>`, "A name, and under it the chapter count. No date, no year: a collection is a thing, not an entry."),
   card("Collection · selected", `<div style="width:236px">${ulWrap(bookRowHTML(booksList()[1], { sel: true }))}</div>`, "Filled ◇ and full ink, same as a post."),
-  card("Collection · empty", `<div style="width:236px">${ulWrap(bookRowHTML(booksList()[0]))}</div>`, "“Empty” instead of a count; “1 chapter” when there is one."),
+  card("Collection · empty", `<div style="width:236px">${ulWrap(bookRowHTML(booksList()[0]))}</div>`, "“Empty” and nothing else: no years until there is a chapter."),
+  card("Collection · years", `<div style="width:236px">${ulWrap(booksList().slice(1).map(b => bookRowHTML(b)).join(""))}</div>`, "After the count: the first and last year written, “2024–2026”. One year reads “2011”, never “2011–2011”. Taken from the chapters’ written dates."),
   card("Collection · menu open", `<div style="position:relative;height:120px;width:236px">${ulWrap(bookRowHTML(booksList()[1], { menu: true }))}</div>`, "Delete collection only. The posts come back to Posts."),
   card("Long title", wrapList(rowHTML(byId("n4"))), "Wraps. Date stays under the last line."),
   card("Search match", wrapList(rowHTML(byId("n2"), { q: "shipping" })), "Match gets a quiet wash, not a bright highlight."),
