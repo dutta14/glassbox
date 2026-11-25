@@ -484,7 +484,7 @@ export const NoteEditor = ({
             survive a middle click and be copyable as an address. */}
         {book && (
           <p className="editor__from-book">
-            {"In the Book - "}
+            {"In the collection – "}
             <Link className="editor__from-book-link" to={bookPath(book.id)}>
               {book.title.trim() || COPY.untitledBook}
             </Link>

@@ -427,7 +427,7 @@ export const NotesRail = ({
                     aria-expanded={booksOpen}
                     aria-controls="rail-books-list"
                   >
-                    Books
+                    {COPY.booksRow}
                     <Chevron open={booksOpen} />
                   </button>
                 </h2>
@@ -653,8 +653,8 @@ export const NotesRail = ({
           <div className="notes-rail__icons-divider" />
 
           <RailFlyout
-            label="Books"
-            heading="Books"
+            label={COPY.booksRow}
+            heading={COPY.booksRow}
             open={openFlyout === "books"}
             onOpenChange={(next) => setOpenFlyout(next ? "books" : null)}
             isEmpty={books.length === 0}

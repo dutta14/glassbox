@@ -107,11 +107,11 @@ const notesList = () => {
   return within(nav as HTMLElement);
 };
 
-/* Arranged by book the section heading is a button named "Books" too, so the
+/* Arranged by book the section heading is a button named "Collections" too, so the
    name alone cannot tell the top-level entry from the heading. */
 const booksEntry = () =>
   screen
-    .queryAllByRole("button", { name: "Books" })
+    .queryAllByRole("button", { name: "Collections" })
     .find((b) => b.classList.contains("notes-rail__entry"));
 
 describe("NotesRail organize modes", () => {
@@ -152,7 +152,7 @@ describe("NotesRail organize modes", () => {
   it("puts no book count on the Books entry", () => {
     renderRail({ organizeMode: "list" });
 
-    expect(booksEntry()?.textContent?.trim()).toBe("Books");
+    expect(booksEntry()?.textContent?.trim()).toBe("Collections");
   });
 
   it("opens the Books page from that entry", async () => {

@@ -89,7 +89,7 @@ describe("NotesRail section accordions", () => {
   it("keeps both sections open on a first visit", () => {
     renderRail();
 
-    expect(toggle("Books")).toHaveAttribute("aria-expanded", "true");
+    expect(toggle("Collections")).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Autumn")).toBeVisible();
     expect(screen.getByText("Postgres tuning")).toBeVisible();
@@ -98,7 +98,9 @@ describe("NotesRail section accordions", () => {
   it("keeps the heading role, so the outline still has both sections", () => {
     renderRail();
 
-    expect(screen.getByRole("heading", { name: "Books" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Collections" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Notes" })).toBeInTheDocument();
   });
 
@@ -106,9 +108,9 @@ describe("NotesRail section accordions", () => {
     const user = userEvent.setup();
     renderRail();
 
-    await user.click(toggle("Books"));
+    await user.click(toggle("Collections"));
 
-    expect(toggle("Books")).toHaveAttribute("aria-expanded", "false");
+    expect(toggle("Collections")).toHaveAttribute("aria-expanded", "false");
     // Not merely "not visible": hidden removes it from the accessibility tree
     // too, which is the part a screen reader depends on.
     expect(screen.queryByText("Autumn")).not.toBeVisible();
@@ -118,7 +120,7 @@ describe("NotesRail section accordions", () => {
     const user = userEvent.setup();
     renderRail();
 
-    await user.click(toggle("Books"));
+    await user.click(toggle("Collections"));
 
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText("Postgres tuning")).toBeVisible();
@@ -127,7 +129,7 @@ describe("NotesRail section accordions", () => {
   it("points the toggle at the list it controls", async () => {
     renderRail();
 
-    const controls = toggle("Books").getAttribute("aria-controls");
+    const controls = toggle("Collections").getAttribute("aria-controls");
     expect(controls).toBe("rail-books-list");
     expect(document.getElementById(controls!)).not.toBeNull();
   });
@@ -152,14 +154,14 @@ describe("NotesRail section accordions", () => {
     renderRail();
 
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "false");
-    expect(toggle("Books")).toHaveAttribute("aria-expanded", "true");
+    expect(toggle("Collections")).toHaveAttribute("aria-expanded", "true");
   });
 
   it("falls back to open when the stored value is not usable", () => {
     localStorage.setItem("glassbox.railSections.v1", "{ not json");
     renderRail();
 
-    expect(toggle("Books")).toHaveAttribute("aria-expanded", "true");
+    expect(toggle("Collections")).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "true");
   });
 
@@ -172,7 +174,7 @@ describe("NotesRail section accordions", () => {
     );
     renderRail();
 
-    expect(toggle("Books")).toHaveAttribute("aria-expanded", "true");
+    expect(toggle("Collections")).toHaveAttribute("aria-expanded", "true");
     expect(toggle("Notes")).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -183,9 +185,9 @@ describe("NotesRail section accordions", () => {
     });
     renderRail();
 
-    await user.click(toggle("Books"));
+    await user.click(toggle("Collections"));
 
-    expect(toggle("Books")).toHaveAttribute("aria-expanded", "false");
+    expect(toggle("Collections")).toHaveAttribute("aria-expanded", "false");
   });
 
   it("collapses the sample banner with the notes section it belongs to", async () => {

@@ -105,7 +105,7 @@ const noteList = (page: Page) =>
   page.getByRole("navigation", { name: "Note list" });
 const notesButton = (page: Page) =>
   rail(page).getByRole("button", { name: "Notes", exact: true });
-const flyoutPanel = (page: Page, name: "Notes" | "Books") =>
+const flyoutPanel = (page: Page, name: "Notes" | "Collections") =>
   page.getByRole("group", { name });
 
 const NOTE_TITLES = [
@@ -190,7 +190,7 @@ test.describe("rail behaviour", () => {
       ).toBeVisible();
     }
     await expect(
-      rail(page).getByRole("button", { name: "Books" }),
+      rail(page).getByRole("button", { name: "Collections" }),
     ).toBeVisible();
     await expect(
       rail(page).getByRole("button", { name: "Settings" }),
@@ -266,10 +266,10 @@ test.describe("rail behaviour", () => {
     await page.goto("/");
 
     const booksToggle = rail(page).getByRole("button", {
-      name: "Books",
+      name: "Collections",
       exact: true,
     });
-    const bookList = page.getByRole("navigation", { name: "Books" });
+    const bookList = page.getByRole("navigation", { name: "Collections" });
     await expect(booksToggle).toHaveAttribute("aria-expanded", "true");
     await expect(
       bookList.getByRole("button", { name: /^Spring shelf/ }),
@@ -301,7 +301,7 @@ test.describe("rail behaviour", () => {
     for (const name of [
       "New note",
       "Search notes",
-      "Books",
+      "Collections",
       "Notes",
       "Settings",
     ]) {
@@ -372,9 +372,9 @@ test.describe("rail behaviour", () => {
     await page.getByRole("button", { name: "Collapse sidebar" }).click();
 
     await rail(page)
-      .getByRole("button", { name: "Books", exact: true })
+      .getByRole("button", { name: "Collections", exact: true })
       .click();
-    const panel = flyoutPanel(page, "Books");
+    const panel = flyoutPanel(page, "Collections");
     const book = panel.getByRole("button", { name: /^Spring shelf/ });
     await expect(book).toContainText("1 chapter");
 

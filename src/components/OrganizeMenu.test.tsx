@@ -54,7 +54,7 @@ describe("OrganizeMenu", () => {
       screen.getByRole("menuitemradio", { name: /In one list/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("menuitemradio", { name: /By book/ }),
+      screen.getByRole("menuitemradio", { name: /By collection/ }),
     ).toBeInTheDocument();
   });
 
@@ -66,7 +66,7 @@ describe("OrganizeMenu", () => {
     render(<Harness initialMode="book" />);
     await openMenu();
     expect(
-      screen.getByRole("menuitemradio", { name: /By book/ }),
+      screen.getByRole("menuitemradio", { name: /By collection/ }),
     ).toHaveAttribute("aria-checked", "true");
     expect(
       screen.getByRole("menuitemradio", { name: /In one list/ }),
@@ -78,7 +78,7 @@ describe("OrganizeMenu", () => {
     render(<Harness onChoose={onChoose} />);
     await openMenu();
     await userEvent.click(
-      screen.getByRole("menuitemradio", { name: /By book/ }),
+      screen.getByRole("menuitemradio", { name: /By collection/ }),
     );
     expect(onChoose).toHaveBeenCalledWith("book");
   });
@@ -87,7 +87,7 @@ describe("OrganizeMenu", () => {
     render(<Harness />);
     await openMenu();
     await userEvent.click(
-      screen.getByRole("menuitemradio", { name: /By book/ }),
+      screen.getByRole("menuitemradio", { name: /By collection/ }),
     );
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
@@ -96,11 +96,11 @@ describe("OrganizeMenu", () => {
     render(<Harness />);
     await openMenu();
     await userEvent.click(
-      screen.getByRole("menuitemradio", { name: /By book/ }),
+      screen.getByRole("menuitemradio", { name: /By collection/ }),
     );
     await openMenu();
     expect(
-      screen.getByRole("menuitemradio", { name: /By book/ }),
+      screen.getByRole("menuitemradio", { name: /By collection/ }),
     ).toHaveAttribute("aria-checked", "true");
   });
 
@@ -110,13 +110,13 @@ describe("OrganizeMenu", () => {
     render(<Harness initialMode="book" />);
     await openMenu();
     expect(
-      screen.getByRole("menuitemradio", { name: /By book/ }),
+      screen.getByRole("menuitemradio", { name: /By collection/ }),
     ).toHaveFocus();
   });
 
   /* Deliberately the mode that is FIRST in the list. Checking only the "book"
      case cannot tell "focus the active choice" apart from "focus whichever
-     option happens to be last", because By book is both. */
+     option happens to be last", because By collection is both. */
   it("opens with focus on the first option when that is the active one", async () => {
     render(<Harness initialMode="list" />);
     await openMenu();

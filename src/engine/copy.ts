@@ -74,39 +74,39 @@ export const COPY = {
   /* Distinct from the other two for the same reason they are distinct from
      each other: three lists share the rail, and an unnamed row in one must
      never be mistaken for an unnamed row in another. */
-  untitledBook: "Untitled book",
-  emptyBooksSidebar: "Add a note to a book to start one.",
+  untitledBook: "Untitled collection",
+  emptyBooksSidebar: "Add a note to a collection to start one.",
 
   emptyNotesSidebar: "Use New note to start one.",
-  /* The rail in book mode lists only notes that are in no book. Saying "Use
+  /* The rail in collection mode lists only notes that are in no collection. Saying "Use
      New note to start one." to someone whose 566 notes are all shelved would
      be a lie, so this states the fact instead. */
-  emptyNotesAllBooked: "Every note is in a book.",
+  emptyNotesAllBooked: "Every note is in a collection.",
 
   /* One string for the button's accessible name and the menu's own heading,
      so what is heard and what is seen can never drift apart. */
   organizeMenu: "Organize notes",
   organizeOptionList: "In one list",
-  organizeOptionBook: "By book",
+  organizeOptionBook: "By collection",
 
-  /* One phrasing for the rail row and the landing page, so the same book is
-     never "Empty" in one place and "0 chapters" in another. An empty book says
+  /* One phrasing for the rail row and the landing page, so the same collection is
+     never "Empty" in one place and "0 chapters" in another. An empty collection says
      so rather than showing a count, which reads like a counter that failed. */
   chapterCount: (n: number) =>
     n === 0 ? "Empty" : n === 1 ? "1 chapter" : `${n} chapters`,
 
-  booksRow: "Books",
-  booksPageTitle: "Books",
+  booksRow: "Collections",
+  booksPageTitle: "Collections",
   /* Placeholder and label share their words: a placeholder is not a label, but
      there is no reason for the two to say different things. */
-  booksSearch: "Search books",
+  booksSearch: "Search collections",
   /* Names what was searched, so the reader knows the app heard them and the
      shelf is genuinely empty for that word. */
-  booksSearchEmpty: (query: string) => `No books match "${query}".`,
-  newBook: "New book",
+  booksSearchEmpty: (query: string) => `No collections match "${query}".`,
+  newBook: "New collection",
   /* Points at the button on this page rather than teaching the add-a-note
      gesture, which would send the reader past a control in front of them. */
-  booksPageEmpty: "No books yet. Use New book to start one.",
+  booksPageEmpty: "No collections yet. Use New collection to start one.",
   emptyBookChapters: "No chapters yet.",
   emptyNotesChat: "Add a note to ask questions about it.",
   emptyChat: "Ask a question about your notes.",

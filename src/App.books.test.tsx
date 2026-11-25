@@ -161,7 +161,9 @@ const arrangeByBook = () => {
     rows first and book rows after. */
 const switchToByBook = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole("button", { name: "Organize notes" }));
-  await user.click(screen.getByRole("menuitemradio", { name: "By book" }));
+  await user.click(
+    screen.getByRole("menuitemradio", { name: "By collection" }),
+  );
 };
 
 /** jsdom has no scrollIntoView, and opening a book at a chapter is a scroll. */
@@ -376,12 +378,16 @@ describe("books, end to end through the interface", () => {
     );
 
     const main = await screen.findByRole("main");
-    expect(await within(main).findByText(/In the Book -/)).toBeInTheDocument();
+    expect(
+      await within(main).findByText(/In the collection –/),
+    ).toBeInTheDocument();
 
     // Following it must actually arrive at the book, so the chapter shows.
     await user.click(within(main).getByRole("link", { name: "Childhood" }));
     expect(await within(main).findByText("Lunch is ready")).toBeInTheDocument();
-    expect(within(main).queryByText(/In the Book/)).not.toBeInTheDocument();
+    expect(
+      within(main).queryByText(/In the collection/),
+    ).not.toBeInTheDocument();
   });
 
   it("says nothing about books on a note that is in none", async () => {
@@ -397,7 +403,9 @@ describe("books, end to end through the interface", () => {
 
     const main = await screen.findByRole("main");
     await within(main).findByRole("textbox", { name: /note title/i });
-    expect(within(main).queryByText(/In the Book/i)).not.toBeInTheDocument();
+    expect(
+      within(main).queryByText(/In the collection/i),
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -420,7 +428,9 @@ describe("books, end to end through the interface", () => {
     );
 
     const main = await screen.findByRole("main");
-    expect(await within(main).findByText(/In the Book -/)).toBeInTheDocument();
+    expect(
+      await within(main).findByText(/In the collection –/),
+    ).toBeInTheDocument();
     expect(
       within(main).getByRole("link", { name: "Summers" }),
     ).toBeInTheDocument();

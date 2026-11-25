@@ -357,16 +357,20 @@ textarea.editor__body:not([data-editing]) {
   line-height: 2.1;
 }
 
-/* Sits between the title and the chapter rule, in the gap the title's own
-   bottom padding already opens, so nothing below it moves. Muted and small:
-   it is a label on the note, and it must not compete with the title above it
-   or the first line below. */
+/* Sits between the title and the chapter rule. Muted and small: it is a label
+   on the note, and it must not compete with the title above it or the first
+   line below. The top margin is positive so the line clears the title's last
+   line rather than being pulled into it. */
 .editor__from-book {
-  margin: calc(var(--space-2) * -1) 0 var(--space-5);
+  margin: var(--space-5) auto 22px;
+  max-width: 30em;
   text-align: center;
-  font-size: var(--fs-xs);
-  letter-spacing: 0.06em;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.6;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
   color: var(--color-text-muted);
 }
 
@@ -375,7 +379,8 @@ textarea.editor__body:not([data-editing]) {
   /* Underlined at rest. The surrounding line is the same colour and weight, so
      without it there is nothing to say which words can be clicked. */
   text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 4px;
 }
 
 .editor__from-book-link:hover,
