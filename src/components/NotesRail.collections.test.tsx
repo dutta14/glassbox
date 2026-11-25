@@ -19,6 +19,15 @@ const mkBook = (
   updatedAt,
 });
 
+const written = (id: string, createdAt: string): Note => ({
+  id,
+  title: id,
+  body: "",
+  tags: [],
+  createdAt,
+  updatedAt: createdAt,
+});
+
 const note: Note = {
   id: "n1",
   title: "Postgres tuning",
@@ -102,6 +111,24 @@ describe("NotesRail Collections list", () => {
       within(panel).queryByRole("button", { name: /^(Expand|Collapse)/ }),
     ).not.toBeInTheDocument();
     expect(within(panel).getAllByRole("list")).toHaveLength(1);
+  });
+
+  it("adds the years the chapters were written to each row", async () => {
+    const user = userEvent.setup();
+    renderRail({
+      notes: [
+        written("c1", "2011-06-15T12:00:00"),
+        written("c2", "2012-01-10T12:00:00"),
+        written("c3", "2014-05-02T12:00:00"),
+        written("c4", "2013-09-09T12:00:00"),
+      ],
+    });
+    await openCollections(user);
+
+    const rows = within(screen.getByRole("tabpanel")).getAllByRole("listitem");
+    expect(
+      rows.map((r) => r.querySelector(".note-item__meta")?.textContent),
+    ).toEqual(["Empty", "1 chapter · 2011", "3 chapters · 2012–2014"]);
   });
 
   it("marks only the open collection and opens one on click", async () => {

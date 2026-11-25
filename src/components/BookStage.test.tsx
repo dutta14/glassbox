@@ -298,18 +298,31 @@ describe("BookStage — front matter", () => {
     expect(screen.queryByRole("button", { name: "Contents" })).toBeNull();
   });
 
-  it("counts the chapters beneath the title and ends with the collection's name", () => {
-    const one = makeNote({ id: "n1", title: "One" });
-    const two = makeNote({ id: "n2", title: "Two" });
+  it("counts the chapters and their years beneath the title and ends with the collection's name", () => {
+    const one = makeNote({
+      id: "n1",
+      title: "One",
+      createdAt: "2011-03-01T12:00:00",
+    });
+    const two = makeNote({
+      id: "n2",
+      title: "Two",
+      createdAt: "2014-03-01T12:00:00",
+    });
     renderStage({ book: makeBook(["n1", "n2"]), chapters: [one, two] });
-    expect(screen.getByText("2 chapters")).toBeInTheDocument();
+    expect(screen.getByText("2 chapters · 2011–2014")).toBeInTheDocument();
     expect(screen.getByText("End of My Book.")).toBeInTheDocument();
   });
 
   it("counts a single chapter in the singular", () => {
-    const one = makeNote({ id: "n1", title: "One", body: "a word" });
+    const one = makeNote({
+      id: "n1",
+      title: "One",
+      body: "a word",
+      createdAt: "2011-03-01T12:00:00",
+    });
     renderStage({ book: makeBook(["n1"]), chapters: [one] });
-    expect(screen.getByText("1 chapter")).toBeInTheDocument();
+    expect(screen.getByText("1 chapter · 2011")).toBeInTheDocument();
   });
 
   it("shows no collection line on its chapters, since the page is the collection", () => {

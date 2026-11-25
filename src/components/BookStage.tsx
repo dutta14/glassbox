@@ -12,6 +12,7 @@ import type { Book, Note, StoryMark } from "../types";
 import { COPY } from "../engine/copy";
 import { noteEditPath } from "../engine/routes";
 import { groupChapters, suggestStories } from "../utils/chapterNumbering";
+import { collectionMeta } from "../utils/collectionMeta";
 import { BookIndex } from "./BookIndex";
 import type { BookIndexChapter, BookIndexEditing } from "./BookIndex";
 import { BookContentsPanel } from "./BookContentsPanel";
@@ -370,7 +371,7 @@ export const BookStage = ({
         <div className="book-stage__front" ref={frontRef}>
           <BookTitleField title={book.title} onRename={onRename} />
           <p className="book-stage__meta">
-            {COPY.chapterCount(book.chapterIds.length)}
+            {collectionMeta(book.chapterIds.length, chapters)}
           </p>
           {/* Decorative only, so it is kept out of the accessibility tree. */}
           <div className="book-stage__ornament" aria-hidden="true">

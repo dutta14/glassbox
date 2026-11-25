@@ -231,6 +231,8 @@ export const NotesRail = ({
      simply whichever note is open. */
   const currentNoteId = selectedNoteId;
 
+  /* For a collection row's year range. */
+  const noteById = new Map(notes.map((note) => [note.id, note]));
   /* Derived from the same map the rows use to name a note's collection, so
      Posts can never show a note that a collection holds. */
   const postNotes = notes.filter((note) => !bookNameByNoteId.has(note.id));
@@ -686,6 +688,7 @@ export const NotesRail = ({
                       <BookListItem
                         key={book.id}
                         book={book}
+                        chapters={book.chapterIds.map((id) => noteById.get(id))}
                         isSelected={book.id === selectedBookId}
                         menuOpen={openMenuId === book.id}
                         onSelect={() => onSelectBook(book.id)}

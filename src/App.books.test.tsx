@@ -476,7 +476,7 @@ describe("a collection's own page", () => {
         await within(main).findByRole("link", { name: "Childhood" }),
       );
 
-      expect(await within(main).findByText("2 chapters")).toBeInTheDocument();
+      expect(await within(main).findByText(/^2 chapters/)).toBeInTheDocument();
       expect(scroll.reached()).toContain("n1");
       expect(screen.getByRole("tab", { name: "Collections" })).toHaveAttribute(
         "aria-selected",
@@ -506,7 +506,7 @@ describe("a collection's own page", () => {
     const scroll = stubScroll();
     try {
       await user.keyboard("{Escape}");
-      expect(await within(main).findByText("2 chapters")).toBeInTheDocument();
+      expect(await within(main).findByText(/^2 chapters/)).toBeInTheDocument();
       await waitFor(() => expect(scroll.reached()).toContain("n1"));
     } finally {
       scroll.restore();
@@ -527,7 +527,7 @@ describe("a collection's own page", () => {
 
     await waitFor(() => expect(read()[0].chapterIds).toEqual(["n2"]));
     expect(within(main).queryByText("Lunch is ready")).not.toBeInTheDocument();
-    expect(within(main).getByText("1 chapter")).toBeInTheDocument();
+    expect(within(main).getByText(/^1 chapter/)).toBeInTheDocument();
     await openTab(user, "Posts");
     expect(await railRow("Luncheon")).toBeInTheDocument();
   });
@@ -538,17 +538,17 @@ describe("a collection's own page", () => {
     await openTab(user, "Collections");
     await user.click(await screen.findByRole("button", { name: /^Childhood/ }));
     const main = await screen.findByRole("main");
-    await within(main).findByText("2 chapters");
+    await within(main).findByText(/^2 chapters/);
 
     await openTab(user, "Posts");
     // Switching tabs leaves the pane alone.
-    expect(within(main).getByText("2 chapters")).toBeInTheDocument();
+    expect(within(main).getByText(/^2 chapters/)).toBeInTheDocument();
     await user.click(
       within(await railRow("Garden")).getByRole("button", { name: /^Garden/ }),
     );
     expect(
       await within(main).findByRole("article", { name: "Garden" }),
     ).toBeInTheDocument();
-    expect(within(main).queryByText("2 chapters")).not.toBeInTheDocument();
+    expect(within(main).queryByText(/^2 chapters/)).not.toBeInTheDocument();
   });
 });
