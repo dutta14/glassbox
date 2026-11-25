@@ -278,6 +278,13 @@ const Feed = ({
       className="note-feed scroll-fades"
       aria-label={label}
       tabIndex={-1}
+      onClickCapture={(e) => {
+        // Edit swaps the feed out; a post the spy reports meanwhile would
+        // rewrite the address back out of the editor.
+        if ((e.target as HTMLElement).closest(".note-article__edit")) {
+          lockUntilRef.current = performance.now() + 1000;
+        }
+      }}
     >
       <div className="note-feed__inner">
         <h2 className="sr-only">{label}</h2>

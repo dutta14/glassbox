@@ -127,6 +127,11 @@ export const COPY = {
   feedNoResults: "Nothing to show.",
   feedSearchPrompt: "Results open here as you type.",
   feedEdit: "Edit",
+  /* The bar above the editor. The middle dot is part of the line. */
+  editorBarEditing: "Editing · saved as you write",
+  editorBarNewProse: "New prose · saved as you write",
+  editorBarNewVerse: "New verse · saved as you write",
+  editorDone: "Done",
   booksPageTitle: "Collections",
   /* Placeholder and label share their words: a placeholder is not a label, but
      there is no reason for the two to say different things. */

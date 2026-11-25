@@ -41,7 +41,12 @@ import { ChatPanel } from "./components/ChatPanel";
 import { NotFound } from "./components/NotFound";
 import "./styles/App.css";
 
-type PendingFocus = "note-list" | null;
+type PendingFocus = "note-list" | "feed" | null;
+
+/* A draft counts as empty until something is typed. Spaces alone are not
+   writing, so a draft holding only those is thrown away too. */
+const isEmptyNote = (note: Note): boolean =>
+  note.title.trim() === "" && note.body.trim() === "";
 
 /* The router itself lives in main.tsx as a HashRouter, matching the finance app.
    A HashRouter keeps the whole route after the '#', so GitHub Pages never sees
@@ -174,6 +179,13 @@ interface NoteStageProps {
   onOpenCollection: (bookId: string, noteId: string) => void;
 }
 
+interface NoteStageEditorProps extends NoteStageProps {
+  /** The note is a fresh draft, still being written. */
+  isNew: boolean;
+  /** Done: back to where this note is read. */
+  onDone: () => void;
+}
+
 /* The stage for /note/:id. This route only mounts once notes have loaded, since
    the shell gates the whole workspace on status === 'ready'. A missing note
    here is therefore a genuine dead link, deleted or hand-typed, not one still
@@ -188,7 +200,9 @@ const NoteStage = ({
   readAsset,
   bookByNoteId,
   onOpenCollection,
-}: NoteStageProps) => {
+  isNew,
+  onDone,
+}: NoteStageEditorProps) => {
   const { id } = useParams();
   const note = notes.find((n) => n.id === id) ?? null;
   const { previous: previousNote, next: nextNote } = useNoteNeighbours(
@@ -213,6 +227,8 @@ const NoteStage = ({
       readAsset={readAsset}
       book={bookByNoteId.get(note.id) ?? null}
       onOpenCollection={onOpenCollection}
+      isNew={isNew}
+      onDone={onDone}
     />
   );
 };
@@ -223,8 +239,10 @@ interface NoteRouteProps extends NoteStageProps {
   onCurrentChange: (id: string) => void;
   /** Previous and next inside the editor stay in the editor. */
   onEditNote: (id: string) => void;
-  /** Escape in the editor: back to wherever this note is read. */
+  /** Done, or Escape, in the editor: back to wherever this note is read. */
   onCloseEditor: (id: string) => void;
+  /** The note being written as new, if any. */
+  draftId: string | null;
 }
 
 /* /note/:id reads the note in the feed, scrolled to it. The same path with
@@ -237,6 +255,7 @@ const NoteRoute = ({
   onCurrentChange,
   onEditNote,
   onCloseEditor,
+  draftId,
   ...stage
 }: NoteRouteProps) => {
   const { id } = useParams();
@@ -264,7 +283,16 @@ const NoteRoute = ({
 
   if (!exists) return <NotFound what="note" />;
 
-  if (editing) return <NoteStage {...stage} onSelectNote={onEditNote} />;
+  if (editing && id) {
+    return (
+      <NoteStage
+        {...stage}
+        onSelectNote={onEditNote}
+        isNew={draftId === id}
+        onDone={() => onCloseEditor(id)}
+      />
+    );
+  }
 
   return (
     <NoteFeed
@@ -417,7 +445,8 @@ export const AppReady = ({
     status,
     error,
     storeKind,
-    createNote,
+    createDraft,
+    discardNote,
     updateNote,
     setNoteFormat,
     deleteNote,
@@ -512,6 +541,61 @@ export const AppReady = ({
     selectedBookId === null &&
     pathname !== "/books";
 
+  /* The post being written as new. Nothing is on disk for it until the first
+     keystroke, and if it is still empty when the reader leaves it, it goes.
+     `prev` is where the reader was, which is where an empty draft returns to.
+     `seen` waits for the route to show the editor, so that the moment between
+     starting a draft and arriving at it is not taken for leaving it. */
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const draftRef = useRef<{
+    id: string;
+    prev: string | null;
+    seen: boolean;
+  } | null>(null);
+  const [newPostCount, setNewPostCount] = useState(0);
+
+  /* Set the moment writing is asked for, before the route has caught up: the
+     feed still on screen can report a post in view in that gap, and following
+     it would rewrite the address out of the editor. */
+  const openingEditorRef = useRef(false);
+  useEffect(() => {
+    openingEditorRef.current = editing;
+  }, [editing]);
+
+  useEffect(() => {
+    const draft = draftRef.current;
+    if (!draft) return;
+    if (editing && selectedNoteId === draft.id) {
+      draft.seen = true;
+      return;
+    }
+    if (!draft.seen) return;
+    draftRef.current = null;
+    setDraftId(null);
+    const note = notes.find((n) => n.id === draft.id);
+    if (note && isEmptyNote(note)) discardNote(note.id);
+  }, [editing, selectedNoteId, notes, discardNote]);
+
+  /* Where the editor sends the reader: the feed at this note, or an empty
+     draft's neighbour, since there is no note to land on. The collection, when
+     this note is a chapter, is reported separately because it takes more than
+     a path to open. */
+  const doneTarget = useCallback(
+    (id: string): { path: string; bookId: string | null } => {
+      const draft = draftRef.current?.id === id ? draftRef.current : null;
+      const note = notes.find((n) => n.id === id);
+      if (draft && note && isEmptyNote(note)) {
+        const back =
+          draft.prev !== null && posts.some((p) => p.id === draft.prev)
+            ? draft.prev
+            : posts.find((p) => p.id !== id)?.id;
+        return { path: back ? notePath(back) : "/", bookId: null };
+      }
+      return { path: notePath(id), bookId: bookByNoteId.get(id)?.id ?? null };
+    },
+    [notes, posts, bookByNoteId],
+  );
+
   /* Closing search puts the pane back on whatever was open when it began. The
      address is remembered at that moment, since the feed rewrites it as the
      reader moves through results. */
@@ -527,13 +611,33 @@ export const AppReady = ({
         }
         return;
       }
+      // Searching while writing saves and closes the editor first, so the
+      // results take the pane and closing search returns to the same post.
+      const leaving =
+        editing && selectedNoteId !== null ? doneTarget(selectedNoteId) : null;
+      if (leaving && selectedNoteId !== null) {
+        void flushPending();
+        navigate(leaving.path, { replace: true });
+      }
       if (!searchActiveRef.current) {
         searchActiveRef.current = true;
-        returnToRef.current = `${pathname}${search}`;
+        returnToRef.current = leaving
+          ? leaving.bookId
+            ? bookPath(leaving.bookId)
+            : leaving.path
+          : `${pathname}${search}`;
       }
       setSearchQuery(value);
     },
-    [navigate, pathname, search],
+    [
+      navigate,
+      pathname,
+      search,
+      editing,
+      selectedNoteId,
+      doneTarget,
+      flushPending,
+    ],
   );
 
   /* Each ask to go to a post carries a number, so asking for the same post
@@ -588,12 +692,31 @@ export const AppReady = ({
     document.title = title;
   }, [selectedNoteId, notes]);
 
+  /* Always starts in Posts with search closed. The draft is only on screen
+     until the first keystroke, so New then Done leaves nothing behind. */
   const handleCreateNote = useCallback(
     (format: NoteFormat = "prose") => {
-      const note = createNote(format);
+      void flushPending();
+      let prev = selectedNoteId;
+      const earlier = draftRef.current;
+      if (earlier) {
+        if (selectedNoteId === earlier.id) prev = earlier.prev;
+        const note = notes.find((n) => n.id === earlier.id);
+        if (note && isEmptyNote(note)) discardNote(note.id);
+      }
+      const note = createDraft(format);
+      draftRef.current = { id: note.id, prev, seen: false };
+      setDraftId(note.id);
+      if (searchActiveRef.current) {
+        searchActiveRef.current = false;
+        setSearchQuery(null);
+      }
+      setNewPostCount((count) => count + 1);
+      setPendingScrollOffset(null);
+      openingEditorRef.current = true;
       navigate(noteEditPath(note.id));
     },
-    [createNote, navigate],
+    [flushPending, selectedNoteId, notes, discardNote, createDraft, navigate],
   );
 
   useEffect(() => {
@@ -610,6 +733,7 @@ export const AppReady = ({
 
   const handleSelectNote = useCallback(
     (id: string) => {
+      if (editing) void flushPending();
       setPendingScrollOffset(null);
       scrollRequestCount.current += 1;
       setScrollRequest({ id, n: scrollRequestCount.current });
@@ -618,19 +742,23 @@ export const AppReady = ({
       if (selectedNoteId === id && !editing) return;
       navigate(notePath(id));
     },
-    [selectedNoteId, editing, navigate],
+    [selectedNoteId, editing, flushPending, navigate],
   );
 
   /* The reader moved through the feed. Replace, not push: scrolling is not a
      series of places to go back to. */
   const handleFeedCurrentChange = useCallback(
-    (id: string) => navigate(notePath(id), { replace: true }),
+    (id: string) => {
+      if (openingEditorRef.current) return;
+      navigate(notePath(id), { replace: true });
+    },
     [navigate],
   );
 
   const handleEditNote = useCallback(
     (id: string) => {
       setPendingScrollOffset(null);
+      openingEditorRef.current = true;
       navigate(noteEditPath(id));
     },
     [navigate],
@@ -736,9 +864,10 @@ export const AppReady = ({
 
   const handleSelectBook = useCallback(
     (id: string) => {
+      void flushPending();
       navigate(bookPath(id));
     },
-    [navigate],
+    [flushPending, navigate],
   );
 
   /* Held in state rather than passed through the URL. The pick is a one-shot
@@ -763,19 +892,39 @@ export const AppReady = ({
     [flushPending, navigate],
   );
 
-  /* Escape in the editor. A chapter goes back to its collection's page, at
-     that chapter; so does any other post, unless a search is open, whose
-     results are the place it was reached from. */
-  const handleCloseEditor = useCallback(
-    (id: string) => {
-      const book = bookByNoteId.get(id);
-      if (book && searchQuery === null) {
-        handleOpenCollection(book.id, id, true);
+  /* Done or Escape in the editor, and anything else that ends the writing.
+     What is typed is saved first. A chapter goes back to its collection's page,
+     at that chapter; so does any other post, unless a search is open, whose
+     results are the place it was reached from. Only Done and Escape put focus
+     on the feed, since the other ways out have somewhere of their own to be. */
+  const closeEditor = useCallback(
+    (id: string, focusFeed: boolean, toCollection = true) => {
+      void flushPending();
+      const target = doneTarget(id);
+      if (target.bookId && toCollection && searchQuery === null) {
+        handleOpenCollection(target.bookId, id, true);
         return;
       }
-      navigate(notePath(id), { replace: true });
+      navigate(target.path, { replace: true });
+      if (focusFeed) setPendingFocus("feed");
     },
-    [bookByNoteId, handleOpenCollection, navigate, searchQuery],
+    [doneTarget, flushPending, handleOpenCollection, navigate, searchQuery],
+  );
+
+  const handleCloseEditor = useCallback(
+    (id: string) => closeEditor(id, true),
+    [closeEditor],
+  );
+
+  /* The rail was used for something else while writing. Going to Posts from a
+     chapter leaves the collection behind rather than opening its page, which
+     would pull the rail back to Collections. */
+  const handleLeaveWriting = useCallback(
+    (tab: "posts" | "collections" | null) => {
+      if (!editing || selectedNoteId === null) return;
+      closeEditor(selectedNoteId, false, tab !== "posts");
+    },
+    [editing, selectedNoteId, closeEditor],
   );
 
   /* Lands the reader in the book it just made, which is where naming it and
@@ -851,7 +1000,15 @@ export const AppReady = ({
 
   useEffect(() => {
     if (pendingFocus === null) return;
+    // Waits for the editor to give way, so the feed it returns to is there to
+    // take focus.
+    if (pendingFocus === "feed" && editing) return;
     const raf = requestAnimationFrame(() => {
+      if (pendingFocus === "feed") {
+        document
+          .querySelector<HTMLElement>(".note-feed")
+          ?.focus({ preventScroll: true });
+      }
       if (pendingFocus === "note-list") {
         const selected =
           selectedNoteId !== null
@@ -866,7 +1023,7 @@ export const AppReady = ({
       setPendingFocus(null);
     });
     return () => cancelAnimationFrame(raf);
-  }, [pendingFocus, selectedNoteId]);
+  }, [pendingFocus, selectedNoteId, editing]);
 
   const handleSubmit = useCallback(
     (text: string) => {
@@ -943,6 +1100,8 @@ export const AppReady = ({
             onSelect={handleSelectNote}
             onSearchChange={handleSearchChange}
             onCreate={handleCreateNote}
+            onLeaveWriting={handleLeaveWriting}
+            newPostCount={newPostCount}
             books={books}
             selectedBookId={selectedBookId}
             bookNameByNoteId={bookNameByNoteId}
@@ -1070,6 +1229,7 @@ export const AppReady = ({
                         onSelectNote={handleSelectNote}
                         onEditNote={handleEditNote}
                         onCloseEditor={handleCloseEditor}
+                        draftId={draftId}
                         onOpenCollection={handleOpenCollection}
                         scrollRequest={scrollRequest}
                         onCurrentChange={handleFeedCurrentChange}

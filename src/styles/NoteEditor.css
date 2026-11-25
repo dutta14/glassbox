@@ -52,6 +52,34 @@
   color: var(--color-text-muted);
 }
 
+/* What the editor is doing, and the way out. Quiet, so the writing is the
+   loudest thing on the page. */
+.editor__bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.editor__done {
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 4px;
+}
+
+.editor__done:hover,
+.editor__done:focus-visible {
+  color: var(--color-text);
+}
+
 .editor__title {
   /* Deep space above, because a chapter starts down the page rather than at
      the top of it, and enough below to part the title from its first line. */

@@ -129,6 +129,14 @@ interface NotesRailProps {
       reading pane can show the same results the rail lists. */
   onSearchChange?: (query: string | null) => void;
   onCreate: (format: NoteFormat) => void;
+  /** Something other than the open note was started while the editor is open,
+      so the app can save and close the editor first. It names the tab the
+      reader is going to, or null when no tab is involved. */
+  onLeaveWriting?: (tab: "posts" | "collections" | null) => void;
+  /** Counts the times a new post was started. Each one moves the rail to
+      Posts and closes its search, whichever way New was asked for. The app
+      has already dropped the search by then, so it is not told again. */
+  newPostCount?: number;
   onSelectBook: (id: string) => void;
   onDeleteBook: (id: string) => void;
   /** Creates an empty collection with this name and opens it. */
@@ -157,6 +165,8 @@ export const NotesRail = ({
   onSelect,
   onSearchChange,
   onCreate,
+  onLeaveWriting,
+  newPostCount = 0,
   onSelectBook,
   onDeleteBook,
   onCreateBook,
@@ -208,6 +218,7 @@ export const NotesRail = ({
     event.preventDefault();
     const index = TABS.findIndex((t) => t.id === tab);
     const next = TABS[(index + step + TABS.length) % TABS.length];
+    onLeaveWriting?.(next.id);
     chooseTab(next.id);
     document.getElementById(`rail-tab-${next.id}`)?.focus();
   };
@@ -322,6 +333,14 @@ export const NotesRail = ({
      listing posts beside it. */
   const searchOpenRef = useRef(searchOpen);
   const onSearchChangeRef = useRef(onSearchChange);
+  const seenNewPostCount = useRef(newPostCount);
+  useEffect(() => {
+    if (newPostCount === seenNewPostCount.current) return;
+    seenNewPostCount.current = newPostCount;
+    chooseTab("posts");
+    setSearchOpen(false);
+    setQuery("");
+  }, [newPostCount, chooseTab]);
   useEffect(() => {
     searchOpenRef.current = searchOpen;
     onSearchChangeRef.current = onSearchChange;
@@ -493,7 +512,10 @@ export const NotesRail = ({
                   aria-selected={tab === id}
                   aria-controls="rail-panel"
                   tabIndex={tab === id ? 0 : -1}
-                  onClick={() => chooseTab(id)}
+                  onClick={() => {
+                    onLeaveWriting?.(id);
+                    chooseTab(id);
+                  }}
                   onKeyDown={onTabKeyDown}
                 >
                   {label}
@@ -682,6 +704,7 @@ export const NotesRail = ({
                     type="button"
                     className="notes-rail__newbook"
                     onClick={() => {
+                      onLeaveWriting?.("collections");
                       setOpenMenuId(null);
                       setNewName("");
                     }}

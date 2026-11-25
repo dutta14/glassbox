@@ -557,3 +557,75 @@ test("clicking prose after a section break puts the caret in that prose", async 
   );
   expect(caret).toBeGreaterThan(SECTIONED.indexOf("The second"));
 });
+
+test.describe("writing swaps the feed for the editor", () => {
+  const storedCount = (page: import("@playwright/test").Page) =>
+    page.evaluate(
+      () =>
+        JSON.parse(localStorage.getItem("glassbox.notes.v1") ?? "[]").length,
+    );
+
+  const start = async (page: import("@playwright/test").Page) => {
+    await page.addInitScript(init, { body: "Short.", theme: "light" as const });
+    await page.goto("/");
+    await expect(page.getByRole("region", { name: "Posts" })).toBeVisible();
+  };
+
+  test("New then Done with nothing typed leaves no trace", async ({ page }) => {
+    await start(page);
+    const rows = page.locator("[data-note-id]");
+    const before = await rows.count();
+
+    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await expect(
+      page.getByText("New prose · saved as you write"),
+    ).toBeVisible();
+    await expect(page.getByLabel("Note title")).toBeFocused();
+    await page.getByRole("button", { name: "Done" }).click();
+
+    await expect(page.getByRole("region", { name: "Posts" })).toBeVisible();
+    await expect(rows).toHaveCount(before);
+    // Past the autosave delay, so a stray write would have landed by now.
+    await page.waitForTimeout(800);
+    expect(await storedCount(page)).toBe(3);
+  });
+
+  test("a new post is first in the rail as it is typed, and Done lands on it at the top of the feed", async ({
+    page,
+  }) => {
+    await start(page);
+
+    await page.getByRole("button", { name: "New note", exact: true }).click();
+    await page.getByLabel("Note title").fill("On waiting");
+    await page.getByLabel("Note body").fill("The kettle takes its time.");
+    const first = page.locator("[data-note-id]").first();
+    await expect(first).toContainText("On waiting");
+    await expect(first).toHaveAttribute("aria-current", "true");
+
+    await page.getByRole("button", { name: "Done" }).click();
+
+    const feed = page.getByRole("region", { name: "Posts" });
+    await expect(feed.getByRole("article").first()).toContainText("On waiting");
+    await expect(first).toHaveAttribute("aria-current", "true");
+    await expect.poll(() => storedCount(page)).toBe(4);
+  });
+
+  test("Esc from Edit returns to the feed on that post", async ({ page }) => {
+    await start(page);
+    await page
+      .getByRole("link", { name: "Edit The older note that came before it" })
+      .click();
+    await expect(page.getByText("Editing · saved as you write")).toBeVisible();
+
+    await page.keyboard.press("Escape");
+
+    const feed = page.getByRole("region", { name: "Posts" });
+    await expect(feed).toBeVisible();
+    await expect(feed).toBeFocused();
+    await expect(
+      page.locator("[data-note-id]", {
+        hasText: "The older note that came before it",
+      }),
+    ).toHaveAttribute("aria-current", "true");
+  });
+});

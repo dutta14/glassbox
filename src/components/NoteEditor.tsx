@@ -31,6 +31,10 @@ interface NoteEditorProps {
   book?: Book | null;
   /** Follows the collection line to the collection's page at this note. */
   onOpenCollection?: (bookId: string, noteId: string) => void;
+  /** Set while the note is a fresh draft, which the bar above says. */
+  isNew?: boolean;
+  /** Done: back to where the note is read. Without it there is no bar. */
+  onDone?: () => void;
 }
 
 /**
@@ -142,6 +146,8 @@ export const NoteEditor = ({
   readAsset,
   book = null,
   onOpenCollection,
+  isNew = false,
+  onDone,
 }: NoteEditorProps) => {
   const scrollRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -425,6 +431,20 @@ export const NoteEditor = ({
     >
       <h2 className="sr-only">Editor</h2>
       <div className="editor__inner">
+        {onDone && (
+          <div className="editor__bar">
+            <span aria-live="polite">
+              {isNew
+                ? verse
+                  ? COPY.editorBarNewVerse
+                  : COPY.editorBarNewProse
+                : COPY.editorBarEditing}
+            </span>
+            <button type="button" className="editor__done" onClick={onDone}>
+              {COPY.editorDone}
+            </button>
+          </div>
+        )}
         <textarea
           ref={titleRef}
           className="editor__title"
