@@ -15,13 +15,30 @@ test("the production build boots under /glassbox/ with every asset resolving", a
   });
   page.on("pageerror", (err) => errors.push(err.message));
 
+  // A fresh app is empty, so give it one note to render.
+  await page.addInitScript(() => {
+    const iso = new Date("2024-03-01T10:00:00Z").toISOString();
+    localStorage.setItem(
+      "glassbox.notes.v1",
+      JSON.stringify([
+        {
+          id: "smoke",
+          title: "1:1 with Priya",
+          body: "Notes from the week.",
+          tags: [],
+          createdAt: iso,
+          updatedAt: iso,
+        },
+      ]),
+    );
+  });
   await page.goto("/glassbox/");
   await expect(page).toHaveTitle(/Glassbox/);
   await expect(
     page.getByRole("heading", { level: 1, name: "Glassbox: ask your notes" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "1:1 with Priya", exact: true }),
+    page.locator("[data-note-id]", { hasText: "1:1 with Priya" }).first(),
   ).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
 
