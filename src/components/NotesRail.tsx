@@ -1,10 +1,9 @@
-import { Fragment, useCallback, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { Book, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { BookListItem } from "./BookListItem";
 import { NewNoteMenu } from "./NewNoteMenu";
-import { NoteSearchModal } from "./NoteSearchModal";
 import { useScrollFades } from "../hooks/useScrollFades";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SettingsModal } from "./SettingsModal";
@@ -12,6 +11,13 @@ import type { Theme } from "../hooks/useTheme";
 import type { FolderState } from "../hooks/useStorageBackend";
 import { COPY } from "../engine/copy";
 import { groupByYear, monthDayOf } from "../utils/groupByYear";
+import {
+  bodySnippet,
+  fullDateOf,
+  normalizeQuery,
+  searchNotes,
+  titleHasHit,
+} from "../utils/searchNotes";
 import "../styles/NotesRail.css";
 
 const COLLAPSE_KEY = "glassbox.rail.v1";
@@ -154,6 +160,7 @@ export const NotesRail = ({
   onToggleTheme,
 }: NotesRailProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState<RailTab>(readTab);
@@ -202,14 +209,43 @@ export const NotesRail = ({
   const postNotes = notes.filter((note) => !bookNameByNoteId.has(note.id));
   const yearGroups = groupByYear(postNotes);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  useScrollFades(listRef, [notes.length, collapsed, tab]);
+  /* Search leaves the tab and the folded years alone, so closing it restores
+     them by simply showing them again. */
+  const searchQuery = normalizeQuery(query);
+  const results = searchOpen ? searchNotes(notes, query) : [];
+  useScrollFades(listRef, [notes.length, collapsed, tab, searchOpen]);
 
-  /** Focus goes back to the glyph that opened the modal, never to the body. */
-  const closeSearch = useCallback(() => {
-    setSearchOpen(false);
-    searchToggleRef.current?.focus();
+  const openSearch = useCallback(() => {
+    setQuery("");
+    setSearchOpen(true);
   }, []);
+
+  /** Set on close so the Search link, which comes back, takes focus rather
+      than letting it drop to the body. */
+  const refocusSearchToggle = useRef(false);
+  const closeSearch = useCallback(() => {
+    refocusSearchToggle.current = true;
+    setSearchOpen(false);
+    setQuery("");
+  }, []);
+
+  useEffect(() => {
+    if (searchOpen) {
+      searchInputRef.current?.focus();
+    } else if (refocusSearchToggle.current) {
+      refocusSearchToggle.current = false;
+      searchToggleRef.current?.focus();
+    }
+  }, [searchOpen]);
+
+  const onSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    event.stopPropagation();
+    closeSearch();
+  };
 
   const cancelDelete = useCallback(() => {
     const id = pendingDelete?.id ?? null;
@@ -302,43 +338,70 @@ export const NotesRail = ({
           <p className="notes-rail__tagline">{COPY.railTagline}</p>
 
           <div className="notes-rail__links">
-            <NewNoteMenu onCreate={onCreate} />
+            {searchOpen ? (
+              <div className="notes-rail__search">
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  role="searchbox"
+                  className="notes-rail__search-input"
+                  placeholder={COPY.searchLabel}
+                  aria-label={COPY.searchLabel}
+                  autoComplete="off"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={onSearchKeyDown}
+                />
+                <button
+                  type="button"
+                  className="notes-rail__search-close"
+                  aria-label={COPY.searchCloseLabel}
+                  onClick={closeSearch}
+                >
+                  {COPY.searchClose}
+                </button>
+              </div>
+            ) : (
+              <>
+                <NewNoteMenu onCreate={onCreate} />
 
-            <button
-              ref={searchToggleRef}
-              type="button"
-              className="notes-rail__entry"
-              onClick={() => setSearchOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={searchOpen}
-              aria-label="Search notes"
+                <button
+                  ref={searchToggleRef}
+                  type="button"
+                  className="notes-rail__entry"
+                  onClick={openSearch}
+                  aria-label={COPY.searchLabel}
+                >
+                  Search
+                </button>
+              </>
+            )}
+          </div>
+
+          {!searchOpen && (
+            <div
+              className="notes-rail__tabs"
+              role="tablist"
+              aria-label={COPY.railTabsLabel}
             >
-              Search
-            </button>
-          </div>
-
-          <div
-            className="notes-rail__tabs"
-            role="tablist"
-            aria-label={COPY.railTabsLabel}
-          >
-            {TABS.map(({ id, label }) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                id={`rail-tab-${id}`}
-                className="notes-rail__tab"
-                aria-selected={tab === id}
-                aria-controls="rail-panel"
-                tabIndex={tab === id ? 0 : -1}
-                onClick={() => chooseTab(id)}
-                onKeyDown={onTabKeyDown}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+              {TABS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  id={`rail-tab-${id}`}
+                  className="notes-rail__tab"
+                  aria-selected={tab === id}
+                  aria-controls="rail-panel"
+                  tabIndex={tab === id ? 0 : -1}
+                  onClick={() => chooseTab(id)}
+                  onKeyDown={onTabKeyDown}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* One scroll area for the list, so the rail scrolls as a single
               column. It is the tab panel, so the headings inside are its
@@ -346,11 +409,57 @@ export const NotesRail = ({
           <div
             ref={listRef}
             id="rail-panel"
-            role="tabpanel"
-            aria-labelledby={`rail-tab-${tab}`}
+            {...(searchOpen
+              ? { role: "region", "aria-label": COPY.searchResultsLabel }
+              : { role: "tabpanel", "aria-labelledby": `rail-tab-${tab}` })}
             className="notes-rail__list scroll-fades"
           >
-            {tab === "posts" ? (
+            {searchOpen ? (
+              <>
+                <div className="notes-rail__status" aria-live="polite">
+                  {searchQuery === "" ? (
+                    <p className="notes-rail__empty-body">
+                      {COPY.searchPrompt}
+                    </p>
+                  ) : results.length === 0 ? (
+                    <p className="notes-rail__empty-body">
+                      {COPY.searchNone(query.trim())}
+                    </p>
+                  ) : (
+                    <p className="notes-rail__count">
+                      {COPY.searchCount(results.length)}
+                    </p>
+                  )}
+                </div>
+                {results.length > 0 && (
+                  <ul>
+                    {results.map((note) => (
+                      <NoteListItem
+                        key={note.id}
+                        note={note}
+                        isSelected={note.id === currentNoteId}
+                        menuOpen={openMenuId === note.id}
+                        bookName={bookNameByNoteId.get(note.id) ?? null}
+                        dateLabel={fullDateOf(note)}
+                        query={query}
+                        snippet={
+                          titleHasHit(note, query)
+                            ? null
+                            : bodySnippet(note, query)
+                        }
+                        onSelect={() => onSelect(note.id)}
+                        onMenuOpenChange={(menuOpen) =>
+                          setOpenMenuId(menuOpen ? note.id : null)
+                        }
+                        onRequestDelete={() => setPendingDelete(note)}
+                        onToggleFormat={() => onToggleNoteFormat(note.id)}
+                        onAddToBook={() => onAddNoteToBook(note.id)}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : tab === "posts" ? (
               <>
                 {hasSampleNotes && yearGroups.length > 0 && (
                   <div className="notes-rail__banner" role="note">
@@ -522,14 +631,6 @@ export const NotesRail = ({
         onDisconnectFolder={onDisconnectFolder}
         onToggleTheme={onToggleTheme}
         onClose={() => setSettingsOpen(false)}
-      />
-
-      <NoteSearchModal
-        open={searchOpen}
-        notes={notes}
-        selectedNoteId={currentNoteId}
-        onSelect={onSelect}
-        onClose={closeSearch}
       />
     </aside>
   );

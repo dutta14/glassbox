@@ -96,6 +96,15 @@ export const COPY = {
   /* Under the masthead. The spec makes it optional and user-editable; until
      there is somewhere to edit it, it is this line. */
   railTagline: "Notes, mostly unfinished.",
+  /* Inline search in the rail. The quoted word is the reader's own, so the
+     message names what was searched without naming posts or collections. */
+  searchLabel: "Search notes",
+  searchClose: "esc",
+  searchCloseLabel: "Close search",
+  searchPrompt: "Search every post and collection.",
+  searchNone: (query: string) => `Nothing matches “${query}”.`,
+  searchCount: (n: number) => (n === 1 ? "1 result" : `${n} results`),
+  searchResultsLabel: "Search results",
   booksPageTitle: "Collections",
   /* Placeholder and label share their words: a placeholder is not a label, but
      there is no reason for the two to say different things. */

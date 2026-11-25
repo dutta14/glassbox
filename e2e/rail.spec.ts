@@ -269,6 +269,42 @@ test.describe("rail behaviour", () => {
     await expect(tab(page, "Posts")).toHaveAttribute("aria-selected", "true");
   });
 
+  test("Search opens inline over every note, marks the hit, and Esc puts the tabs back", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await rail(page).getByRole("button", { name: "Search notes" }).click();
+
+    const field = rail(page).getByRole("searchbox", { name: "Search notes" });
+    await expect(field).toBeFocused();
+    await expect(rail(page).getByRole("tab")).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    // "seeing" is only in the body of the shelved note, so it must still be found.
+    await field.fill("seeing");
+    const results = rail(page).getByRole("region", { name: "Search results" });
+    await expect(results.getByText("1 result")).toBeVisible();
+    await expect(results.locator(".note-item__snippet mark")).toHaveText(
+      "Seeing",
+    );
+    await expect(results.locator(".note-item__meta")).toContainText(
+      "January 3, 2024",
+    );
+    await expect(results.locator(".note-item__meta")).toContainText(
+      "Spring shelf",
+    );
+
+    await field.fill("zzz");
+    await expect(results.getByText("Nothing matches “zzz”.")).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(field).toHaveCount(0);
+    await expect(tab(page, "Posts")).toHaveAttribute("aria-selected", "true");
+    await expect(
+      rail(page).getByRole("button", { name: "Search notes" }),
+    ).toBeFocused();
+  });
+
   test("collapsing the sidebar removes the rail and leaves a menu button, and the choice survives a reload", async ({
     page,
   }) => {

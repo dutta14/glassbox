@@ -111,6 +111,58 @@
   text-decoration-color: var(--color-text);
 }
 
+/* Search replaces New and Search in place: a Garamond italic field with an
+   underline and no box. The line thickens on focus instead of a ring. */
+.notes-rail__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding-right: 6px;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+
+.notes-rail__search:focus-within {
+  border-bottom-color: var(--color-text);
+  box-shadow: 0 1px 0 var(--color-text);
+}
+
+.notes-rail__search-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--color-text);
+  font: italic 400 17px var(--font-serif);
+  box-shadow: none;
+  outline: none;
+}
+
+.notes-rail__search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.notes-rail__search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.notes-rail__search-close {
+  padding: 0 2px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--color-text-muted);
+  font: 400 12px var(--font-ui);
+  cursor: pointer;
+  transition: color 150ms;
+}
+
+.notes-rail__search-close:hover {
+  color: var(--color-text);
+}
+
 /* Posts and Collections: type only, no rule or underline. The open tab is ink,
    the other faint. */
 .notes-rail__tabs {
@@ -332,6 +384,14 @@
   color: var(--color-text-muted);
 }
 
+.notes-rail__count {
+  margin: 0 0 4px;
+  font: 400 11px var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
 .notes-rail__footer {
   flex: 0 0 auto;
   margin-top: auto;
@@ -403,6 +463,18 @@
   color: var(--color-text-faint);
 }
 
+/* One line of body under the date when the title has no hit. Quiet, and the
+   hit inside it takes the same wash as in a title. */
+.notes-rail .note-item__snippet {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 3px;
+  font: italic 400 13px/1.35 var(--font-serif);
+  color: var(--color-text-faint);
+}
+
 .notes-rail .note-item__book {
   display: inline;
   max-width: none;
@@ -469,6 +541,7 @@
   .notes-rail__toggle,
   .notes-rail__open,
   .notes-rail__entry,
+  .notes-rail__search-close,
   .notes-rail__tab,
   .notes-rail__title-toggle,
   .notes-rail__chevron,

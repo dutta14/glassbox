@@ -1,6 +1,7 @@
 import type { Note } from "../types";
 import { COPY } from "../engine/copy";
 import { NoteRowMenu } from "./NoteRowMenu";
+import { Highlight } from "./Highlight";
 import "../styles/RailRow.css";
 
 interface NoteListItemProps {
@@ -15,6 +16,10 @@ interface NoteListItemProps {
   /* "June 15": the line under the title. The year is the heading above the
      row, so it is not repeated here. */
   dateLabel?: string;
+  /* A search in progress. Marks every hit in the title, and the snippet is the
+     body line shown under the date when the title has none. */
+  query?: string;
+  snippet?: string | null;
   onSelect: () => void;
   onMenuOpenChange: (open: boolean) => void;
   onRequestDelete: () => void;
@@ -28,6 +33,8 @@ export const NoteListItem = ({
   menuOpen,
   bookName = null,
   dateLabel = "",
+  query = "",
+  snippet = null,
   onSelect,
   onMenuOpenChange,
   onRequestDelete,
@@ -51,7 +58,11 @@ export const NoteListItem = ({
            on how an engine concatenates. It still opens with the visible
            title, so the visible label remains a prefix of the spoken one. */
         aria-label={
-          bookName ? `${title}, in ${bookName}` : dateLabel ? title : undefined
+          bookName
+            ? `${title}, in ${bookName}`
+            : dateLabel || snippet
+              ? title
+              : undefined
         }
         // The date is read as the row's description, so the name stays the
         // title and a test or a screen reader can still find the row by it.
@@ -59,7 +70,13 @@ export const NoteListItem = ({
         aria-current={isSelected ? "true" : undefined}
         data-note-id={note.id}
       >
-        <span className="note-item__title">{title}</span>
+        <span className="note-item__title">
+          {query && note.title.trim() ? (
+            <Highlight text={title} query={query} />
+          ) : (
+            title
+          )}
+        </span>
         {(bookName || dateLabel) && (
           // The name replaces the bookmark that used to sit here. It says the
           // same thing and more, and a row carrying both read as clutter.
@@ -67,6 +84,11 @@ export const NoteListItem = ({
             {dateLabel}
             {dateLabel && bookName && " · "}
             {bookName && <span className="note-item__book">{bookName}</span>}
+          </span>
+        )}
+        {snippet && (
+          <span className="note-item__snippet">
+            <Highlight text={snippet} query={query} />
           </span>
         )}
       </button>
