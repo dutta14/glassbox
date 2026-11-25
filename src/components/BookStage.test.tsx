@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { BookStage } from "./BookStage";
@@ -271,7 +271,32 @@ describe("BookStage — chapter actions", () => {
     await user.click(
       screen.getByRole("button", { name: "Remove from collection: Two" }),
     );
+    expect(onRemoveChapter).not.toHaveBeenCalled();
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Remove from collection",
+      }),
+    );
     expect(onRemoveChapter).toHaveBeenCalledWith("n2");
+  });
+
+  it("keeps the chapter when the removal is cancelled", async () => {
+    const user = userEvent.setup();
+    const onRemoveChapter = vi.fn();
+    renderStage({
+      book: makeBook(["n1"]),
+      chapters: [makeNote({ id: "n1", title: "One" })],
+      onRemoveChapter,
+    });
+    await user.click(
+      screen.getByRole("button", { name: "Remove from collection: One" }),
+    );
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      'Remove "One" from',
+    );
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onRemoveChapter).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   it("ends each chapter with its written date, then Edit and Remove on one line", () => {
@@ -425,6 +450,12 @@ describe("BookStage — contents", () => {
     await user.click(
       screen.getByRole("button", {
         name: "Remove Missing chapter from this book",
+      }),
+    );
+    expect(onRemoveChapter).not.toHaveBeenCalled();
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Remove from collection",
       }),
     );
     expect(onRemoveChapter).toHaveBeenCalledWith("gone");

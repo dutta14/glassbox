@@ -17,6 +17,7 @@ import { fullDateOf } from "../utils/searchNotes";
 import { BookIndex } from "./BookIndex";
 import type { BookIndexChapter, BookIndexEditing } from "./BookIndex";
 import { BookContentsPanel } from "./BookContentsPanel";
+import { ConfirmDialog } from "./ConfirmDialog";
 import "../styles/BookStage.css";
 
 interface BookStageProps {
@@ -95,6 +96,9 @@ export const BookStage = ({
 
   const [currentChapterId, setCurrentChapterId] = useState<string | null>(null);
   const [contentsOpen, setContentsOpen] = useState(false);
+  /* Removing a chapter drops its place in the running order, so it is asked
+     about first, from the contents × and from the chapter footer alike. */
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   // Whether the front matter has scrolled away. The running title in the
   // sticky bar is redundant while the real one is still on screen.
@@ -311,7 +315,7 @@ export const BookStage = ({
      one on the page takes it. */
   const editing: BookIndexEditing = {
     onReorder,
-    onRemoveChapter,
+    onRemoveChapter: setPendingRemoveId,
     onSetNumbered,
     onSetStory,
     suggestedStories,
@@ -543,7 +547,7 @@ export const BookStage = ({
                             aria-label={`${COPY.removeFromCollection}: ${
                               note ? titleOf(note) : title
                             }`}
-                            onClick={() => onRemoveChapter(id)}
+                            onClick={() => setPendingRemoveId(id)}
                           >
                             {COPY.removeFromCollection}
                           </button>
@@ -566,6 +570,24 @@ export const BookStage = ({
         currentChapterId={currentChapterId}
         onClose={() => setContentsOpen(false)}
         onJump={handleJump}
+      />
+
+      <ConfirmDialog
+        open={pendingRemoveId !== null}
+        title={COPY.removeChapterTitle(
+          pendingRemoveId
+            ? (titled.find((c) => c.id === pendingRemoveId)?.title ??
+                "this chapter")
+            : "",
+          bookTitle,
+        )}
+        description={COPY.removeChapterDescription}
+        confirmLabel={COPY.removeFromCollection}
+        onConfirm={() => {
+          if (pendingRemoveId) onRemoveChapter(pendingRemoveId);
+          setPendingRemoveId(null);
+        }}
+        onCancel={() => setPendingRemoveId(null)}
       />
     </section>
   );

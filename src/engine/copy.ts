@@ -81,6 +81,10 @@ export const COPY = {
   deleteCollection: "Delete collection",
   /* The link under the collection list, and the label of the field it becomes. */
   newCollectionLabel: "Collection name",
+  removeChapterTitle: (chapter: string, collection: string) =>
+    `Remove "${chapter}" from "${collection}"?`,
+  removeChapterDescription:
+    "The post is kept and goes back to your posts. If you add it again later it joins as the last chapter, so you would need to move it back.",
   deleteCollectionDescription:
     "This deletes the collection and its running order. Every post in it stays in your library.",
 

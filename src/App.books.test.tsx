@@ -524,6 +524,11 @@ describe("a collection's own page", () => {
         name: "Remove from collection: Luncheon",
       }),
     );
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Remove from collection",
+      }),
+    );
 
     await waitFor(() => expect(read()[0].chapterIds).toEqual(["n2"]));
     expect(within(main).queryByText("Lunch is ready")).not.toBeInTheDocument();
