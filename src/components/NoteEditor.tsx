@@ -169,6 +169,7 @@ export const NoteEditor = ({
   const readRef = useRef<HTMLDivElement>(null);
   const wasEmptyOnMountRef = useRef<string | null>(null);
   const pendingCaretRef = useRef<number | null>(null);
+  const editAnchorRef = useRef<{ width: number; shift: number } | null>(null);
 
   /**
    * A drop cap cannot be drawn on a textarea. ::first-letter matches one and is
@@ -225,7 +226,13 @@ export const NoteEditor = ({
     }
   }, []);
 
-  useLayoutEffect(fitToContent, [fitToContent, note.body, note.title, note.id]);
+  useLayoutEffect(fitToContent, [
+    fitToContent,
+    note.body,
+    note.title,
+    note.id,
+    verseWidth,
+  ]);
 
   /**
    * A title is one line. An input enforced that for free; a textarea does not,
@@ -295,23 +302,74 @@ export const NoteEditor = ({
 
   /* The width of the poem's longest line, taken from the reading view, which
      is laid out at max-content and so is exactly that wide. Only the field
-     needs it. While editing there is no reading view to measure, so the last
-     value stands and the lines do not shuffle under the caret as you type. */
-  useLayoutEffect(() => {
+     needs it. While editing, the reading view stays mounted but hidden (see
+     data-measuring), so the width follows the longest line as it is typed
+     instead of freezing at what it was when the field took focus, which
+     wrapped every longer line inside the old, narrower poem.
+
+     Centring is another matter. Left to follow the text it moves the block on
+     every keystroke: the block is centred on its widest line, so the left edge
+     retreats as that line grows, and the optical nudge is driven by the mean
+     line length, so it swells on a fresh short line and drains as the line
+     fills. The poem would slide right and back left under the caret. So while
+     writing, the left edge is pinned to where it was when the field took focus
+     (until the column itself is the limit), and the poem settles back to the
+     centre on blur. */
+  const measureVerse = useCallback(() => {
     if (!verse) {
       setVerseWidth(undefined);
       setVerseShift(0);
+      editAnchorRef.current = null;
       return;
     }
     const read = readRef.current;
-    if (!read) return;
-    setVerseWidth(read.getBoundingClientRect().width);
+    const inner = read?.parentElement?.parentElement;
+    if (!read || !inner) return;
+    const style = getComputedStyle(inner);
     const column =
-      read.parentElement?.parentElement?.getBoundingClientRect().width;
-    setVerseShift(
-      verseOpticalShift(read, column ?? read.getBoundingClientRect().width),
-    );
-  }, [verse, note.body, note.id, editing, fontsReady]);
+      inner.clientWidth -
+      (parseFloat(style.paddingLeft) || 0) -
+      (parseFloat(style.paddingRight) || 0);
+    const width = Math.min(read.getBoundingClientRect().width, column);
+    let shift = verseOpticalShift(read, column);
+    if (editing) {
+      editAnchorRef.current ??= { width, shift };
+      const anchor = editAnchorRef.current;
+      // Growing by w moves a centred block's left edge by w / 2, so the shift
+      // that cancels it is the same amount the other way.
+      const room = Math.max(0, (column - width) / 2);
+      shift = Math.max(
+        -room,
+        Math.min(anchor.shift + (width - anchor.width) / 2, room),
+      );
+    } else {
+      editAnchorRef.current = null;
+    }
+    setVerseWidth(width);
+    setVerseShift(shift);
+  }, [verse, editing]);
+
+  useLayoutEffect(measureVerse, [
+    measureVerse,
+    note.body,
+    note.id,
+    editing,
+    fontsReady,
+  ]);
+
+  // A narrower window can wrap a line that fitted a moment ago.
+  useEffect(() => {
+    const section = scrollRef.current;
+    if (!section || typeof ResizeObserver === "undefined") return;
+    let lastWidth = section.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (section.clientWidth === lastWidth) return;
+      lastWidth = section.clientWidth;
+      measureVerse();
+    });
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [measureVerse]);
 
   /* Runs after the swap, because setSelectionRange on a field that is still
      hidden and unsized does not survive it being laid out. */
@@ -446,12 +504,12 @@ export const NoteEditor = ({
           /* Moves the reading view and the field together, so the poem is
              optically centred whether it is being read or written. */
           style={
-            verse && verseShift > 0
+            verse && verseShift !== 0
               ? { transform: `translateX(${verseShift}px)` }
               : undefined
           }
         >
-          {!editing && (
+          {(!editing || verse) && (
             /* Hidden from assistive technology on purpose. It is a second copy
                of text the field below already exposes, and a screen reader
                meeting both would hear the note twice. Sighted readers get the
@@ -464,6 +522,7 @@ export const NoteEditor = ({
                 isEmpty ? " editor__read--empty" : ""
               }`}
               data-dropcap={cap === 0 ? undefined : String(cap)}
+              data-measuring={editing ? "on" : undefined}
               onMouseDown={handleReadMouseDown}
             >
               {isEmpty

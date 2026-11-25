@@ -427,6 +427,67 @@ test("a poem line longer than the column stays inside it", async ({ page }) => {
   expect(read.width).toBeLessThanOrEqual(wrap.width + 1);
 });
 
+test("a verse line typed longer than the poem widens the field instead of wrapping", async ({
+  page,
+}) => {
+  await open(page, { body: "The mind wanders\nand stops", format: "verse" });
+  await page.evaluate(() => document.fonts.ready);
+
+  const body = await startWriting(page);
+  const before = (await body.boundingBox())!.width;
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("End");
+  await page.keyboard.type(" around all the places I once knew");
+
+  const after = (await body.boundingBox())!.width;
+  expect(after).toBeGreaterThan(before + 100);
+
+  // Two lines of text. A wrapped first line would make three.
+  const lines = await body.evaluate((el: HTMLTextAreaElement) => {
+    const style = getComputedStyle(el);
+    el.style.minHeight = "0";
+    el.style.height = "auto";
+    const padding =
+      parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+    return (el.scrollHeight - padding) / parseFloat(style.lineHeight);
+  });
+  expect(Math.round(lines)).toBe(2);
+});
+
+test("the poem's left edge stays put while writing a new line and a longer one", async ({
+  page,
+}) => {
+  await open(page, {
+    body: "A line of a rather more moderate length here,\nShort line,",
+    format: "verse",
+  });
+  await page.evaluate(() => document.fonts.ready);
+
+  const body = await startWriting(page);
+  const left = async () => (await body.boundingBox())!.x;
+  const start = await left();
+
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Enter");
+  // A short fresh line drags the mean down, then a long one pushes the widest
+  // line out. Neither may move the block.
+  for (const chunk of [
+    "The",
+    " mind wanders",
+    " around all the places I knew",
+  ]) {
+    await page.keyboard.type(chunk);
+    expect(Math.abs((await left()) - start)).toBeLessThan(1.5);
+  }
+
+  // And it settles back to the centre once writing stops.
+  await page.getByLabel("Note title").focus();
+  const read = (await page.locator(".editor__read").boundingBox())!;
+  expect(Math.abs(read.x - start)).toBeGreaterThan(1.5);
+});
+
 test("a poem is never given a chapter drop cap", async ({ page }) => {
   await open(page, { body: VERSE, format: "verse" });
 

@@ -332,10 +332,23 @@ textarea.editor__body:not([data-editing]) {
   max-width: 100%;
 }
 
+/* While the field is being typed into, the reading view stays mounted only to
+   be measured: out of flow, invisible, and free of the column cap so it reports
+   the true width of the longest line. */
+.editor__bodywrap--verse > .editor__read.editor__body[data-measuring] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* The field is given its width by NoteEditor, since a textarea has no
    max-content width of its own to take. */
 .editor__bodywrap--verse > textarea.editor__body {
   margin-inline: auto;
+  max-width: 100%;
 }
 
 /* Poems are read a line at a time rather than swept through, and the extra
