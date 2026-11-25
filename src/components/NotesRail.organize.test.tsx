@@ -333,25 +333,6 @@ describe("NotesRail organize modes", () => {
     expect(screen.queryByText(COPY.emptyNotesAllBooked)).toBeNull();
   });
 
-  /* The collapsed rail is a second rendering of the same lists. It was the
-     one place book mode was not applied, and nothing above catches it: a note
-     hidden from the wide rail but listed in the narrow one would reappear by
-     dragging the sidebar shut. */
-  it("keeps booked notes out of the collapsed rail's Notes flyout too", async () => {
-    renderRail({ organizeMode: "book" });
-    await userEvent.click(
-      screen.getByRole("button", { name: "Collapse sidebar" }),
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Notes" }));
-
-    expect(
-      screen.getByRole("button", { name: /^Not in the book/ }),
-    ).toBeTruthy();
-    expect(
-      screen.queryByRole("button", { name: /^#1 \u2013 The Drizzle/ }),
-    ).toBeNull();
-  });
-
   /* Which books are open outlives the mode, so the mode has to be checked
      where the chapters are rendered and not only where the expander is. A
      book expanded in book mode was still showing its chapters after a switch

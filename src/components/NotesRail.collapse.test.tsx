@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { NotesRail } from "./NotesRail";
@@ -7,9 +7,9 @@ import { COPY } from "../engine/copy";
 import type { Note } from "../types";
 
 /**
- * Collapse is ported from finance-tracking's sidebar, which drops to a 56px
- * icon strip and hides its menu entirely. The rail does the same, so most of
- * its contents unmount rather than just being visually hidden.
+ * Collapsing removes the rail entirely. The only thing left is a menu button
+ * at the top-left of the page, so most of the rail's contents unmount rather
+ * than being visually hidden.
  */
 
 const COLLAPSE_KEY = "glassbox.rail.v1";
@@ -65,7 +65,8 @@ const renderRail = (
   );
 
 const collapseButton = () =>
-  screen.getByRole("button", { name: /(Collapse|Expand) sidebar/ });
+  screen.getByRole("button", { name: "Collapse sidebar" });
+const openButton = () => screen.getByRole("button", { name: "Open sidebar" });
 
 afterEach(() => {
   localStorage.clear();
@@ -77,7 +78,10 @@ describe("NotesRail collapse", () => {
 
     expect(screen.getByText("Glassbox")).toBeInTheDocument();
     expect(screen.getByText("Postgres tuning")).toBeInTheDocument();
-    expect(collapseButton()).toHaveAttribute("aria-expanded", "true");
+    expect(collapseButton()).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Open sidebar" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides the brand and the note list once collapsed", async () => {
@@ -87,29 +91,24 @@ describe("NotesRail collapse", () => {
     await user.click(collapseButton());
 
     expect(screen.queryByText("Glassbox")).not.toBeInTheDocument();
+    expect(screen.queryByText(COPY.railTagline)).not.toBeInTheDocument();
     expect(screen.queryByText("Postgres tuning")).not.toBeInTheDocument();
-    expect(collapseButton()).toHaveAttribute("aria-expanded", "false");
   });
 
-  /** The only control left at 56px, so losing it would trap the user. */
-  it("keeps the toggle reachable while collapsed", async () => {
+  /** The only control left, so losing it would trap the user. */
+  it("offers an Open sidebar button while collapsed and reopens the rail with it", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(collapseButton());
-    expect(collapseButton()).toBeVisible();
+    expect(openButton()).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Collapse sidebar" }),
+    ).not.toBeInTheDocument();
 
-    await user.click(collapseButton());
+    await user.click(openButton());
     expect(screen.getByText("Postgres tuning")).toBeInTheDocument();
-  });
-
-  it("describes the action the button will take, not the current state", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    expect(collapseButton()).toHaveAccessibleName("Collapse sidebar");
-    await user.click(collapseButton());
-    expect(collapseButton()).toHaveAccessibleName("Expand sidebar");
+    expect(collapseButton()).toBeInTheDocument();
   });
 
   it("persists the collapsed state so it survives a reload", async () => {
@@ -119,7 +118,7 @@ describe("NotesRail collapse", () => {
     await user.click(collapseButton());
     expect(localStorage.getItem(COLLAPSE_KEY)).toBe("collapsed");
 
-    await user.click(collapseButton());
+    await user.click(openButton());
     expect(localStorage.getItem(COLLAPSE_KEY)).toBe("expanded");
   });
 
@@ -129,93 +128,21 @@ describe("NotesRail collapse", () => {
     renderRail();
 
     expect(screen.queryByText("Glassbox")).not.toBeInTheDocument();
-    expect(collapseButton()).toHaveAttribute("aria-expanded", "false");
+    expect(openButton()).toBeInTheDocument();
   });
 
-  /**
-   * Collapsing unmounts the filter field. A query left in state would come
-   * back invisibly on expand and silently shorten the list, with nothing on
-   * screen to explain why notes were missing.
-   */
-  /**
-   * Search moved into a modal, so the rail no longer holds filter state that
-   * collapsing has to reset. What collapsing must still do is take the glyph
-   * out of the tab order rather than leave an invisible control behind.
-   */
-  /* Search survives the collapse now. It used to be dropped, which meant
-     collapsing the rail quietly took a feature away. */
-  it("keeps search reachable while collapsed", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    expect(
-      screen.getByRole("button", { name: "Search notes" }),
-    ).toBeInTheDocument();
-
-    await user.click(collapseButton());
-    expect(
-      screen.getByRole("button", { name: "Search notes" }),
-    ).toBeInTheDocument();
-
-    await user.click(collapseButton());
-    expect(
-      screen.getByRole("button", { name: "Search notes" }),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps the notes list reachable while collapsed, as a flyout trigger", async () => {
+  /* Collapsed means no rail at all, so no icon strip or flyout trigger is
+     left behind to stand in for the lists. */
+  it("leaves no search, new, or notes controls behind while collapsed", async () => {
     const user = userEvent.setup();
     renderRail();
 
     await user.click(collapseButton());
 
-    expect(screen.getByRole("button", { name: "Notes" })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
-  });
-
-  /* Ask left the rail for a pane of its own, so nothing in the collapsed strip
-     should still offer it. Asserted as an absence because a leftover trigger
-     would look harmless while doing nothing. */
-  it("offers no way into Ask from the collapsed strip", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    await user.click(collapseButton());
-
+    expect(screen.queryByRole("button", { name: "Search notes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "New note" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Notes" })).toBeNull();
     expect(screen.queryByRole("button", { name: COPY.askRow })).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: COPY.questionsHeading }),
-    ).toBeNull();
-  });
-
-  it("opens the collapsed Notes flyout onto the notes themselves", async () => {
-    const user = userEvent.setup();
-    renderRail();
-
-    await user.click(collapseButton());
-    await user.click(screen.getByRole("button", { name: "Notes" }));
-
-    const panel = screen.getByRole("group", { name: "Notes" });
-    expect(within(panel).getByText("Postgres tuning")).toBeInTheDocument();
-  });
-
-  it("closes the collapsed flyout once a note in it is chosen", async () => {
-    const user = userEvent.setup();
-    const onSelect = vi.fn();
-    renderRail({ onSelect });
-
-    await user.click(collapseButton());
-    await user.click(screen.getByRole("button", { name: "Notes" }));
-    await user.click(
-      within(screen.getByRole("group", { name: "Notes" })).getByText(
-        "Postgres tuning",
-      ),
-    );
-
-    expect(onSelect).toHaveBeenCalledWith("n1");
-    expect(screen.queryByRole("group", { name: "Notes" })).toBeNull();
   });
 
   it("keeps every note in the rail list across a collapse and expand", async () => {
@@ -223,7 +150,7 @@ describe("NotesRail collapse", () => {
     renderRail();
 
     await user.click(collapseButton());
-    await user.click(collapseButton());
+    await user.click(openButton());
 
     expect(screen.getByText("Postgres tuning")).toBeInTheDocument();
     expect(screen.getByText("Sourdough")).toBeInTheDocument();
@@ -241,48 +168,37 @@ describe("NotesRail collapse", () => {
     await user.click(collapseButton());
 
     expect(screen.queryByText("Glassbox")).not.toBeInTheDocument();
+    expect(openButton()).toBeInTheDocument();
     setItem.mockRestore();
   });
 
-  /* Ordering is the part of this layout a test can hold. The rail's CSS is not
-     exercised by the suite, so position on screen is not verifiable here, but
-     DOM order drives both the visual order and the tab order. */
-  it("puts the sidebar toggle last in the header, after the search glyph", () => {
+  /* The rail's CSS is not exercised by the suite, so position on screen is not
+     verifiable here, but DOM order drives both the visual order and the tab
+     order. */
+  it("puts the collapse button in the masthead, after the brand", () => {
     renderRail();
 
-    const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
-    const search = screen.getByRole("button", { name: "Search notes" });
-    const topRow = toggle.closest(".notes-rail__top-row");
-
-    expect(topRow).not.toBeNull();
-    expect(topRow!.lastElementChild).toBe(toggle);
-    expect(
-      search.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
-  it("puts the brand before both header controls", () => {
-    renderRail();
-
+    const toggle = collapseButton();
+    const mast = toggle.closest(".notes-rail__mast");
     const brand = screen.getByText("Glassbox");
-    const search = screen.getByRole("button", { name: "Search notes" });
 
-    expect(
-      brand.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(mast).not.toBeNull();
+    expect(mast!.contains(brand)).toBe(true);
+    expect(mast!.lastElementChild).toBe(toggle);
   });
 
-  it("keeps the toggle rendered when the rail is collapsed, since nothing else can reopen it", async () => {
+  it("shows the tagline under the masthead, before New and Search", () => {
     renderRail();
-    const user = userEvent.setup();
 
-    await user.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    const tagline = screen.getByText(COPY.railTagline);
+    const links = document.querySelector(".notes-rail__links");
 
+    expect(links).not.toBeNull();
     expect(
-      screen.getByRole("button", { name: "Expand sidebar" }),
-    ).toBeInTheDocument();
-    // The brand is the thing that actually goes away, so it stands in for
-    // "the rail really is collapsed" now that search stays.
-    expect(screen.queryByText("Glassbox")).toBeNull();
+      tagline.compareDocumentPosition(links!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(links!.textContent).toContain("New");
+    expect(links!.textContent).toContain("Search");
   });
 });

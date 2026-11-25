@@ -96,6 +96,9 @@ export const COPY = {
     n === 0 ? "Empty" : n === 1 ? "1 chapter" : `${n} chapters`,
 
   booksRow: "Collections",
+  /* Under the masthead. The spec makes it optional and user-editable; until
+     there is somewhere to edit it, it is this line. */
+  railTagline: "Notes, mostly unfinished.",
   booksPageTitle: "Collections",
   /* Placeholder and label share their words: a placeholder is not a label, but
      there is no reason for the two to say different things. */

@@ -78,16 +78,20 @@ const dialog = () => screen.getByRole("dialog");
 
 describe("NotesRail search wiring", () => {
   /**
-   * The glyph used to sit beside the "Notes" label. Role-based queries find it
-   * wherever it lives, so its position needs asserting separately.
+   * The glyph used to sit beside the "Notes" label, then in the masthead row.
+   * Role-based queries find it wherever it lives, so its position needs
+   * asserting separately.
    */
-  it("puts the search glyph in the top row beside the brand", () => {
+  it("puts Search in the links row, under the masthead", () => {
     renderRail();
-    const topRow = document.querySelector(".notes-rail__top-row");
+    const mast = document.querySelector(".notes-rail__mast");
+    const links = document.querySelector(".notes-rail__links");
 
-    expect(topRow).not.toBeNull();
-    expect(topRow!.contains(glyph())).toBe(true);
-    expect(topRow!.textContent).toContain("Glassbox");
+    expect(mast).not.toBeNull();
+    expect(links).not.toBeNull();
+    expect(mast!.textContent).toContain("Glassbox");
+    expect(links!.contains(glyph())).toBe(true);
+    expect(glyph()).toHaveTextContent("Search");
   });
 
   /* There are two section headers now, Chats and Notes. Targeting the
@@ -221,7 +225,7 @@ describe("NotesRail search wiring", () => {
       .getAllByRole("button")
       .map((b) => b.textContent?.trim());
 
-    expect(buttons).toContain("New note");
+    expect(buttons).toContain("New");
     expect(buttons).not.toContain("Create your first note");
     expect(document.querySelector(".notes-rail__empty-action")).toBeNull();
   });

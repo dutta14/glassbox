@@ -47,28 +47,15 @@ export const NewNoteMenu = ({ onCreate }: NewNoteMenuProps) => {
   return (
     <div className="new-note" ref={rootRef}>
       <div className="new-note__row">
-        {/* Visible text, so the control names itself instead of leaning on
-            an aria-label that only assistive tech ever sees. */}
+        {/* The link reads "New" and its name says what it makes, so the
+            visible text stays a prefix of the spoken one. */}
         <button
           type="button"
           className="notes-rail__entry notes-rail__new new-note__primary"
+          aria-label="New note"
           onClick={() => onCreate("prose")}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M8 3v10M3 8h10"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
-          New note
+          New
         </button>
 
         <button
@@ -81,16 +68,16 @@ export const NewNoteMenu = ({ onCreate }: NewNoteMenuProps) => {
           onClick={() => setOpen(!open)}
         >
           <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
+            width="10"
+            height="10"
+            viewBox="0 0 12 12"
             fill="none"
             aria-hidden="true"
           >
             <path
-              d="M4.5 6.5 8 10l3.5-3.5"
+              d="m2.5 4.5 3.5 3.5 3.5-3.5"
               stroke="currentColor"
-              strokeWidth="1.4"
+              strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             />

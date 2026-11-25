@@ -105,8 +105,6 @@ const noteList = (page: Page) =>
   page.getByRole("navigation", { name: "Note list" });
 const notesButton = (page: Page) =>
   rail(page).getByRole("button", { name: "Notes", exact: true });
-const flyoutPanel = (page: Page, name: "Notes" | "Collections") =>
-  page.getByRole("group", { name });
 
 const NOTE_TITLES = [
   "Postgres connection pooling",
@@ -146,27 +144,18 @@ for (const theme of ["dark", "light"] as const) {
       );
     });
 
-    test("rail collapsed to icons", async ({ page }) => {
+    test("rail collapsed to the menu button", async ({ page }) => {
       await page.getByRole("button", { name: "Collapse sidebar" }).click();
       await expect(
-        page.getByRole("button", { name: "Expand sidebar" }),
+        page.getByRole("button", { name: "Open sidebar" }),
       ).toBeVisible();
-      await expect(rail(page)).toHaveScreenshot(`rail-icons-${theme}.png`);
-    });
-
-    test("collapsed notes flyout open", async ({ page }) => {
-      await page.getByRole("button", { name: "Collapse sidebar" }).click();
-      await notesButton(page).click();
-      await expect(flyoutPanel(page, "Notes")).toBeVisible();
-      // Clipped page rather than the rail, because the flyout is portalled to
-      // the body and sits outside the rail's own box.
-      await expect(page).toHaveScreenshot(`rail-flyout-${theme}.png`, {
-        clip: { x: 0, y: 0, width: 420, height: 560 },
+      await expect(page).toHaveScreenshot(`rail-collapsed-${theme}.png`, {
+        clip: { x: 0, y: 0, width: 420, height: 240 },
       });
     });
 
     test("header", async ({ page }) => {
-      await expect(page.locator(".notes-rail__top-row")).toHaveScreenshot(
+      await expect(page.locator(".notes-rail__mast")).toHaveScreenshot(
         `rail-header-${theme}.png`,
       );
     });
@@ -285,7 +274,7 @@ test.describe("rail behaviour", () => {
     await expect(bookList).toBeHidden();
   });
 
-  test("collapsing the sidebar swaps the labelled list for icon buttons, and the choice survives a reload", async ({
+  test("collapsing the sidebar removes the rail and leaves a menu button, and the choice survives a reload", async ({
     page,
   }) => {
     await page.goto("/");
@@ -293,93 +282,31 @@ test.describe("rail behaviour", () => {
 
     await page.getByRole("button", { name: "Collapse sidebar" }).click();
     await expect(
-      page.getByRole("button", { name: "Expand sidebar" }),
-    ).toHaveAttribute("aria-expanded", "false");
-    // Nothing in a one-icon-wide rail can show a list or a title.
+      page.getByRole("button", { name: "Open sidebar" }),
+    ).toBeVisible();
     await expect(noteList(page)).toHaveCount(0);
     await expect(rail(page).getByText("Glassbox")).toHaveCount(0);
     for (const name of [
       "New note",
       "Search notes",
       "Collections",
-      "Notes",
       "Settings",
     ]) {
       await expect(
         rail(page).getByRole("button", { name, exact: true }),
-      ).toBeVisible();
+      ).toHaveCount(0);
     }
 
     await page.reload();
     await expect(
-      page.getByRole("button", { name: "Expand sidebar" }),
+      page.getByRole("button", { name: "Open sidebar" }),
     ).toBeVisible();
     await expect(noteList(page)).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Expand sidebar" }).click();
+    await page.getByRole("button", { name: "Open sidebar" }).click();
     await expectExpandedRail(page);
     await expect(
       page.getByRole("button", { name: "Collapse sidebar" }),
-    ).toHaveAttribute("aria-expanded", "true");
-  });
-
-  test("the collapsed Notes flyout lists every note, opens one, and closes itself", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await page.getByRole("button", { name: "Collapse sidebar" }).click();
-
-    await notesButton(page).click();
-    const panel = flyoutPanel(page, "Notes");
-    await expect(panel).toBeVisible();
-    for (const title of NOTE_TITLES) {
-      await expect(
-        panel.getByRole("button", { name: title, exact: true }),
-      ).toBeVisible();
-    }
-
-    await panel
-      .getByRole("button", { name: "Sourdough starter notes", exact: true })
-      .click();
-    await expect(page).toHaveURL(/#\/note\/n2$/);
-    await expect(page.getByLabel("Note title")).toHaveValue(
-      "Sourdough starter notes",
-    );
-    await expect(panel).toHaveCount(0);
-  });
-
-  test("Escape closes the collapsed Notes flyout and returns focus to its icon", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await page.getByRole("button", { name: "Collapse sidebar" }).click();
-
-    const trigger = notesButton(page);
-    await trigger.click();
-    await expect(trigger).toHaveAttribute("aria-expanded", "true");
-    await expect(flyoutPanel(page, "Notes")).toBeVisible();
-
-    await page.keyboard.press("Escape");
-    await expect(flyoutPanel(page, "Notes")).toHaveCount(0);
-    await expect(trigger).toHaveAttribute("aria-expanded", "false");
-    await expect(trigger).toBeFocused();
-  });
-
-  test("the collapsed Books flyout lists the book with its chapter count and opens it", async ({
-    page,
-  }) => {
-    await page.goto("/");
-    await page.getByRole("button", { name: "Collapse sidebar" }).click();
-
-    await rail(page)
-      .getByRole("button", { name: "Collections", exact: true })
-      .click();
-    const panel = flyoutPanel(page, "Collections");
-    const book = panel.getByRole("button", { name: /^Spring shelf/ });
-    await expect(book).toContainText("1 chapter");
-
-    await book.click();
-    await expect(page).toHaveURL(/#\/book\/b1$/);
-    await expect(panel).toHaveCount(0);
+    ).toBeVisible();
   });
 });

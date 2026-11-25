@@ -1,224 +1,210 @@
-/* Layout, proportions and interaction states are ported from
-   finance-tracking's .sidebar. Finance hardcodes its hover states as
-   rgba(0,0,0,0.05) and needs a duplicate body.dark rule to undo them; using
-   --color-surface-raised instead darkens in light mode and lightens in dark
-   from a single declaration.
-
-   The rail is --color-surface (white in light mode) and the stage behind it is
-   --color-bg (oatmeal), matching finance-tracking's white-sidebar-on-warm-page
-   split. Children that sit on the rail therefore need --color-surface-alt, not
-   --color-surface, or they render white-on-white. */
+/* The rail has no surface of its own. It takes the page background and has no
+   edge, so only whitespace separates it from the writing, and everything on it
+   is type: a Garamond masthead, quiet Inter links, Garamond rows. Values follow
+   specs/blog-rail-spec.md. */
 .notes-rail {
-  --color-focus-spacer: var(--color-rail);
+  position: relative;
   width: var(--rail-notes);
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  padding: var(--space-5) var(--space-3) var(--space-3);
-  background: var(--color-rail);
-  border-right: 1px solid var(--color-border);
+  align-items: stretch;
+  padding: 34px 14px 14px 28px;
+  background: var(--color-bg);
   min-height: 0;
-  transition: width var(--duration-base) var(--ease-out);
 }
 
+/* Collapsed there is no rail at all. The aside stays in the tree because the
+   dialogs it owns live inside it, but it takes no room, so the page has the
+   full width. */
 .notes-rail--collapsed {
-  width: var(--rail-collapsed);
-  align-items: center;
+  width: 0;
+  padding: 0;
 }
 
-.notes-rail__top-row {
+.notes-rail__mast {
   display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-right: 6px;
+}
+
+.notes-rail__brand {
+  font: 400 30px/1 var(--font-serif);
+  letter-spacing: 0.005em;
+  color: var(--color-text);
+}
+
+.notes-rail__toggle,
+.notes-rail__open {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  margin-bottom: var(--space-5);
-  padding: 0 var(--space-3);
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
 }
 
 .notes-rail__toggle {
   flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  padding: var(--space-1);
-  /* Rows all share --space-3, so content boxes line up at 24px. Icon buttons
-     need padding for a hit area and their glyphs carry transparent margin
-     inside the viewBox, so they pull back out by exactly that much: 4px of
-     button padding plus the 4px the hamburger bars sit in from x=0. */
-  /* Sits at the end of the row now. The negative margin sheds the button's
-     own padding so the glyph lines up with the rail's right edge the same way
-     the search glyph does. */
-  margin-left: 0;
-  margin-right: calc(var(--space-2) * -1);
-  color: var(--color-text-muted);
-  border-radius: var(--radius);
-  transition:
-    background-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  color: var(--color-text-faint);
 }
 
-.notes-rail__toggle:hover {
-  background: var(--color-surface-raised);
+.notes-rail__toggle:hover,
+.notes-rail__open:hover {
   color: var(--color-text);
-}
-
-/* --fs-sm (0.875rem) rather than --fs-md, because finance-tracking's brand
-   resolves --fs-md through body.modern-design, which redefines it to 0.875rem.
-   Matching the declaration would have rendered 2px larger than the reference. */
-.notes-rail__brand {
-  margin-right: auto;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-bold);
-  color: var(--color-text);
-  white-space: nowrap;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* Understated on purpose, the way ChatGPT and Copilot treat "New chat": this
-   is the most-used control in the rail, so it earns its place by sitting at
-   the top rather than by shouting in accent blue. Transparent at rest, with a
-   neutral wash on hover that matches the icon buttons beside it.
-
-   Padding matches .note-item exactly and no min-height is set, so this row is
-   the same height as the note rows it sits above. An explicit 40px floor made
-   it taller than everything around it. */
-.notes-rail__entry {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  margin-bottom: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius);
-  color: var(--color-text);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-medium);
-  text-align: left;
-  transition: background-color var(--duration-fast) var(--ease-out);
-}
-
-/* Same hover as .note-item: a wash, no border. A border here would make the
-   row grow by 2px on hover and sit a hair wider than the notes below it. */
-.notes-rail__entry:hover {
   background: var(--color-surface-raised);
 }
 
-.notes-rail__entry svg {
-  flex: 0 0 auto;
+/* Fixed to the window rather than placed in the page, so it stays where it was
+   put whatever the stage is showing. Below the modal layer at 200. */
+.notes-rail__open {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 50;
+  width: 40px;
+  height: 40px;
   color: var(--color-text-secondary);
 }
 
-/* The plus is drawn from x=3 in a 16px box, unlike the chat bubble, which is
-   centred. Correct here rather than in the button's padding, which
-   deliberately matches .note-item. */
-.notes-rail__new svg {
-  margin-left: -3px;
+.notes-rail__tagline {
+  margin: 6px 0 14px;
+  font: italic 400 15px var(--font-serif);
+  color: var(--color-text-muted);
 }
 
-/* Reads as the current view, the same way a selected note row does. */
-.notes-rail__entry--active,
-.notes-rail__entry--active:hover {
-  background: var(--color-surface-raised);
-  font-weight: var(--fw-semibold);
+.notes-rail__links {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 28px;
+  margin-bottom: 24px;
 }
 
-.notes-rail__entry--active svg {
+/* An action link rather than a button: Inter 13px, underlined in the border
+   colour, ink on hover. New and the Collections entry share it. */
+.notes-rail__entry {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: var(--color-text-secondary);
+  font: 400 13px var(--font-ui);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition: color 150ms;
+}
+
+.notes-rail__entry:hover {
   color: var(--color-text);
+  text-decoration-color: var(--color-text);
 }
 
 .notes-rail__section {
   display: flex;
   align-items: center;
-  /* The heading takes the room it needs and any control sits at the far edge,
-     rather than stacking underneath the label. */
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-1);
   width: 100%;
-  padding: 0 var(--space-3);
-  margin-bottom: var(--space-2);
+  margin: 0;
 }
 
-/* A large gap above the label and a tight one below it, so the label reads as
-   belonging to the rows underneath rather than floating between two lists.
-   The gap is what separates the sections; there is no rule or divider. */
-.notes-rail__list > .notes-rail__section {
-  margin-top: var(--space-6);
-  margin-bottom: var(--space-1);
-}
-
-/* The first label sits closer to the New note row above it. A full gap there
-   would leave the list looking detached from the two entries it belongs to. */
-.notes-rail__list > .notes-rail__section:first-child {
-  margin-top: var(--space-4);
-}
-
-/* Opaque, because rows scroll underneath it. Sitting above them in the stack
-   is not enough on its own: without a background the text overlaps. */
+/* Opaque, because rows scroll underneath it. */
 .notes-rail__section--sticky {
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: var(--color-rail);
-  padding-top: var(--space-2);
-  padding-bottom: var(--space-2);
+  z-index: 2;
+  background: var(--color-bg);
 }
+
+/* The first heading hugs the links above it; any later one opens a gap. */
+.notes-rail__list > .notes-rail__section:not(:first-child) {
+  padding-top: 16px;
+}
+
 .notes-rail__title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-normal);
-  /* Sentence case at regular weight, so the label sits behind the note titles
-     instead of competing with them. The 0.04em tracking went with the caps. */
+  font: inherit;
   color: var(--color-text-muted);
 }
 
-.notes-rail__actions {
+/* The h2 keeps the heading role for the outline; the button inside it is the
+   full-row toggle. Label, a hollow diamond, a rule that takes the slack, then
+   the chevron. */
+.notes-rail__title-toggle {
   display: flex;
   align-items: center;
-  /* The brand claims the free space now, so this just sits where it falls,
-     between the brand and the sidebar toggle. */
-  /* Mirror of the toggle: shed the 28px button's inner 6px so the glyph sits
-     the same 24px off the rail edge as the titles do on the left. */
-  margin-right: -6px;
-  gap: var(--space-1);
+  gap: 10px;
+  width: 100%;
+  padding: 14px 0 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 400 13px var(--font-ui);
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: color 150ms;
 }
 
-.notes-rail__action {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-  border-radius: var(--radius);
-  position: relative;
-  transition:
-    background-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+.notes-rail__list > .notes-rail__section:first-child .notes-rail__title-toggle {
+  padding-top: 2px;
 }
 
-.notes-rail__action::before {
-  content: "";
-  position: absolute;
-  inset: -4px;
-}
-
-.notes-rail__action:hover {
-  background: var(--color-surface-raised);
+.notes-rail__title-toggle:hover {
   color: var(--color-text);
 }
 
+.notes-rail__title-mark {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.notes-rail__title-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border-strong);
+  opacity: 0.6;
+}
+
+.notes-rail__chevron {
+  flex: none;
+  color: var(--color-text-faint);
+  transform: rotate(0deg);
+  transition: transform 150ms ease-in-out;
+}
+
+.notes-rail__title-toggle:hover .notes-rail__chevron {
+  color: var(--color-text);
+}
+
+.notes-rail__chevron--open {
+  transform: rotate(90deg);
+}
+
 .notes-rail__banner {
-  width: 100%;
-  margin-bottom: var(--space-2);
-  padding: var(--space-3);
+  margin: 0 0 12px;
+  padding: 10px 12px;
   background: var(--color-surface-alt);
-  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 6px;
 }
 
 .notes-rail__banner-text {
@@ -233,9 +219,8 @@
   font-size: var(--fs-xs);
   color: var(--accent);
   font-weight: var(--fw-medium);
-  /* Underlined at rest, not just on hover. The accent is ink rather than a
-     hue, so colour no longer separates this from the sentence above it and
-     weight alone is too quiet an affordance to carry a destructive action. */
+  /* Underlined at rest, because the accent is ink and colour alone would not
+     tell this from the sentence above it. */
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -245,148 +230,209 @@
   text-decoration-thickness: 2px;
 }
 
+/* The one scroll area. Full-bleed to the rail's right edge so the scrollbar
+   rides the edge rather than floating inside the padding. */
 .notes-rail__list {
   flex: 1;
-  /* stretch rather than width:100%, so the negative margins below can widen
-     the box past the rail's content edge instead of just shifting it left. */
-  align-self: stretch;
   min-height: 0;
   overflow-y: auto;
-  /* Full-bleed scroll container, so the scrollbar rides the rail's own edge
-     instead of floating inside its inline padding. The padding comes straight
-     back on the inside, which keeps note titles on the same 24px line as the
-     header, the new-note row and the section label. */
-  margin-inline: calc(var(--space-3) * -1);
-  padding-inline: var(--space-3);
+  margin-right: -14px;
+  padding-right: 14px;
 }
+
 .notes-rail__list ul {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
-/* Sized and aligned like a row, because it stands in for rows. Three sections
-   share the rail now, so a centred block with its own heading gave an empty
-   list more presence than a full one and pushed the other two lists off the
-   screen. The padding matches .note-item so the text starts on the same left
-   edge the titles would have. */
+/* Thin, and only there while the pointer is over the list. */
+.notes-rail__list::-webkit-scrollbar {
+  width: 9px;
+}
+
+.notes-rail__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notes-rail__list::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 3px solid transparent;
+  border-radius: 6px;
+  background-clip: content-box;
+}
+
+.notes-rail__list:hover::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-strong);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .notes-rail__list {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .notes-rail__list:hover {
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+}
+
 .notes-rail__empty {
-  padding: var(--space-2) var(--space-3);
+  margin: 6px 0;
 }
 
 .notes-rail__empty-body {
   margin: 0;
-  font-size: var(--fs-xs);
-  line-height: var(--leading-tight);
+  font: italic 400 16px/1.4 var(--font-serif);
   color: var(--color-text-muted);
 }
 
 .notes-rail__footer {
   flex: 0 0 auto;
-  width: 100%;
   margin-top: auto;
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-border);
+  padding-top: 10px;
 }
 
 .notes-rail__settings {
-  display: flex;
-  width: 100%;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: 8px;
+  padding: 6px 0;
   background: transparent;
   color: var(--color-text-secondary);
   border: 0;
-  border-radius: var(--radius);
-  font: var(--fw-medium) var(--fs-sm) var(--font-sans);
+  border-radius: 4px;
+  font: 400 13px var(--font-ui);
   cursor: pointer;
-  transition:
-    color var(--duration-fast) var(--ease-out),
-    background-color var(--duration-fast) var(--ease-out);
+  transition: color 150ms;
 }
 
 .notes-rail__settings:hover {
   color: var(--color-text);
-  background: var(--color-surface-alt);
 }
 
-.notes-rail__settings:focus-visible {
-  outline: none;
-  box-shadow: var(--shadow-focus);
+/* Rows. Scoped to the rail because RailRow.css also styles the same classes for
+   the Ask pane's past questions, which keep their own look. The three-class
+   selectors out-rank the global hover padding in NoteRowMenu.css. */
+.notes-rail .note-row .note-item {
+  display: block;
+  padding: 6px 28px 7px 16px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-faint);
+  transition: color 150ms;
 }
 
-/* Finance drops its sidebar to zero width rather than to the icon strip on
-   small screens, because 56px of chrome is not worth the horizontal space. */
-@media (max-width: 900px) {
-  .notes-rail {
-    width: 260px;
-  }
-
-  .notes-rail--collapsed {
-    width: 0;
-    padding: 0;
-    overflow: hidden;
-    border-right: 0;
-  }
+.notes-rail .note-row:hover .note-item,
+.notes-rail .note-row:focus-within .note-item {
+  padding-right: 28px;
 }
 
-/* Accordion heading. The h2 keeps the heading role for the outline; this
-   button inside it is what actually toggles. Full width so the whole heading
-   row is the hit area, not just the word. */
-.notes-rail__title-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  cursor: pointer;
+.notes-rail .note-row .note-item:hover {
+  background: transparent;
 }
 
-.notes-rail__title-toggle:hover {
+.notes-rail .note-row .note-item:hover,
+.notes-rail .note-row .note-item--selected,
+.notes-rail .note-row .note-item--selected:hover {
   color: var(--color-text);
 }
 
-.notes-rail__chevron {
-  flex: 0 0 auto;
-  /* Right when shut, down when open. Rotating one glyph rather than swapping
-     two keeps the turn readable as the same arrow moving. */
-  transform: rotate(0deg);
-  transition: transform 150ms ease-in-out;
+.notes-rail .note-item__title {
+  display: block;
+  font: 400 14px/1.25 var(--font-serif);
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.notes-rail__chevron--open {
-  transform: rotate(90deg);
+/* The line under a title: a collection's chapter count, or the collection a
+   note is in. */
+.notes-rail .note-item__meta {
+  display: block;
+  margin: 3px 0 0;
+  font: 400 11px var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-faint);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .notes-rail__chevron {
-    transition: none;
+.notes-rail .note-item__book {
+  display: inline;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  white-space: normal;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+/* The marker: hollow on hover, filled on the open row. */
+.notes-rail .note-item::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 12px;
+  width: 6px;
+  height: 6px;
+  border: 1px solid var(--color-text-faint);
+  transform: rotate(45deg);
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.notes-rail .note-item:hover::before {
+  opacity: 0.55;
+}
+
+.notes-rail .note-item--selected::before,
+.notes-rail .note-item--selected:hover::before {
+  opacity: 1;
+  background: var(--color-text);
+  border-color: var(--color-text);
+}
+
+/* A collection row that expands has its expander where the marker would be. */
+.notes-rail .note-row--expandable .note-item::before {
+  display: none;
+}
+
+@media (forced-colors: active) {
+  .notes-rail .note-item--selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }
 
-/* Collapsed, the toggle is the first item in the icon column rather than the
-   last item in a header row, so it drops the pull-right that lined it up with
-   the rail's right edge and takes the same 34px box as the icons below it. */
-.notes-rail--collapsed .notes-rail__top-row {
-  justify-content: center;
-  padding: 0;
+/* The ⋯ trigger sits at the row's top-right and appears on hover or focus. */
+.notes-rail .note-row__menu {
+  top: 4px;
+  right: 0;
+  transform: none;
 }
 
-.notes-rail--collapsed .notes-rail__toggle {
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  margin-right: 0;
-  padding: 0;
-  border-radius: var(--radius);
+.notes-rail .note-row__menu-trigger {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notes-rail__toggle,
+  .notes-rail__open,
+  .notes-rail__entry,
+  .notes-rail__title-toggle,
+  .notes-rail__chevron,
+  .notes-rail__settings,
+  .notes-rail .note-item,
+  .notes-rail .note-item::before,
+  .notes-rail .note-row__menu-trigger {
+    transition: none;
+  }
 }

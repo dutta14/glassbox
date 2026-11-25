@@ -6,8 +6,6 @@ import { BookChapterList } from "./BookChapterList";
 import { NewNoteMenu } from "./NewNoteMenu";
 import { OrganizeMenu } from "./OrganizeMenu";
 import { NoteSearchModal } from "./NoteSearchModal";
-import { RailFlyout } from "./RailFlyout";
-import { RailTip } from "./RailTip";
 import { useScrollFades } from "../hooks/useScrollFades";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SettingsModal } from "./SettingsModal";
@@ -194,9 +192,6 @@ export const NotesRail = ({
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sections, setSections] = useState<SectionState>(readSections);
-  /** Only one flyout at a time: two panels open beside a one-icon-wide rail
-      would overlap each other. */
-  const [openFlyout, setOpenFlyout] = useState<SectionName | null>(null);
   const booksOpen = sections.books;
   const notesOpen = sections.notes;
 
@@ -295,54 +290,13 @@ export const NotesRail = ({
       className={`notes-rail${collapsed ? " notes-rail--collapsed" : ""}`}
       aria-label="Notes"
     >
-      <div className="notes-rail__top-row">
-        {!collapsed && <div className="notes-rail__brand">Glassbox</div>}
-        {!collapsed && (
-          <div className="notes-rail__actions">
-            <button
-              ref={searchToggleRef}
-              type="button"
-              className="notes-rail__action"
-              onClick={() => setSearchOpen(true)}
-              aria-haspopup="dialog"
-              aria-expanded={searchOpen}
-              aria-label="Search notes"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="7.2"
-                  cy="7.2"
-                  r="4.2"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-                <path
-                  d="M10.4 10.4 13.5 13.5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* Last in the row and last in the tab order. It acts on the rail as a
-            whole, so it sits apart from the search glyph that acts on the
-            notes. Rendered outside the collapsed guard, because it is the only
-            way back once the rail is shut. */}
+      {/* Collapsed, there is no rail: only this button, which brings it back. */}
+      {collapsed && (
         <button
           type="button"
-          className="notes-rail__toggle rail-tip-host"
+          className="notes-rail__open"
           onClick={toggleCollapsed}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label="Open sidebar"
         >
           <svg
             width="20"
@@ -351,69 +305,77 @@ export const NotesRail = ({
             fill="none"
             aria-hidden="true"
           >
-            <rect
-              x="2.75"
-              y="3.75"
-              width="14.5"
-              height="12.5"
-              rx="2.5"
+            <path
+              d="M3 5.5h14M3 10h14M3 14.5h14"
               stroke="currentColor"
               strokeWidth="1.5"
+              strokeLinecap="round"
             />
-            <path d="M7.75 4v12" stroke="currentColor" strokeWidth="1.5" />
           </svg>
-          <RailTip label={collapsed ? "Expand sidebar" : "Collapse sidebar"} />
         </button>
-      </div>
+      )}
 
       {!collapsed && (
         <>
-          <NewNoteMenu onCreate={onCreate} />
-
-          {/* In one list the shelf is a place to go, not a section of the
-              sidebar, so it sits with Ask and New note rather than
-              heading a list of its own. No count: the number of books is
-              what the page is for. */}
-          {!byBook && (
+          <div className="notes-rail__mast">
+            <div className="notes-rail__brand">Glassbox</div>
             <button
               type="button"
-              className="notes-rail__entry"
-              onClick={onOpenBooks}
+              className="notes-rail__toggle"
+              onClick={toggleCollapsed}
+              aria-label="Collapse sidebar"
             >
               <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
+                width="18"
+                height="18"
+                viewBox="0 0 20 20"
                 fill="none"
                 aria-hidden="true"
               >
-                {/* A closed book seen head on: the cover, the page block
-                    banded across the foot, and a title rule near the top.
-                    Same 16px grid and 1.4 stroke as the chat bubble beside
-                    it. */}
-                <path
-                  d="M4.75 2.25h7.5a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-7.5a2 2 0 0 1-2-2v-7.5a2 2 0 0 1 2-2Z"
+                <rect
+                  x="2.75"
+                  y="3.75"
+                  width="14.5"
+                  height="12.5"
+                  rx="2.5"
                   stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinejoin="round"
+                  strokeWidth="1.5"
                 />
-                <path
-                  d="M4.75 11.25h8.5"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M6.5 5.25h4.25"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
+                <path d="M7.75 4v12" stroke="currentColor" strokeWidth="1.5" />
               </svg>
-              {COPY.booksRow}
             </button>
-          )}
+          </div>
+          <p className="notes-rail__tagline">{COPY.railTagline}</p>
 
+          <div className="notes-rail__links">
+            <NewNoteMenu onCreate={onCreate} />
+
+            <button
+              ref={searchToggleRef}
+              type="button"
+              className="notes-rail__entry"
+              onClick={() => setSearchOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={searchOpen}
+              aria-label="Search notes"
+            >
+              Search
+            </button>
+
+            {/* In one list the shelf is a place to go, not a section of the
+                sidebar, so it sits with New and Search rather than heading a
+                list of its own. No count: the number of books is what the
+                page is for. */}
+            {!byBook && (
+              <button
+                type="button"
+                className="notes-rail__entry"
+                onClick={onOpenBooks}
+              >
+                {COPY.booksRow}
+              </button>
+            )}
+          </div>
           {/* One scroll area for the lists, so the rail scrolls as a single
               column instead of boxes that run out of room independently. */}
           <div ref={listRef} className="notes-rail__list scroll-fades">
@@ -428,6 +390,14 @@ export const NotesRail = ({
                     aria-controls="rail-books-list"
                   >
                     {COPY.booksRow}
+                    <span
+                      className="notes-rail__title-mark"
+                      aria-hidden="true"
+                    />
+                    <span
+                      className="notes-rail__title-rule"
+                      aria-hidden="true"
+                    />
                     <Chevron open={booksOpen} />
                   </button>
                 </h2>
@@ -508,6 +478,8 @@ export const NotesRail = ({
                   aria-controls="rail-notes-list"
                 >
                   Notes
+                  <span className="notes-rail__title-mark" aria-hidden="true" />
+                  <span className="notes-rail__title-rule" aria-hidden="true" />
                   <Chevron open={notesOpen} />
                 </button>
               </h2>
@@ -584,193 +556,6 @@ export const NotesRail = ({
             </button>
           </footer>
         </>
-      )}
-
-      {/* Collapsed, the rail keeps every action it had, as icons. A list
-          cannot shrink to an icon without losing its contents, so it hands its
-          rows to a flyout that opens beside it. */}
-      {collapsed && (
-        <div className="notes-rail__icons">
-          <button
-            type="button"
-            className="rail-flyout__trigger rail-tip-host"
-            /* The collapsed strip stays a single plus. A caret at 56px wide
-               would be a corner target barely bigger than the glyph, and
-               verse is still one step away through a row's own menu. */
-            onClick={() => onCreate("prose")}
-            aria-label="New note"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M8 3v10M3 8h10"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            <RailTip label="New note" />
-          </button>
-
-          <button
-            ref={searchToggleRef}
-            type="button"
-            className="rail-flyout__trigger rail-tip-host"
-            onClick={() => setSearchOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={searchOpen}
-            aria-label="Search notes"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 16 16"
-              fill="none"
-              aria-hidden="true"
-            >
-              <circle
-                cx="7.2"
-                cy="7.2"
-                r="4.2"
-                stroke="currentColor"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M10.4 10.4 13.5 13.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-            <RailTip label="Search notes" />
-          </button>
-
-          <div className="notes-rail__icons-divider" />
-
-          <RailFlyout
-            label={COPY.booksRow}
-            heading={COPY.booksRow}
-            open={openFlyout === "books"}
-            onOpenChange={(next) => setOpenFlyout(next ? "books" : null)}
-            isEmpty={books.length === 0}
-            emptyText={COPY.emptyBooksSidebar}
-            icon={
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                {/* The same shut book the chapter expander uses. The earlier
-                    glyph left its left edge open to suggest a spine folding
-                    back, which read as an icon that had been cut off. */}
-                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
-              </svg>
-            }
-          >
-            <ul>
-              {books.map((book) => (
-                <BookListItem
-                  key={book.id}
-                  book={book}
-                  isSelected={book.id === selectedBookId}
-                  menuOpen={openMenuId === book.id}
-                  onSelect={() => {
-                    onSelectBook(book.id);
-                    setOpenFlyout(null);
-                  }}
-                  onMenuOpenChange={(open) =>
-                    setOpenMenuId(open ? book.id : null)
-                  }
-                  onRequestDelete={() => setPendingBookDelete(book)}
-                />
-              ))}
-            </ul>
-          </RailFlyout>
-
-          <RailFlyout
-            label="Notes"
-            heading="Notes"
-            open={openFlyout === "notes"}
-            onOpenChange={(next) => setOpenFlyout(next ? "notes" : null)}
-            /* The collapsed rail is the same rail. If it listed notes the
-               expanded one hides, widening the sidebar would make notes
-               disappear. */
-            isEmpty={listedNotes.length === 0}
-            emptyText={
-              byBook && notes.length > 0
-                ? COPY.emptyNotesAllBooked
-                : COPY.emptyNotesSidebar
-            }
-            icon={
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 16 16"
-                fill="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M4.75 2.75h4.5l2 2v8.5h-6.5z"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M6.25 8.5h3.5M6.25 10.5h3.5"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            }
-          >
-            <ul>
-              {listedNotes.map((note) => (
-                <NoteListItem
-                  key={note.id}
-                  note={note}
-                  isSelected={note.id === currentNoteId}
-                  menuOpen={openMenuId === note.id}
-                  onSelect={() => {
-                    onSelect(note.id);
-                    setOpenFlyout(null);
-                  }}
-                  onMenuOpenChange={(open) =>
-                    setOpenMenuId(open ? note.id : null)
-                  }
-                  onRequestDelete={() => setPendingDelete(note)}
-                  onToggleFormat={() => onToggleNoteFormat(note.id)}
-                  bookName={bookNameByNoteId.get(note.id)}
-                  onAddToBook={() => onAddNoteToBook(note.id)}
-                />
-              ))}
-            </ul>
-          </RailFlyout>
-
-          {/* Collapsed, the rail used to drop its footer entirely, so the
-              folder and the theme were unreachable without widening it
-              first. One entry is small enough to keep. */}
-          <button
-            type="button"
-            className="rail-flyout__trigger rail-tip-host notes-rail__settings-icon"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Settings"
-          >
-            <GearIcon />
-            <RailTip label="Settings" />
-          </button>
-        </div>
       )}
 
       {/* A book is a running order, not a container. Deleting it must leave
