@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Glassbox rail · B (Archive), deep mock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+@font-face { font-family: "EB Garamond"; font-weight: 400; src: url("file:///Users/anindya/Documents/GitHub/glassbox/public/fonts/EBGaramond-latin.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-weight: 400 500; src: url("file:///Users/anindya/Documents/GitHub/glassbox/public/fonts/Inter-latin.woff2") format("woff2"); }
+
+/* Tokens copied from src/styles/tokens.css (negative in dark is a mock guess) */
+:root {
+  --bg: #f6f5f3; --surface: #fbf9f6; --surface-alt: #f8f7f5; --raised: #ebeae8;
+  --text: #181715; --text-2: #52514f; --muted: #62615f; --faint: #6c6b69;
+  --border: #e8e7e5; --border-strong: #bdbcba; --accent: #1c1b19; --negative: #b3261e;
+  --serif: "EB Garamond", Georgia, serif; --ui: "Inter", -apple-system, sans-serif;
+  --shadow-md: 0 2px 4px rgba(0,0,0,.04), 0 8px 16px rgba(0,0,0,.06);
+  --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+  --desk: #e9e7e3; --label: #3a3936; --scrim: rgba(24,23,21,.35);
+}
+body.dark {
+  --bg: #100f0d; --surface: #191714; --surface-alt: #211f1b; --raised: #2e2b25;
+  --text: #c2bdb2; --text-2: #a8a49a; --muted: #9f9b91; --faint: #98948a;
+  --border: #2b2823; --border-strong: #45413b; --accent: #c2bdb2; --negative: #e58a82;
+  --shadow-md: 0 2px 4px rgba(0,0,0,.3), 0 8px 16px rgba(0,0,0,.4);
+  --desk: #050504; --label: #c2bdb2; --scrim: rgba(0,0,0,.55);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--desk); color: var(--text); font-family: var(--ui); padding: 28px 32px 80px; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* ===== Doc chrome (not part of the design) ===== */
+.wrap { max-width: 1160px; margin: 0 auto; }
+.bar { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }
+.bar h1 { font: 500 15px var(--ui); margin: 0; color: var(--label); }
+.bar .hint { color: var(--muted); font-size: 13px; }
+.toggle { margin-left: auto; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; color: var(--label); }
+section.doc { margin-top: 48px; }
+section.doc > h2 { font: 500 14px var(--ui); margin: 0 0 4px; color: var(--label); }
+section.doc > p { margin: 0 0 14px; font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 780px; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.card { background: var(--bg); border: 1px solid var(--border-strong); border-radius: 10px; padding: 16px 16px 14px; }
+.card .cap { font: 500 11px var(--ui); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
+.card .note { margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.spec { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
+.spec th, .spec td { text-align: left; padding: 8px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.spec th { font: 500 11px var(--ui); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.spec td:first-child { color: var(--text); white-space: nowrap; }
+.spec td { color: var(--text-2); }
+.spec code { font: 12px ui-monospace, Menlo, monospace; color: var(--text); }
+
+/* ===== The app frame ===== */
+.app { position: relative; display: flex; height: 700px; background: var(--bg); border-radius: 10px; overflow: hidden; border: 1px solid var(--border-strong); }
+.page { flex: 1; min-width: 0; overflow: auto; padding: 72px 48px 40px; }
+.page .inner { max-width: 600px; margin: 0 auto; text-align: center; }
+.page h3 { font: 400 40px/1.25 var(--serif); margin: 0; color: var(--text); }
+.orn { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 22px 0 36px; }
+.orn::before, .orn::after { content: ""; width: 44px; height: 1px; background: var(--muted); }
+.orn i { width: 7px; height: 7px; border: 1px solid var(--muted); transform: rotate(45deg); }
+.verse { display: inline-block; text-align: left; font: 400 19px/2.1 var(--serif); word-spacing: .05em; }
+.prose { text-align: left; font: 400 19px/1.75 var(--serif); word-spacing: .05em; }
+.prose p { margin: 0 0 1em; }
+.written { margin-top: 56px; font-size: 13px; color: var(--muted); }
+.post { scroll-margin-top: 40px; }
+.post + .post { margin-top: 140px; }
+.feed__more, .feed__end, .feed__empty { margin: 96px 0 0; padding-bottom: 320px; text-align: center; font: italic 400 16px var(--serif); color: var(--faint); }
+.feed__more::before { content: ""; display: block; width: 6px; height: 6px; margin: 0 auto 14px; border: 1px solid var(--faint); transform: rotate(45deg); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .feed__more::before { animation: none; } }
+.written a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.written a:hover { color: var(--text); }
+.bookhead h3 { font-size: 44px; }
+.bk__meta { margin: 16px 0 0; font: 400 12px var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bookhead + .post { margin-top: 24px; }
+.bk__end { margin: 96px 0 0; padding-bottom: 320px; text-align: center; font: italic 400 16px var(--serif); color: var(--faint); }
+.rb__name-field { margin: 12px 0 6px 16px; width: calc(100% - 16px - 14px); }
+.ed__bar { display: flex; justify-content: space-between; align-items: baseline; margin: -32px 0 56px; font: 400 13px var(--ui); color: var(--faint); text-align: left; }
+.ed__done { background: none; border: 0; padding: 4px 0; font: inherit; color: var(--muted); cursor: pointer; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
+.ed__done:hover { color: var(--text); }
+.ed__title { display: block; width: 100%; box-sizing: border-box; border: 0; outline: 0; background: none; padding: 0; text-align: center; font: 400 40px/1.25 var(--serif); color: var(--text); }
+.ed__title::placeholder, .ed__text::placeholder { color: var(--faint); opacity: 1; }
+.ed__text { display: block; box-sizing: border-box; border: 0; outline: 0; background: none; padding: 0; resize: none; overflow: hidden; color: var(--text); text-align: left; word-spacing: .05em; }
+.ed__text--verse { width: min(100%, 24em); margin: 0 auto; font: 400 19px/2.1 var(--serif); }
+.ed__text--prose { width: 100%; font: 400 19px/1.75 var(--serif); }
+.flow { max-width: 720px; margin: 0 0 24px; padding-left: 20px; font-size: 14px; line-height: 1.6; color: var(--text-2, var(--muted)); }
+.flow li { margin: 0 0 6px; }
+.ed__foot { margin-top: 56px; font-size: 13px; color: var(--muted); text-align: center; }
+.crumb { margin: 20px auto -2px; max-width: 30em; font: 400 12px/1.6 var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); overflow-wrap: anywhere; }
+.crumb a { color: var(--muted); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; }
+.crumb a:hover { color: var(--text); }
+.rp__snip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 3px; font: italic 400 13px/1.35 var(--serif); color: var(--faint); }
+
+/* ===== Rail B ===== */
+.rb { position: relative; display: flex; flex-direction: column; flex: 0 0 auto; width: 272px; min-height: 0; background: var(--bg); padding: 34px 14px 14px 28px; }
+.rb__mast { display: flex; align-items: flex-start; justify-content: space-between; padding-right: 6px; }
+.rb__name { font: 400 30px/1 var(--serif); color: var(--text); letter-spacing: .005em; }
+.rb__collapse { margin-top: 2px; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--faint); }
+.rb__collapse:hover { color: var(--text); background: var(--raised); }
+.rb__tag { margin: 6px 0 14px; font: italic 400 15px var(--serif); color: var(--muted); }
+.rb__links { position: relative; display: flex; gap: 16px; height: 28px; align-items: center; margin-bottom: 30px; font-size: 13px; }
+.rb__link { color: var(--text-2); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; border-radius: 3px; }
+.rb__link:hover { color: var(--text); text-decoration-color: var(--text); }
+.rb__tabs { display: flex; gap: 18px; margin: 0 0 14px; }
+.rb__tab { font: 400 16px/1 var(--serif); color: var(--faint); padding: 4px 0; border-radius: 3px; }
+.rb__tab:hover { color: var(--text); }
+.rb__tab[aria-selected="true"] { color: var(--text); }
+.rb__count { margin: 0 0 4px; font: 400 11px var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.rb__newbook { margin: 14px 0 6px 16px; font-size: 13px; color: var(--text-2); text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 4px; border-radius: 3px; }
+.rb__newbook:hover { color: var(--text); text-decoration-color: var(--text); }
+.rb__link svg { vertical-align: -1px; margin-left: 2px; }
+.rb__search { display: flex; align-items: center; gap: 8px; width: 100%; padding-right: 6px; border-bottom: 1px solid var(--border-strong); }
+.rb__search input { flex: 1; min-width: 0; height: 28px; background: none; border: 0; color: var(--text); font: italic 400 17px var(--serif); box-shadow: none !important; outline: none; }
+.rb__search input::placeholder { color: var(--muted); }
+.rb__search input::-webkit-search-cancel-button { display: none; }
+.rb__search button { color: var(--muted); font-size: 12px; }
+.rb__scroll { flex: 1; min-height: 0; overflow-y: auto; margin-right: -14px; padding-right: 14px; }
+.rb__scroll::-webkit-scrollbar, .page::-webkit-scrollbar { width: 9px; }
+.rb__scroll::-webkit-scrollbar-track, .page::-webkit-scrollbar-track { background: transparent; }
+.rb__scroll::-webkit-scrollbar-thumb, .page::-webkit-scrollbar-thumb { background: transparent; border: 3px solid transparent; border-radius: 6px; background-clip: content-box; }
+.rb__scroll:hover::-webkit-scrollbar-thumb, .page:hover::-webkit-scrollbar-thumb { background-color: var(--border-strong); }
+@supports not selector(::-webkit-scrollbar) { .rb__scroll, .page { scrollbar-width: thin; scrollbar-color: transparent transparent; } .rb__scroll:hover, .page:hover { scrollbar-color: var(--border-strong) transparent; } }
+.rb__foot { margin-top: auto; padding-top: 10px; }
+.rb__gear { display: inline-flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; color: var(--text-2); border-radius: 4px; }
+.rb__gear:hover { color: var(--text); }
+
+/* Year heading */
+.ry { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 0 12px; background: var(--bg); color: var(--muted); font: 400 13px var(--ui); letter-spacing: .12em; }
+.ry:first-child { padding-top: 2px; }
+.ry__mark { width: 6px; height: 6px; border: 1px solid var(--muted); transform: rotate(45deg); flex: none; }
+.ry__rule { flex: 1; height: 1px; background: var(--border-strong); opacity: .6; }
+.ry__count { font-size: 12px; letter-spacing: 0; color: var(--faint); font-variant-numeric: tabular-nums; }
+.ry__chev { color: var(--faint); transition: transform 150ms ease-in-out; transform: rotate(90deg); flex: none; }
+.rb__scroll > h3:not(:first-child) .ry { padding-top: 28px; }
+.ry[aria-expanded="false"] .ry__chev { transform: rotate(0); }
+.ry:hover { color: var(--text); }
+.ry:hover .ry__chev, .ry.is-hover .ry__chev { color: var(--text); }
+.ry.is-hover { color: var(--text); }
+.ry.is-focus { box-shadow: var(--focus); border-radius: 4px; }
+.ry__label { padding-left: 14px; margin-left: -14px; }
+
+/* Note row */
+.rp { position: relative; margin: 0 0 4px; }
+.rp__link { display: block; width: 100%; padding: 6px 28px 7px 16px; border-radius: 4px; color: inherit; text-decoration: none; }
+.rp__title { display: block; font: 400 14px/1.25 var(--serif); color: var(--faint); overflow-wrap: anywhere; }
+.rp__title em { font-style: italic; }
+.rp__meta { display: block; margin-top: 3px; font: 400 11px var(--ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.rp__meta b { font-weight: 400; color: var(--faint); letter-spacing: .08em; }
+.rp__link::before { content: ""; position: absolute; left: 3px; top: 15px; width: 6px; height: 6px; border: 1px solid var(--faint); transform: rotate(45deg); opacity: 0; transition: opacity 150ms; }
+.rp__link:hover::before, .rp.is-hover .rp__link::before { opacity: .55; }
+.rp__link:hover .rp__title, .rp.is-hover .rp__title { color: var(--text); }
+.rp.is-sel .rp__title { color: var(--text); }
+.rp.is-sel .rp__link::before { opacity: 1; background: var(--text); border-color: var(--text); }
+.rp.is-focus .rp__link { box-shadow: var(--focus); }
+.rp__more { position: absolute; right: 0; top: 4px; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--muted); opacity: 0; transition: opacity 120ms; }
+.rp:hover .rp__more, .rp:focus-within .rp__more, .rp.is-hover .rp__more, .rp.menu-open .rp__more { opacity: 1; }
+.rp__more:hover, .rp.menu-open .rp__more { background: var(--raised); color: var(--text); }
+mark { background: var(--raised); color: var(--text); border-radius: 2px; padding: 0 1px; }
+@media (hover: none) { .rp__more { opacity: 1; } }
+
+/* Menus */
+.menu { position: absolute; z-index: 20; min-width: 188px; padding: 6px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow-md); }
+.menu__item { display: flex; width: 100%; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; font-size: 13px; color: var(--text); }
+.menu__item:hover, .menu__item.is-hover { background: var(--raised); }
+.menu__item small { margin-left: auto; color: var(--faint); font-size: 11px; }
+.menu__item--danger { color: var(--negative); }
+.menu__sep { height: 1px; margin: 5px 4px; background: var(--border); }
+.menu__head { margin: 4px 10px 6px; font: 500 11px var(--ui); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.menu--static { position: static; display: inline-block; }
+
+/* Banner / empty */
+.rb__banner { margin: 0 0 12px; padding: 10px 12px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px; }
+.rb__banner p { margin: 0 0 6px; font-size: 12px; line-height: 1.5; color: var(--text-2); }
+.rb__banner button { font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.rb__empty { margin: 6px 0; font: italic 400 16px/1.4 var(--serif); color: var(--muted); }
+.rb__empty b { font-weight: 400; color: var(--text-2); }
+
+/* Collapsed: no rail, just a menu button */
+.hb { position: absolute; top: 20px; left: 20px; z-index: 2; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; color: var(--text-2); }
+.hb:hover { background: var(--raised); color: var(--text); }
+
+/* Mobile */
+.phone { position: relative; width: 390px; height: 720px; background: var(--bg); border: 1px solid var(--border-strong); border-radius: 28px; overflow: hidden; }
+.phone__top { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; }
+.phone__top .nm { font: 400 22px var(--serif); }
+.phone__page { padding: 36px 24px; text-align: center; }
+.phone__page h3 { font: 400 30px/1.25 var(--serif); margin: 0; }
+.phone__scrim { position: absolute; inset: 0; background: var(--scrim); }
+.phone__drawer { position: absolute; top: 0; bottom: 0; left: 0; width: 304px; box-shadow: var(--shadow-md); background: var(--bg); border-right: 1px solid var(--border); }
+.phone__drawer .rb { width: 100%; height: 100%; padding-top: 28px; }
+.row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="bar">
+  <h1>Glassbox rail · B “Archive” · deep mock</h1>
+  <span class="hint">Static HTML. Tokens from the app. Italic titles are verse. Nothing here is wired to the real app.</span>
+  <button class="toggle" onclick="document.body.classList.toggle('dark')">Toggle light / dark</button>
+</div>
+
+<section class="doc">
+  <h2>1 · Live frame</h2>
+  <p>Try it: click a note, click a year to fold it, hover a row and open its ⋯ menu, switch between <b>Posts</b> and <b>Collections</b> (open a collection to see its page), click <b>Search</b> (the tabs step aside) and type (“the”, “rain”, “zzz”), click <b>New</b>, or fold the rail with the button by the masthead. The rail takes the page background and has no border; only whitespace separates it from the writing.</p>
+  <div class="app" id="live"></div>
+</section>
+
+<section class="doc">
+  <h2>2 · Row states</h2>
+  <p>No filled pill anywhere. The only signals are the title colour and the ◇. Titles wrap rather than truncate, so nothing is ever cut mid-word. The ⋯ column is reserved so the wrap point never moves on hover.</p>
+  <div class="grid" id="row-states"></div>
+</section>
+
+<section class="doc">
+  <h2>3 · Year headings, menus and edge cases</h2>
+  <div class="grid" id="year-states"></div>
+</section>
+
+<section class="doc">
+  <h2>4 · Posts and Collections tabs</h2>
+  <p><b>Posts</b> lists every post that is not in a collection, grouped by year, newest first. <b>Collections</b> lists the collections themselves, one row each with a chapter count: no years, no posts underneath. A collection has its own identity, like a book on a shelf, so its chapters live on its own page in the main pane. A post in a collection never appears under Posts, so each post lives in exactly one place. The Organize menu goes away, and the tabs never change what the main pane shows.</p>
+  <div class="row" id="organize-modes"></div>
+</section>
+
+<section class="doc">
+  <h2>5 · Reading and writing</h2>
+  <p>The middle pane is one thing at a time: the feed, or the editor. <b>New</b> and each post’s <b>Edit</b> swap the feed for the editor you have today (prose or verse). <b>Done</b> or <b>Esc</b> swaps back and lands on the same post, so the rail marker and the page always agree. <b>New</b> always opens in Posts and closes search; a collection is chosen afterwards from the ⋯ menu. Try it in the live frame above.</p>
+  <ol class="flow">
+    <li><b>New ▾ → Prose or Verse.</b> Search closes, the tab switches to Posts, a draft titled “Untitled” appears at the top of the current year, marked as the open note. Focus is in the title.</li>
+    <li><b>Writing.</b> The title edits the rail row as you type. Everything autosaves; there is no Save button.</li>
+    <li><b>Done.</b> The feed returns with the new post at the very top, the rail marker on it. A draft with no title and no text is discarded instead of saved.</li>
+    <li><b>Edit on an existing post.</b> Same swap, focus in the body. Done returns to that post wherever it sits in the feed.</li>
+    <li><b>Clicking another row while writing</b> saves, then scrolls the feed to that row.</li>
+  </ol>
+  <div class="grid" id="write-states"></div>
+</section>
+
+<section class="doc">
+  <h2>6 · Post header and search results</h2>
+  <p>A post in a collection says so in one quiet line under the title. It used to sit 8px from the title; it now has room to breathe. The same line shows in the feed, in search results and in the editor, and it links to that collection’s page, scrolled to this chapter. While searching, matches are marked wherever they appear: in the rail row, in the feed’s title and body.</p>
+  <div class="grid" id="post-states"></div>
+</section>
+
+<section class="doc">
+  <h2>7 · Collapsed rail and small screens</h2>
+  <p>Collapsing removes the rail entirely. The page keeps the full width and a single menu button stays at the top left; it brings the rail back. Under 900px the same button opens the rail as a drawer over a dimmed page.</p>
+  <div class="row">
+    <div class="app" style="height:560px; width:560px" id="collapsed-frame"></div>
+    <div class="phone" id="phone"></div>
+  </div>
+</section>
+
+<section class="doc">
+  <h2>8 · Spec sheet</h2>
+  <table class="spec">
+    <tr><th>Part</th><th>Spec</th></tr>
+    <tr><td>Rail surface</td><td><code>--color-bg</code> (same as page). No <code>border-right</code>. Width 272px (was 248px) to hold wrapped Garamond at 14px.</td></tr>
+    <tr><td>Padding</td><td>34px top, 28px left, 14px right, 14px bottom. Left edge of masthead, year labels and the ◇ column align at 28px.</td></tr>
+    <tr><td>Masthead</td><td>Garamond 30px / 1, <code>--color-text</code>. Tagline Garamond italic 15px, <code>--color-text-muted</code>, optional and user-editable.</td></tr>
+    <tr><td>Action links</td><td>Inter 13px, <code>--color-text-secondary</code>, underlined 4px offset in <code>--color-border-strong</code>. Order: New, Search. New carries a caret and opens Prose / Verse. Collections is now a tab, not a link.</td></tr>
+    <tr><td>Year heading</td><td>Inter 13px, 0.12em tracking, <code>--color-text-muted</code>. Hollow 6px ◇, 1px rule at 60% of <code>--color-border-strong</code>, count (12px, tabular), chevron. Sticky, page-colour background. A full-row button: <code>aria-expanded</code>, controls its list.</td></tr>
+    <tr><td>Collapsed</td><td>No rail at all. A 40px menu button (<code>aria-label="Open sidebar"</code>, 3-line icon) sits 20px from the top left, <code>--color-text-secondary</code>, raised background on hover. The page uses the full width. State is remembered per device.</td></tr>
+    <tr><td>Note row</td><td>Garamond 14px / 1.25. Rest <code>--color-text-faint</code> (same as the date); hover and the selected note only <code>--color-text</code>. Row padding 6px 28px 7px 16px, 4px gap between rows. Title wraps (<code>overflow-wrap: anywhere</code>).</td></tr>
+    <tr><td>Date line</td><td>Inter 11px, 0.08em tracking, uppercase, <code>--color-text-faint</code>. Under Posts: “MONTH D” (the year is the heading). In search results: “MONTH D, YYYY”, followed by the collection name when the post is in one. Collection rows carry a chapter count instead of a date (see Posts / Collections).</td></tr>
+    <tr><td>Reading feed</td><td>The middle pane shows posts that are not in a collection, newest first, as a continuous feed; or, while searching, a flat feed of every match. It does not follow the tab: switching Posts / Collections never changes the pane. Four posts load at first; four more load when a sentinel comes within 400px of the bottom, with a 450ms “Loading more…” state, ending in “That’s everything.” Posts are separated by 140px and an ornament. Each is an <code>&lt;article aria-labelledby&gt;</code>; the pane is <code>&lt;main&gt;</code>. Clicking a rail row scrolls the feed there (smooth, instant under reduced motion) and loads forward as needed. The open post is part of the route, not the hash (the app uses a HashRouter), and the route is replaced, not pushed, as you read. Search resets the feed to the top. A long library should window or unload posts far from view; the verse measuring runs only in the editor, so it never runs per feed post.</td></tr>
+    <tr><td>Writing</td><td>New and Edit replace the main pane with the existing editor; Done or Esc returns to the same post (or, when editing a chapter from a collection page, to that collection at that chapter). New always switches to Posts, closes search and opens a draft at the top of the current year. Autosave, no Save button; an empty new draft is discarded on close. Choosing a collection happens afterwards from the ⋯ menu. Starting another action while writing saves first. Out of the app: nothing is created until the first keystroke, so New then Done leaves no trace.</td></tr>
+    <tr><td>Selected marker</td><td>Follows the post being read: as you scroll, the ◇ and full ink move to the post crossing the reading band (25% down the pane), and the rail scrolls itself to keep the row in view. In the editor it marks the note being written. Filled 6px ◇ in <code>--color-text</code> at x=3px. Hover shows the same ◇ hollow at 55%. Verse titles are italic everywhere in the rail.</td></tr>
+    <tr><td>⋯ menu</td><td>26px target at the row’s top-right, hidden at rest, shown on hover, focus-within or when open, and always on touch (<code>hover: none</code>). Same items as today.</td></tr>
+    <tr><td>Focus</td><td>Existing <code>--shadow-focus</code> ring around the row link or heading, 4px radius. Search input has no ring; the underline thickens instead.</td></tr>
+    <tr><td>Motion</td><td>150ms colour / opacity, 150ms chevron turn. All off under <code>prefers-reduced-motion</code>.</td></tr>
+    <tr><td>Grouping</td><td>Posts tab: by <code>createdAt</code> year, newest first, all open by default, fold state per session. A year holding the selected note or a search match is forced open. Invalid dates fall into a final “Undated” group.</td></tr>
+    <tr><td>Tabs</td><td>Posts and Collections under the action links. Garamond 16px, no rule or underline; the open tab is <code>--color-text</code>, the other <code>--color-text-faint</code>. <code>role="tablist"</code>, arrow keys move between tabs, the list is the <code>tabpanel</code>. The open tab is remembered per device. While searching the tabs are hidden (see Search) and return when search closes.</td></tr>
+    <tr><td>Posts / Collections</td><td><b>Posts</b>: notes without a collection, grouped by year, then “New” lives in the action links. <b>Collections</b>: a flat list of collections, one row each: the name (Garamond 14px, same row as a post) and beneath it “N chapters” (Inter 11px, uppercase, 0.08em, faint; “1 chapter”; “Empty” at zero). No year headings, no collection headings, no fold, no posts underneath. Ordered by most recently updated. The open collection takes the filled ◇ and full ink, as a post does. Below the list: “New collection”. No Organize menu. A collection’s posts never show under Posts. The existing <code>BookListItem</code> is this row.</td></tr>
+    <tr><td>Collection page</td><td>Opens in the main pane when a collection is chosen in the rail, or its line is followed from a post. Title (Garamond 44px), “N chapters” beneath (Inter 12px, uppercase), the ornament, then every chapter as an article in the collection’s own running order (the order chosen on the page, not by date). No infinite scroll and no loader: all chapters render, as <code>BookStage</code> does today. Ends with “End of Name.” Each chapter has an Edit link; Done returns to the page at that chapter. Rename and reorder stay as in <code>BookStage</code>. Empty: title, “Empty”, “No chapters yet.” The mock orders chapters by date, oldest first, as a stand-in for the running order.</td></tr>
+    <tr><td>Search</td><td>Inline, not a modal. “Search” swaps the New / Search links for a field in the same spot (Garamond italic 17px, underline only, no box). While it is open the Posts / Collections tabs are hidden and the list becomes one flat set of results from every post and every collection, newest first, with no year or collection headings. Each row’s date line carries the year and the collection name. A small count (“3 results”) sits above the list. Matches title, body and tags, as the modal does today. A match wash marks the title hit; a body-only match shows one muted line of text under the date (this mock filters titles only, so the snippet is not shown). Empty field: “Search every post and collection.” No results: “Nothing matches “zzz”.” Esc or the “esc” button closes search, restores the tabs, the previous tab and fold state. Field: <code>role="searchbox"</code> labelled “Search notes”; the count is a polite live region. No scrim, no focus trap, so the page stays readable and clickable.</td></tr>
+    <tr><td>Collection line</td><td>Shown on any post that is in a collection: in the feed (search results only, since the Posts feed holds no collection posts), on the collection page chapters’ editor, and in the editor. Copy: “In the collection – <i>Name</i>” (the real app says “In the Book - ” today; the hyphen becomes an en dash). Inter 12px / 1.6, 0.08em tracking, uppercase, <code>--color-text-muted</code>; the name is a link underlined at rest, 4px offset, <code>--color-border-strong</code>, full ink on hover and focus. Spacing: 20px under the title’s last line (the old −8px pulled it into the title), then the ornament 22px below, measured from the line’s box. Centred, max 30em, wraps on long names (<code>overflow-wrap: anywhere</code>). An empty name reads “Untitled collection”. Not shown for a post outside a collection. The link goes to that collection’s page, scrolled to this chapter (the existing <code>/book/:id</code> route with a chapter target); the rail switches to Collections and marks the collection. From the editor it saves first.</td></tr>
+    <tr><td>Search highlighting</td><td>Search matches title, body and tags, case-insensitive, as a substring. Every occurrence is marked with <code>&lt;mark&gt;</code> (<code>--color-raised</code> wash, full ink, 2px radius, 1px side padding), never a bright colour. Marked in three places: the rail row’s title; the rail row’s body snippet (shown only when the title has no hit: one line of text around the first hit, about 40 characters before, clipped to two lines, with … at a cut end); and, in the feed, each result’s title and body. Marks are cleared when search closes or the query is emptied. The feed scrolls to the top of the first result, not to a hit inside it. No “next match” control in this iteration. Screen readers hear the text unchanged (<code>mark</code> is not announced as a change).</td></tr>
+    <tr><td>Row ⋯ menu actions</td><td><b>Post rows.</b> <b>Turn into prose / verse</b>: the post re-renders in place in the feed and the rail title goes italic or upright; nothing moves. <b>Add to collection</b>: opens a small list of collections (plus “New collection”); on choosing, the post leaves Posts, joins that collection as its last chapter and the feed and marker advance to the next post below (the one above if it was last). <b>Delete</b>: keeps today’s confirmation; afterwards the marker and feed move to the next post below, or the one above, or to the empty state if none remain. <b>Collection rows.</b> <b>Delete collection</b> only, with the existing confirmation. The posts are kept and return to Posts in their year. Rename, reorder and “Remove from collection” live on the collection’s page, where the chapters are. A collection whose last chapter is removed stays, “Empty”, until deleted.</td></tr>
+    <tr><td>New collection</td><td>The link turns into a one-line name field (Garamond italic 17px, underline only, same as search). Enter creates an empty collection and opens its page; Esc cancels; an empty name is ignored. An empty collection shows “Empty” in the rail and, on its page, the title, “Empty” and “No chapters yet. Add a post from its ⋯ menu.”</td></tr>
+    <tr><td>Feed &amp; rail agreement</td><td>One invariant: the marked row is the thing in the main pane. On Posts that is the post in the reading band, or the note in the editor; it changes on scroll, on clicking a row, on Done, on New, and on search. On Collections it is the open collection, and the pane shows its page. Following a collection line opens the page and switches the rail to Collections. If the marked post is in a folded year, that heading is forced open. If a post is not yet loaded, clicking its row loads forward to it, then scrolls. If the list changes under the reader (search), the feed resets and the marker goes to the first post, except closing search, which keeps what was open before.</td></tr>
+    <tr><td>Deep link &amp; reload</td><td>The URL hash is the open post’s id. Opening a URL with a hash loads forward to that post and scrolls to it; an unknown or deleted id falls back to the first post and drops the hash. Back and Forward do not step through every post scrolled past (<code>replaceState</code>). The open tab is remembered per device, so a hash for a post in the other tab switches tabs.</td></tr>
+    <tr><td>Empty and first-run states</td><td>No notes: rail shows “Nothing here yet. Start with the first line.”, the feed shows the same centred in the page and New stays available. Sample notes banner above the first year until deleted. No collections: the Collections tab shows its empty message and “New collection”. An empty collection’s page: its title, “Empty”, “No chapters yet.” Search with an empty field: “Search every post and collection.” No results: the feed says “Nothing to show.”</td></tr>
+    <tr><td>Keyboard</td><td>Tab order: masthead, collapse, New, Search, tabs, headings and rows, then the page. Enter on a row scrolls the feed and keeps focus on the row. Each post’s Edit link is reachable by Tab in the feed. In the editor: Esc or the Done button returns to the feed. In search: Esc closes. Left and Right switch tabs. The feed pane is <code>tabindex="-1"</code> so it can take programmatic focus after Done.</td></tr>
+    <tr><td>Small screens</td><td>Under 900px the rail is a drawer. Choosing a row closes the drawer and scrolls the feed to that post. The feed runs full width with 20px side padding, a 96px gap between posts, and titles at 32px. The collection line and Edit link wrap rather than truncate.</td></tr>
+    <tr><td>Dark mode</td><td>Every colour above is a token, so nothing is hard-coded. Marks use <code>--color-raised</code>, which stays visible on the dark page. Ornaments and rules use the same tokens as today.</td></tr>
+    <tr><td>Performance</td><td>The feed renders four posts, then four per page. Past about 60 loaded posts, posts far above the viewport are replaced by fixed-height spacers so scroll position holds. Scroll-spy uses one <code>IntersectionObserver</code>, never scroll events. Search runs on the client over all notes; results render in the same pages of four.</td></tr>
+    <tr><td>Removed from the app</td><td>The search modal (<code>NoteSearchModal</code>, with its dialog, backdrop and focus trap), the Organize menu and its kebab trigger (<code>OrganizeMenu</code>), the “In one list / By book” options and their copy (<code>organizeOptionList</code>, <code>organizeOptionBook</code>), and the <code>OrganizeMode</code> preference (<code>useNoteOrganize</code>, key <code>glassbox.notesOrganize.v1</code>). The rail’s separate Notes and Books sections and the Books entry go too; the Posts / Collections tabs replace them. Unchanged: <code>BookListItem</code> (the collection row) and <code>BookStage</code> (the collection page, with its contents, rename and reorder). Tests that assume the “list” default or the book-grouped Notes section are rewritten for the tabs.</td></tr>
+    <tr><td>Accessibility</td><td>Each year is <code>&lt;h3&gt;</code> wrapping the toggle button, each list a <code>&lt;ul&gt;</code> labelled by it. Selected row keeps <code>aria-current</code>. ◇ is decorative (<code>aria-hidden</code>). Contrast of faint text on page background: 4.9:1 light, 5.9:1 dark.</td></tr>
+  </table>
+</section>
+
+</div>
+
+<script>
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const NOTES = [
+  { id:"n1", title:"Unfinished", date:"2026-11-24", fmt:"verse", body:["The mind wanders","around all"] },
+  { id:"n2", title:"On shipping a thing nobody asked for", date:"2026-09-02", fmt:"prose", body:["The first demo went well in the way a demo always does, which is to say nobody tried to break it.","I remember the quiet afterwards more than the applause."] },
+  { id:"n3", title:"The drizzle", date:"2026-03-14", fmt:"prose", book:"Autumn", body:["It was raining the way it does when it has not decided yet.","I stood under the awning and watched the street go dark in patches."] },
+  { id:"n4", title:"A very long title that keeps going well past the width of the rail, to show how wrapping behaves", date:"2026-02-02", fmt:"prose", body:["Long titles wrap onto a second and third line. The date stays beneath the last line of the title."] },
+  { id:"n5", title:"Abdul and the corner coffee shop", date:"2025-12-01", fmt:"prose", book:"Autumn", body:["The bell rings when you enter. Abdul comes out from the shelves in the back and pays for two coffees, and offers me one."] },
+  { id:"n6", title:"Two-point plug", date:"2025-06-20", fmt:"verse", body:["A man in the electronics lab","held a two-point plug","like an apology"] },
+  { id:"n7", title:"Notes from a cold office", date:"2025-04-11", fmt:"prose", body:["Seattle in April. The heating was on and nobody was warm."] },
+  { id:"n8", title:"Mensa, first week", date:"2024-10-05", fmt:"prose", book:"Autumn", body:["The lady at the counter gave me a sandwich I had not paid for, and did not explain."] },
+  { id:"n9", title:"Moving in", date:"2024-09-30", fmt:"prose", body:["Two suitcases and a borrowed kettle."] },
+  { id:"n10", title:"What I told the new hire", date:"2024-05-17", fmt:"prose", body:["Most of it was about what to ignore."] },
+  { id:"n11", title:"A letter I did not send", date:"2019-01-03", fmt:"prose", body:["Dear you, the draft is still in the drawer."] },
+  { id:"n12", title:"What the rain knew", date:"2011-04-09", fmt:"verse", book:"Rain", body:["The rain came early","and left late","and knew nothing of us"] },
+  { id:"n13", title:"Bangalore, a monsoon", date:"2011-07-02", fmt:"prose", book:"Rain", body:["The road outside turned into a river by four."] },
+];
+NOTES.sort((a, b) => b.date.localeCompare(a.date));
+const EXTRA_BOOKS = [{ name: "Winter drafts", made: "2026-11-20" }];
+const chaptersOf = name => NOTES.filter(n => n.book === name).sort((a, b) => a.date.localeCompare(b.date));
+const booksList = () => {
+  const upd = new Map();
+  NOTES.filter(n => n.book != null).forEach(n => { if (n.date > (upd.get(n.book) ?? "")) upd.set(n.book, n.date); });
+  EXTRA_BOOKS.forEach(b => { if (b.made > (upd.get(b.name) ?? "")) upd.set(b.name, b.made); });
+  return [...upd].map(([name, u]) => ({ name, upd: u, chapters: chaptersOf(name) })).sort((a, b) => b.upd.localeCompare(a.upd));
+};
+const chapterCount = n => n === 0 ? "Empty" : n === 1 ? "1 chapter" : `${n} chapters`;
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const yearOf = n => n.date.slice(0,4);
+const dateLine = (n, o = {}) => {
+  const [y, m, d] = n.date.split("-");
+  const day = MONTHS[+m - 1] ? `${MONTHS[+m - 1]} ${+d}${o.year ? ", " + y : ""}` : "";
+  const book = n.book && !o.noBook ? `${day ? " · " : ""}<b>${esc(n.book)}</b>` : "";
+  return day + book;
+};
+const hlAll = (t, q) => { if (!q) return esc(t); const lo = t.toLowerCase(), ql = q.toLowerCase(); let i = 0, out = ""; for (;;) { const j = lo.indexOf(ql, i); if (j < 0) return out + esc(t.slice(i)); out += esc(t.slice(i, j)) + "<mark>" + esc(t.slice(j, j + q.length)) + "</mark>"; i = j + q.length; } };
+const titleHit = (n, q) => n.title.toLowerCase().includes(q.toLowerCase());
+const bodyHit = (n, q) => n.body.some(l => l.toLowerCase().includes(q.toLowerCase()));
+const matches = (n, q) => titleHit(n, q) || bodyHit(n, q);
+const snippet = (n, q) => { const l = n.body.find(x => x.toLowerCase().includes(q.toLowerCase())); if (!l) return ""; const i = l.toLowerCase().indexOf(q.toLowerCase()); const a = Math.max(0, i - 40); return (a ? "… " : "") + l.slice(a, a + 110) + (a + 110 < l.length ? " …" : ""); };
+const hl = (t, q) => { if (!q) return esc(t); const i = t.toLowerCase().indexOf(q.toLowerCase()); if (i < 0) return esc(t); return esc(t.slice(0,i)) + "<mark>" + esc(t.slice(i, i+q.length)) + "</mark>" + esc(t.slice(i+q.length)); };
+
+const ICON = {
+  more: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="12.5" cy="8" r="1.3" fill="currentColor"/></svg>',
+  chev: '<svg class="ry__chev" width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m4 2.5 3.5 3.5L4 9.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  caret: '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m2.5 4.5 3.5 3.5 3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  fold: '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M7.75 4v12" stroke="currentColor" stroke-width="1.5"/></svg>',
+  menu: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  gear: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
+  plus: '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  search: '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7.2" cy="7.2" r="4.2" stroke="currentColor" stroke-width="1.5"/><path d="M10.4 10.4 13.5 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  book: '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4.75 2.25h7.5a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-7.5a2 2 0 0 1-2-2v-7.5a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M4.75 11.25h8.5M6.5 5.25h4.25" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+};
+
+/* ---------- piece renderers (shared by the live frame and the specimens) ---------- */
+const rowHTML = (n, o = {}) => `
+  <li class="rp${o.sel ? " is-sel" : ""}${o.hover ? " is-hover" : ""}${o.focus ? " is-focus" : ""}${o.menu ? " menu-open" : ""}" data-id="${n.id}">
+    <a class="rp__link" href="#" data-act="select" data-id="${n.id}" ${o.sel ? 'aria-current="true"' : ""}>
+      <span class="rp__title">${n.fmt === "verse" ? "<em>" : ""}${hlAll(n.title || "Untitled", o.q)}${n.fmt === "verse" ? "</em>" : ""}</span>
+      <span class="rp__meta">${dateLine(n, o.dl)}</span>
+      ${o.q && !titleHit(n, o.q) && bodyHit(n, o.q) ? `<span class="rp__snip">${hlAll(snippet(n, o.q), o.q)}</span>` : ""}
+    </a>
+    <button class="rp__more" data-act="menu" data-id="${n.id}" aria-haspopup="menu" aria-label="Actions for ${esc(n.title || "Untitled")}">${ICON.more}</button>
+    ${o.menu ? noteMenuHTML(n, 'style="right:-6px; top:30px"') : ""}
+  </li>`;
+
+const noteMenuHTML = (n, attr = "") => `
+  <div class="menu" role="menu" ${attr}>
+    <button class="menu__item" role="menuitem" data-act="toggle-format" data-id="${n.id}">${n.fmt === "verse" ? "Turn into prose" : "Turn into verse"}</button>
+    <button class="menu__item" role="menuitem">${n.book ? "Remove from collection" : "Add to collection"}</button>
+    <div class="menu__sep"></div>
+    <button class="menu__item menu__item--danger" role="menuitem">Delete</button>
+  </div>`;
+
+const yearHTML = (y, count, open, o = {}) => `
+  <h3 style="margin:0;display:contents">
+    <button class="ry${o.hover ? " is-hover" : ""}${o.focus ? " is-focus" : ""}" data-act="year" data-year="${y}" aria-expanded="${open}">
+      <span class="ry__label">${y}</span><span class="ry__mark" aria-hidden="true"></span><span class="ry__rule" aria-hidden="true"></span>
+      <span class="ry__count">${count}</span>${ICON.chev}
+    </button>
+  </h3>`;
+
+const bookRowHTML = (b, o = {}) => `
+  <li class="rp${o.sel ? " is-sel" : ""}${o.hover ? " is-hover" : ""}${o.focus ? " is-focus" : ""}${o.menu ? " menu-open" : ""}" data-id="book:${esc(b.name)}">
+    <a class="rp__link" href="#" data-act="openbook" data-book="${esc(b.name)}" ${o.sel ? 'aria-current="true"' : ""}>
+      <span class="rp__title">${esc(b.name.trim() || "Untitled collection")}</span>
+      <span class="rp__meta">${chapterCount(b.chapters.length)}</span>
+    </a>
+    <button class="rp__more" data-act="menu" data-id="book:${esc(b.name)}" aria-haspopup="menu" aria-label="Actions for ${esc(b.name)}">${ICON.more}</button>
+    ${o.menu ? `<div class="menu" role="menu" style="right:-6px; top:30px"><button class="menu__item menu__item--danger" role="menuitem" data-act="delbook" data-book="${esc(b.name)}">Delete collection</button></div>` : ""}
+  </li>`;
+const newBookHTML = () => S.naming
+  ? `<label class="rb__search rb__name-field"><input id="bn" placeholder="Name this collection" value="${esc(S.newName)}" aria-label="Collection name" autocomplete="off"><button data-act="cancelname" aria-label="Cancel">esc</button></label>`
+  : `<button class="rb__newbook" data-act="newbook">New collection</button>`;
+
+const newMenuHTML = (attr = "") => `
+  <div class="menu" role="menu" ${attr}>
+    <p class="menu__head">New</p>
+    <button class="menu__item" role="menuitem" data-act="new" data-fmt="prose">Prose <small>full-width lines</small></button>
+    <button class="menu__item" role="menuitem" data-act="new" data-fmt="verse">Verse <small>lines as written</small></button>
+  </div>`;
+
+/* ---------- live frame ---------- */
+const S = { sel: "n1", folded: new Set(), q: "", searching: false, menuId: null, newMenu: false, collapsed: false, tab: "posts", loaded: 4, prevSel: null, scrollTo: null, smooth: false, verseOverride: {}, editing: null, focusEd: null, railTop: false, book: null, prevBook: null, naming: false, newName: "", feedTop: false };
+
+const groups = (list) => { const m = new Map(); list.forEach(n => { const y = yearOf(n); if (!m.has(y)) m.set(y, []); m.get(y).push(n); }); return m; };
+
+const ulWrap = html => `<ul style="list-style:none;margin:0;padding:0">${html}</ul>`;
+const booksOf = list => { const m = new Map(); list.filter(n => n.book).forEach(n => { (m.get(n.book) ?? m.set(n.book, []).get(n.book)).push(n); }); return m; };
+
+function listHTML(q) {
+  const base = NOTES.map(n => ({ ...n, fmt: S.verseOverride[n.id] ?? n.fmt }));
+  if (S.searching) {
+    if (!q) return `<p class="rb__empty">Search every post and collection.</p>`;
+    const hits = base.filter(n => matches(n, q));
+    if (hits.length === 0) return `<p class="rb__empty">Nothing matches <b>“${esc(q)}”</b>.</p>`;
+    return `<p class="rb__count" aria-live="polite">${hits.length} ${hits.length === 1 ? "result" : "results"}</p>`
+      + ulWrap(hits.map(n => rowHTML(n, { sel: n.id === S.sel, menu: S.menuId === n.id, q, dl: { year: true } })).join(""));
+  }
+  if (S.tab === "posts") {
+    const list = base.filter(n => !n.book);
+    if (list.length === 0) return `<p class="rb__empty">Nothing here yet. <b>Start with the first line.</b></p>`;
+    let out = "";
+    for (const [y, items] of groups(list)) {
+      const open = items.some(n => !S.book && n.id === S.sel) || !S.folded.has(y);
+      out += yearHTML(y, items.length, open);
+      if (open) out += ulWrap(items.map(n => rowHTML(n, { sel: !S.book && n.id === S.sel, menu: S.menuId === n.id })).join(""));
+    }
+    return out;
+  }
+  const bl = booksList();
+  if (bl.length === 0) return `<p class="rb__empty">No collections yet. <b>Add a post to a collection</b> from its ⋯ menu.</p>` + newBookHTML();
+  return ulWrap(bl.map(b => bookRowHTML(b, { sel: S.book === b.name, menu: S.menuId === "book:" + b.name })).join("")) + newBookHTML();
+}
+
+const tabsHTML = (tab) => `<div class="rb__tabs" role="tablist" aria-label="Library">
+  <button class="rb__tab" role="tab" id="tab-posts" aria-selected="${tab === "posts"}" aria-controls="scroll" tabindex="${tab === "posts" ? 0 : -1}" data-act="tab" data-tab="posts">Posts</button>
+  <button class="rb__tab" role="tab" id="tab-books" aria-selected="${tab === "books"}" aria-controls="scroll" tabindex="${tab === "books" ? 0 : -1}" data-act="tab" data-tab="books">Collections</button></div>`;
+
+function railHTML() {
+  return `
+    <div class="rb__mast"><div class="rb__name">Glassbox</div>
+      <button class="rb__collapse" data-act="collapse" aria-label="Collapse sidebar">${ICON.fold}</button></div>
+    <div class="rb__tag">Notes, mostly unfinished.</div>
+    <div class="rb__links">
+      ${S.searching
+        ? `<label class="rb__search"><input id="q" type="search" placeholder="Search notes" value="${esc(S.q)}" aria-label="Search notes" autocomplete="off"><button data-act="clear" aria-label="Close search">esc</button></label>`
+        : `<button class="rb__link" data-act="newmenu" aria-haspopup="menu">New${ICON.caret}</button>
+           <button class="rb__link" data-act="search">Search</button>`}
+      ${S.newMenu ? newMenuHTML('style="left:-8px; top:32px"') : ""}
+    </div>
+    ${S.searching ? "" : tabsHTML(S.tab)}
+    <div class="rb__scroll" id="scroll" ${S.searching ? 'role="region" aria-label="Search results"' : `role="tabpanel" aria-labelledby="tab-${S.tab}"`}>${listHTML(S.q)}</div>
+    <div class="rb__foot"><button class="rb__gear">${ICON.gear}Settings</button></div>`;
+}
+
+const HAMBURGER = `<button class="hb" data-act="expand" aria-label="Open sidebar" title="Open sidebar">${ICON.menu}</button>`;
+
+const crumbHTML = n => n.book != null ? `<p class="crumb">In the collection – <a href="#" data-act="crumb" data-book="${esc(n.book)}">${esc(n.book.trim() || "Untitled collection")}</a></p>` : "";
+function articleHTML(n0, q = "", o = {}) {
+  const n = { ...n0, fmt: S.verseOverride[n0.id] ?? n0.fmt };
+  const [y, m, d] = n.date.split("-");
+  const H = t => hlAll(t, q);
+  const body = n.fmt === "verse" ? `<div class="verse">${n.body.map(H).join("<br>")}</div>` : `<div class="prose">${n.body.map(p => `<p>${H(p)}</p>`).join("")}</div>`;
+  return `<article class="post" id="post-${n.id}" data-id="${n.id}" aria-labelledby="h-${n.id}">
+    <h3 id="h-${n.id}">${H(n.title)}</h3>
+    ${o.noCrumb ? "" : crumbHTML(n)}
+    <div class="orn" aria-hidden="true"><i></i></div>
+    ${body}
+    <div class="written">Written ${MONTHS[+m-1]} ${+d}, ${y} · 1 min read · <a href="#" data-act="edit" data-id="${n.id}">Edit</a></div></article>`;
+}
+
+/* ---------- reading feed ---------- */
+const PAGE = 4;
+const feedList = () => {
+  const base = NOTES.map(n => ({ ...n, fmt: S.verseOverride[n.id] ?? n.fmt }));
+  if (S.searching) return S.q ? base.filter(n => matches(n, S.q)) : [];
+  return base.filter(n => !n.book);
+};
+function ensureSel() { const l = feedList(); if (!l.some(n => n.id === S.sel)) S.sel = l[0]?.id ?? null; }
+function resetFeed(keepSel) {
+  if (!keepSel) S.sel = null;
+  ensureSel();
+  S.loaded = Math.max(PAGE, feedList().findIndex(n => n.id === S.sel) + 1);
+  S.scrollTo = S.sel; S.smooth = false;
+}
+function closeSearch() { S.searching = false; S.q = ""; S.book = S.prevBook; S.sel = S.prevSel; resetFeed(true); }
+
+function bookPageHTML(name) {
+  const b = booksList().find(x => x.name === name); if (!b) return feedHTML();
+  const ch = b.chapters.map(n => ({ ...n, fmt: S.verseOverride[n.id] ?? n.fmt }));
+  return `<div class="inner"><header class="bookhead"><h3>${esc(b.name.trim() || "Untitled collection")}</h3><p class="bk__meta">${chapterCount(ch.length)}</p><div class="orn" aria-hidden="true"><i></i></div></header>
+    ${ch.length ? ch.map(n => articleHTML(n, "", { noCrumb: true })).join("") + `<p class="bk__end">End of ${esc(b.name)}.</p>` : `<p class="feed__empty" style="margin-top:24px">No chapters yet.<br>Add a post from its ⋯ menu.</p>`}</div>`;
+}
+const paneHTML = () => S.editing ? editorHTML() : (S.book && !S.searching) ? bookPageHTML(S.book) : feedHTML();
+
+function feedHTML() {
+  const list = feedList();
+  if (list.length === 0) return `<div class="inner"><p class="feed__empty">${S.searching ? (S.q ? "Nothing to show." : "Results open here as you type.") : "Nothing here yet."}</p></div>`;
+  return `<div class="inner">${list.slice(0, S.loaded).map(n => articleHTML(n, S.searching ? S.q : "")).join("")}
+    ${S.loaded < list.length ? `<p class="feed__more" id="sentinel" role="status">Loading more…</p>` : `<p class="feed__end">That’s everything.</p>`}</div>`;
+}
+
+let spy = null, more = null, lockUntil = 0;
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+function goTo(id, smooth) {
+  const feed = document.getElementById("feed"), art = document.getElementById("post-" + id); if (!feed || !art) return;
+  const top = feed.scrollTop + art.getBoundingClientRect().top - feed.getBoundingClientRect().top - 40;
+  lockUntil = performance.now() + (smooth ? 1200 : 300);
+  feed.scrollTo({ top, behavior: smooth && !reduceMotion() ? "smooth" : "auto" });
+}
+function setCurrent(id) {
+  if (id === S.sel) return;
+  S.sel = id;
+  const row = document.querySelector(`#live .rp[data-id="${id}"]`);
+  if (!row) { renderLive(); return; }
+  document.querySelectorAll("#live .rp.is-sel").forEach(r => { r.classList.remove("is-sel"); r.querySelector(".rp__link").removeAttribute("aria-current"); });
+  row.classList.add("is-sel"); row.querySelector(".rp__link").setAttribute("aria-current", "true");
+  const sc = document.getElementById("scroll"), rr = row.getBoundingClientRect(), cr = sc.getBoundingClientRect();
+  if (rr.top < cr.top + 56) sc.scrollTop -= cr.top + 56 - rr.top; else if (rr.bottom > cr.bottom - 16) sc.scrollTop += rr.bottom - (cr.bottom - 16);
+  try { history.replaceState(null, "", "#" + id); } catch {}
+}
+function attachFeedObservers() {
+  spy?.disconnect(); more?.disconnect();
+  const feed = document.getElementById("feed"); if (!feed || (S.book && !S.searching)) return;
+  spy = new IntersectionObserver(es => { if (performance.now() < lockUntil) return; es.filter(e => e.isIntersecting).forEach(e => setCurrent(e.target.dataset.id)); }, { root: feed, rootMargin: "-25% 0px -65% 0px" });
+  feed.querySelectorAll(".post").forEach(a => spy.observe(a));
+  const sen = document.getElementById("sentinel");
+  if (sen) { more = new IntersectionObserver(es => { if (es[0].isIntersecting) { more.disconnect(); setTimeout(() => { S.loaded += PAGE; renderFeed(); }, 450); } }, { root: feed, rootMargin: "0px 0px 400px 0px" }); more.observe(sen); }
+}
+function renderFeed() {
+  const feed = document.getElementById("feed"), top = feed.scrollTop;
+  document.getElementById("feed-inner").innerHTML = feedHTML();
+  feed.scrollTop = top; attachFeedObservers();
+}
+
+/* ---------- writing: New and Edit swap the feed for the editor ---------- */
+const TODAY = "2026-11-24";
+let draftN = 0;
+const bodyText = n => n.body.join(n.fmt === "verse" ? "\n" : "\n\n");
+const setBody = (n, v) => { n.body = n.fmt === "verse" ? v.split("\n") : v.split(/\n{2,}/); };
+function editorHTML() {
+  const n = NOTES.find(x => x.id === S.editing.id), fmt = S.verseOverride[n.id] ?? n.fmt;
+  return `<div class="inner"><div class="ed__bar"><span aria-live="polite">${S.editing.isNew ? "New " + fmt : "Editing"} · saved as you write</span><button class="ed__done" data-act="done">Done</button></div>
+    <input class="ed__title" id="ed-title" value="${esc(n.title)}" placeholder="Untitled" aria-label="Title" autocomplete="off">
+    ${crumbHTML(n)}
+    <div class="orn" aria-hidden="true"><i></i></div>
+    <textarea class="ed__text ed__text--${fmt}" id="ed-body" aria-label="${fmt === "verse" ? "Verse" : "Prose"}" placeholder="Start with the first line." rows="3" spellcheck="true">${esc(bodyText({ ...n, fmt }))}</textarea>
+    <p class="ed__foot">Done, or Esc, returns to ${S.book ? "the collection at this chapter" : "the feed at this post"}.</p></div>`;
+}
+const autosize = el => { if (!el) return; el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; };
+function startNew(fmt) {
+  if (S.editing) finishEdit();
+  S.searching = false; S.q = ""; S.tab = "posts"; S.newMenu = false; S.menuId = null; S.book = null; S.naming = false;
+  const id = "d" + (++draftN);
+  NOTES.unshift({ id, title: "", date: TODAY, fmt, body: [""], draft: true });
+  S.editing = { id, isNew: true, prev: S.sel }; S.sel = id; S.focusEd = "title"; S.railTop = true;
+}
+function finishEdit() {
+  const e = S.editing; if (!e) return; S.editing = null;
+  const i = NOTES.findIndex(n => n.id === e.id), n = NOTES[i];
+  if (e.isNew && !n.title.trim() && n.body.every(l => !l.trim())) { NOTES.splice(i, 1); S.sel = e.prev; S.scrollTo = e.prev; S.smooth = false; return; }
+  delete n.draft; if (!n.title.trim()) n.title = "Untitled";
+  S.sel = n.id; S.loaded = Math.max(S.loaded, feedList().findIndex(x => x.id === n.id) + 1); S.scrollTo = n.id; S.smooth = false; S.railTop = e.isNew;
+}
+
+function renderLive() {
+  if (!S.editing && !S.book) ensureSel();
+  const root = document.getElementById("live");
+  const keepScroll = S.railTop ? 0 : (document.getElementById("scroll")?.scrollTop ?? 0); S.railTop = false;
+  const keepFeed = (S.editing || S.feedTop) ? 0 : (document.getElementById("feed")?.scrollTop ?? 0);
+  root.innerHTML = (S.collapsed ? HAMBURGER : `<aside class="rb">${railHTML()}</aside>`) + `<main class="page" id="feed" tabindex="-1" aria-label="${S.editing ? "Editor" : (S.book && !S.searching) ? esc(S.book) : "Posts"}"><div id="feed-inner">${paneHTML()}</div></main>`;
+  S.feedTop = false;
+  const sc = document.getElementById("scroll"); if (sc) sc.scrollTop = keepScroll;
+  const feed = document.getElementById("feed"); feed.scrollTop = keepFeed;
+  if (S.scrollTo) { goTo(S.scrollTo, S.smooth); S.scrollTo = null; }
+  attachFeedObservers();
+  if (S.editing) { autosize(document.getElementById("ed-body")); if (S.focusEd) { document.getElementById(S.focusEd === "title" ? "ed-title" : "ed-body")?.focus(); S.focusEd = null; } }
+  const bn = document.getElementById("bn"); if (bn) { bn.focus(); bn.setSelectionRange(bn.value.length, bn.value.length); }
+  const q = document.getElementById("q"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-act]"); const inLive = e.target.closest("#live");
+  if (!inLive) return;
+  if (!t) { if (S.menuId || S.newMenu) { S.menuId = null; S.newMenu = false; renderLive(); } return; }
+  e.preventDefault();
+  const a = t.dataset.act;
+  if (S.editing && ["select", "tab", "search", "clear", "newbook", "crumb", "openbook"].includes(a)) finishEdit();
+  if (a === "select") { S.book = S.searching ? S.book : null; S.sel = t.dataset.id; S.menuId = null; S.loaded = Math.max(S.loaded, feedList().findIndex(n => n.id === S.sel) + 1); S.scrollTo = S.sel; S.smooth = true; }
+  else if (a === "edit") { S.editing = { id: t.closest(".post").dataset.id, isNew: false }; S.sel = S.editing.id; S.focusEd = "body"; S.menuId = null; }
+  else if (a === "done") { finishEdit(); }
+  else if (a === "crumb") { const cid = t.closest(".post")?.dataset.id ?? S.editing?.id ?? S.sel; S.searching = false; S.q = ""; S.tab = "books"; S.book = t.dataset.book; S.menuId = null; S.sel = cid; S.scrollTo = cid; S.smooth = false; }
+  else if (a === "openbook") { S.book = t.dataset.book; S.menuId = null; S.feedTop = true; }
+  else if (a === "delbook") { const nm = t.dataset.book; NOTES.forEach(n => { if (n.book === nm) delete n.book; }); const i = EXTRA_BOOKS.findIndex(x => x.name === nm); if (i >= 0) EXTRA_BOOKS.splice(i, 1); if (S.book === nm) { S.book = null; S.feedTop = true; } S.menuId = null; }
+  else if (a === "tab") { S.tab = t.dataset.tab; S.menuId = null; S.newMenu = false; S.naming = false; }
+  else if (a === "newbook") { S.naming = true; S.newName = ""; S.menuId = null; }
+  else if (a === "cancelname") { S.naming = false; }
+  else if (a === "year") { const y = t.dataset.year; S.folded.has(y) ? S.folded.delete(y) : S.folded.add(y); }
+  else if (a === "menu") { S.menuId = S.menuId === t.dataset.id ? null : t.dataset.id; S.newMenu = false; }
+  else if (a === "newmenu") { S.newMenu = !S.newMenu; S.menuId = null; }
+  else if (a === "new") { startNew(t.dataset.fmt); }
+  else if (a === "search") { S.prevSel = S.sel; S.prevBook = S.book; S.naming = false; S.searching = true; S.newMenu = false; resetFeed(false); }
+  else if (a === "clear") { closeSearch(); }
+  else if (a === "collapse") { S.collapsed = true; S.menuId = null; S.newMenu = false; }
+  else if (a === "expand") { S.collapsed = false; }
+  else if (a === "toggle-format") { const n = NOTES.find(x => x.id === t.dataset.id); const cur = S.verseOverride[n.id] ?? n.fmt; S.verseOverride[n.id] = cur === "verse" ? "prose" : "verse"; S.menuId = null; }
+  renderLive();
+});
+document.addEventListener("keydown", e => {
+  const tab = e.target.closest?.("#live [role=tab]"); if (!tab || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  S.tab = S.tab === "posts" ? "books" : "posts"; S.naming = false; renderLive(); document.getElementById("tab-" + S.tab).focus();
+});
+document.addEventListener("input", e => {
+  if (e.target.id === "q") { S.q = e.target.value; resetFeed(false); renderLive(); return; }
+  if (e.target.id === "bn") { S.newName = e.target.value; return; }
+  const n = S.editing && NOTES.find(x => x.id === S.editing.id); if (!n) return;
+  if (e.target.id === "ed-title") { n.title = e.target.value; const r = document.querySelector(`#live .rp[data-id="${n.id}"] .rp__title`); if (r) r.firstElementChild ? r.firstElementChild.textContent = n.title || "Untitled" : r.textContent = n.title || "Untitled"; }
+  if (e.target.id === "ed-body") { n.fmt = S.verseOverride[n.id] ?? n.fmt; setBody(n, e.target.value); autosize(e.target); }
+});
+document.addEventListener("keydown", e => {
+  if (e.target.id === "bn") {
+    if (e.key === "Enter") { const nm = e.target.value.trim(); if (!nm) return; EXTRA_BOOKS.push({ name: nm, made: TODAY }); S.naming = false; S.newName = ""; S.book = nm; S.feedTop = true; renderLive(); }
+    else if (e.key === "Escape") { S.naming = false; renderLive(); e.stopPropagation(); }
+    return;
+  }
+  if (e.key === "Escape" && S.editing && !S.menuId && !S.newMenu && e.target.closest?.("#live")) { finishEdit(); renderLive(); return; }
+  if (e.key === "Escape" && (S.searching || S.menuId || S.newMenu)) { if (S.searching) closeSearch(); S.menuId = null; S.newMenu = false; renderLive(); } });
+renderLive();
+
+/* ---------- specimens ---------- */
+const byId = id => ({ ...NOTES.find(n => n.id === id) });
+const card = (cap, inner, note = "") => `<div class="card"><p class="cap">${cap}</p>${inner}${note ? `<p class="note">${note}</p>` : ""}</div>`;
+const wrapList = html => `<ul style="list-style:none;margin:0;padding:0;width:236px">${html}</ul>`;
+
+document.getElementById("row-states").innerHTML = [
+  card("Rest", wrapList(rowHTML(byId("n2"))), "Faint ink. Only the open note, and the row under the pointer, reach full text colour."),
+  card("Hover", wrapList(rowHTML(byId("n2"), { hover: true })), "Title to full ink, hollow ◇ at 55%, ⋯ appears."),
+  card("Keyboard focus", wrapList(rowHTML(byId("n2"), { focus: true })), "The app’s existing focus ring, no new style."),
+  card("Selected (open note)", wrapList(rowHTML(byId("n2"), { sel: true })), "Filled ◇ and full ink. Nothing else changes, so the layout never shifts."),
+  card("Verse", wrapList(rowHTML(byId("n1"))), "Italic title is the only cue."),
+  card("Collection row", `<div style="width:236px">${ulWrap(bookRowHTML(booksList()[1]))}</div>`, "A name, and under it the chapter count. No date, no year: a collection is a thing, not an entry."),
+  card("Collection · selected", `<div style="width:236px">${ulWrap(bookRowHTML(booksList()[1], { sel: true }))}</div>`, "Filled ◇ and full ink, same as a post."),
+  card("Collection · empty", `<div style="width:236px">${ulWrap(bookRowHTML(booksList()[0]))}</div>`, "“Empty” instead of a count; “1 chapter” when there is one."),
+  card("Collection · menu open", `<div style="position:relative;height:120px;width:236px">${ulWrap(bookRowHTML(booksList()[1], { menu: true }))}</div>`, "Delete collection only. The posts come back to Posts."),
+  card("Long title", wrapList(rowHTML(byId("n4"))), "Wraps. Date stays under the last line."),
+  card("Search match", wrapList(rowHTML(byId("n2"), { q: "shipping" })), "Match gets a quiet wash, not a bright highlight."),
+  card("Menu open", `<div style="position:relative;height:190px">${wrapList(rowHTML(byId("n2"), { menu: true }))}</div>`, "Same three actions as today, same popover."),
+].join("");
+
+const sampleBanner = `<div class="rb__banner" role="note"><p>These are sample notes. Delete them whenever you are ready to write your own.</p><button>Delete all samples</button></div>`;
+document.getElementById("year-states").innerHTML = [
+  card("Year · open", `<div style="width:236px">${yearHTML("2026", 4, true)}</div>`, "Count and chevron sit at the far end of the rule."),
+  card("Year · folded", `<div style="width:236px">${yearHTML("2019", 1, false)}</div>`, "Rows leave; the heading and its count stay."),
+  card("Year · hover / focus", `<div style="width:236px">${yearHTML("2025", 3, true, { hover: true })}${yearHTML("2024", 3, true, { focus: true })}</div>`, "Whole row is the target, 44px tall including padding."),
+  card("New ▾ menu", `<div class="menu menu--static" style="width:220px"><p class="menu__head">New</p><button class="menu__item is-hover">Prose <small>full-width lines</small></button><button class="menu__item">Verse <small>lines as written</small></button></div>`, "Replaces the New note row; verse is one click, not buried."),
+  card("Tabs", `<div style="width:236px">${tabsHTML("posts")}</div>`, "Garamond 16px, no rule or underline. The open tab is full ink, the other faint. Arrow keys switch."),
+
+  card("Collections · empty", `<div style="width:236px">${tabsHTML("books")}<p class="rb__empty" style="margin-top:14px">No collections yet. <b>Add a post to a collection</b> from its ⋯ menu.</p><button class="rb__newbook" style="margin-left:0">New collection</button></div>`, "Shown until a post is added to a collection. “New collection” stays under the list."),
+  card("New collection · naming", `<div style="width:236px"><label class="rb__search rb__name-field" style="margin-left:0;width:100%"><input value="Spri" aria-label="Collection name" style="font:italic 17px var(--serif);color:var(--text);background:none;border:0;outline:0;flex:1;height:28px"><button>esc</button></label></div>`, "Replaces the link in place. Enter creates it and opens its page; Esc cancels; empty is ignored."),
+  card("Search · no results", `<div style="width:236px"><label class="rb__search"><input value="zzz" aria-label="Search notes" style="font:italic 17px var(--serif);color:var(--text);background:none;border:0;outline:0;flex:1;height:28px"><button>esc</button></label><p class="rb__empty" style="margin-top:14px">Nothing matches <b>“zzz”</b>.</p></div>`, "Searches posts and collections together, so the message names neither."),
+  card("Empty library", `<div style="width:236px"><p class="rb__empty">Nothing here yet. <b>Start with the first line.</b></p></div>`, "No year headings until there is a note."),
+  card("Sample notes banner", `<div style="width:236px">${sampleBanner}</div>`, "Sits above the first year, same copy as now."),
+  card("Undated + imported", `<div style="width:236px">${yearHTML("Undated", 2, true)}${wrapList(rowHTML({ id:"x1", title:"Scrap with no date", date:"unknown", fmt:"prose" }))}</div>`, "A note without a valid date sorts last under “Undated”, never under a fake year. Its row simply has no date line."),
+].join("");
+
+const mini = (html, h = 300) => `<div class="app" style="height:${h}px;border-radius:6px;overflow:hidden"><main class="page" style="padding:24px 24px 0">${html}</main></div>`;
+const demoPost = id => articleHTML(byId(id));
+document.getElementById("write-states").innerHTML = [
+  card("Feed · loading more", mini(`<div class="inner">${demoPost("n10").replace(/<div class="written">.*<\/div>/, "")}<p class="feed__more" style="margin-top:40px;padding-bottom:0">Loading more…</p></div>`, 360), "Shown when the end of the loaded posts nears the viewport. One slow diamond pulse; static under reduced motion. Announced politely as a status."),
+  card("Feed · end", mini(`<div class="inner"><p class="feed__end" style="margin-top:40px;padding-bottom:0">That’s everything.</p></div>`), "Replaces the loader. No button, no count."),
+  card("Editor · new verse", mini(`<div class="inner"><div class="ed__bar" style="margin-top:0"><span>New verse · saved as you write</span><span class="ed__done">Done</span></div><input class="ed__title" placeholder="Untitled" aria-label="Title" style="font-size:30px"><div class="orn" aria-hidden="true"><i></i></div><textarea class="ed__text ed__text--verse" placeholder="Start with the first line." rows="2" aria-label="Verse"></textarea></div>`), "Same editor as today, centred on the page. The title is a bare field with a caret, no box."),
+  card("Editor · new prose", mini(`<div class="inner"><div class="ed__bar" style="margin-top:0"><span>New prose · saved as you write</span><span class="ed__done">Done</span></div><input class="ed__title" value="On waiting" aria-label="Title" style="font-size:30px"><div class="orn" aria-hidden="true"><i></i></div><textarea class="ed__text ed__text--prose" rows="3" aria-label="Prose">The kettle takes its time, and so do I.</textarea></div>`), "Rail row reads the title as it is typed. An untouched draft shows “Untitled”."),
+].join("");
+
+const hd = (n, q = "") => articleHTML({ ...n }, q).replace(/<div class="written">.*<\/div>/, "");
+const mk = (html, h = 300) => mini(`<div class="inner">${html}</div>`, h);
+const edHead = n => `<div class="ed__bar" style="margin-top:0"><span>Editing · saved as you write</span><span class="ed__done">Done</span></div><input class="ed__title" value="${esc(n.title)}" aria-label="Title" style="font-size:30px">${crumbHTML(n)}<div class="orn" aria-hidden="true"><i></i></div><textarea class="ed__text ed__text--prose" rows="2" aria-label="Prose">${esc(n.body[0])}</textarea>`;
+document.getElementById("post-states").innerHTML = [
+  card("Not in a collection", mk(hd(byId("n6")).replace(/<div class="verse">[\s\S]*<\/div>\s*<\/article>/, "</article>"), 200), "Title, then the ornament 22px below. No line at all."),
+  card("In a collection", mk(hd(byId("n3")).replace(/<div class="prose">[\s\S]*<\/div>\s*<\/article>/, "</article>"), 220), "Title, 20px, the line (Inter 12px, 0.08em tracking, uppercase, muted), then the ornament 22px below. The name is a link, underlined at rest."),
+  card("Long title", mk(hd({ ...byId("n4"), book: "Autumn", title: "A very long title that runs onto a second and third line" }).replace(/<div class="prose">[\s\S]*<\/div>\s*<\/article>/, "</article>"), 300), "The gap is measured from the last line of the title. The line never sits closer than 20px."),
+  card("Long collection name", mk(hd({ ...byId("n3"), book: "Letters to a younger self about weather, work and waiting" }).replace(/<div class="prose">[\s\S]*<\/div>\s*<\/article>/, "</article>"), 240), "Wraps, centred, capped at 30em so it never runs edge to edge."),
+  card("Collection with no name", mk(hd({ ...byId("n3"), book: "" }).replace(/<div class="prose">[\s\S]*<\/div>\s*<\/article>/, "</article>"), 220), "Reads “Untitled collection”, never an empty link."),
+  card("Collection page", mini(bookPageHTML("Rain"), 420), "Title, chapter count, ornament, then the chapters in the collection’s own order. No collection line on the chapters, since the page is the collection."),
+  card("Collection page · empty", mini(bookPageHTML("Winter drafts"), 300), "The title and “Empty” still show. Nothing to scroll."),
+  card("In the editor", mk(edHead(byId("n3")), 300), "Same line, same spacing, between the title field and the ornament. It is a link while editing too; following it saves first."),
+  card("Search · title match in the rail", `<div style="width:236px">${wrapList(rowHTML(byId("n2"), { q: "shipping", dl: { year: true } }))}</div>`, "A quiet wash on the hit. Every occurrence in the title is marked, not just the first."),
+  card("Search · body-only match in the rail", `<div style="width:236px">${wrapList(rowHTML(byId("n5"), { q: "coffees", dl: { year: true } }))}</div>`, "The title has no hit, so one line of the body shows beneath the date, in Garamond italic 13px, clipped to two lines, with the hit marked and … at a cut end."),
+  card("Search · the feed", mk(hd(byId("n5"), "coffee"), 330), "The feed keeps reading as a feed. Every hit in the title and body of every result is marked with the same wash. Marks go the moment search closes."),
+].join("");
+
+/* tabs comparison */
+(function () {
+  const rows = (items, o) => ulWrap(items.map(n => rowHTML(n, o)).join(""));
+  const postsSel = () => [...groups(NOTES.filter(n => !n.book))].map(([y, it]) => yearHTML(y, it.length, true) + ulWrap(it.map(n => rowHTML(n, { sel: n.id === "n1" })).join(""))).join("");
+  const booksOld = (foldRain, selId) => [...booksOf(NOTES)].map(([b, it]) => yearHTML(b, it.length, !(foldRain && b === "Rain")) + (foldRain && b === "Rain" ? "" : ulWrap(it.map(n => rowHTML(n, { sel: n.id === selId, dl: { year: true, noBook: true } })).join("")))).join("")
+    + `<button class="rb__newbook" data-act="newbook">New collection</button>`;
+  const books = (selName, naming) => ulWrap(booksList().map(b => bookRowHTML(b, { sel: b.name === selName })).join(""))
+    + (naming ? `<label class="rb__search rb__name-field"><input value="Spri" aria-label="Collection name" style="font:italic 17px var(--serif);color:var(--text);background:none;border:0;outline:0;flex:1;height:28px"><button>esc</button></label>` : `<button class="rb__newbook">New collection</button>`);
+  const rail = (label, tab, body) => `<div style="flex:none"><p class="cap" style="font:500 11px var(--ui);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 8px">${label}</p>
+    <div class="app" style="height:640px;width:274px"><aside class="rb" style="width:100%">
+      <div class="rb__mast"><div class="rb__name">Glassbox</div></div>
+      <div class="rb__tag">Notes, mostly unfinished.</div>
+      <div class="rb__links"><button class="rb__link">New${ICON.caret}</button><button class="rb__link">Search</button></div>
+      ${tabsHTML(tab)}
+      <div class="rb__scroll">${body}</div>
+      <div class="rb__foot"><button class="rb__gear">${ICON.gear}Settings</button></div></aside></div></div>`;
+  document.getElementById("organize-modes").innerHTML =
+    rail("Posts tab", "posts", postsSel()) + rail("Collections tab", "books", books(null)) + rail("Collections tab · one open", "books", books("Autumn")) + rail("Collections tab · naming a new one", "books", books(null, true));
+})();
+
+/* collapsed + phone */
+document.getElementById("collapsed-frame").innerHTML = `${HAMBURGER}
+  <main class="page"><div class="inner"><h3 style="font-size:30px">Unfinished</h3><div class="orn" aria-hidden="true"><i></i></div><div class="verse">The mind wanders<br>around all</div></div></main>`;
+document.getElementById("phone").innerHTML = `
+  <div class="phone__top"><span class="nm">Glassbox</span><span style="color:var(--text-2)">${ICON.menu}</span></div>
+  <div class="phone__page"><h3>Unfinished</h3><div class="orn"><i></i></div><div class="verse">The mind wanders<br>around all</div></div>
+  <div class="phone__scrim"></div>
+  <div class="phone__drawer"><aside class="rb" style="height:100%">
+    <div class="rb__mast"><div class="rb__name">Glassbox</div></div>
+    <div class="rb__tag">Notes, mostly unfinished.</div>
+    <div class="rb__links"><button class="rb__link">New${ICON.caret}</button><button class="rb__link">Search</button></div>
+    ${tabsHTML("posts")}
+    <div class="rb__scroll">
+      ${yearHTML("2026", 3, true)}
+      <ul style="list-style:none;margin:0;padding:0">${["n1","n2","n4"].map((id, i) => rowHTML(byId(id), { sel: i === 0 })).join("")}</ul>
+      ${yearHTML("2025", 2, true)}
+      <ul style="list-style:none;margin:0;padding:0">${["n6","n7"].map(id => rowHTML(byId(id))).join("")}</ul>
+    </div>
+    <div class="rb__foot"><button class="rb__gear">${ICON.gear}Settings</button></div>
+  </aside></div>`;
+</script>
+</body>
+</html>
