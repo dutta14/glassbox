@@ -9,7 +9,8 @@ const NOTES = [
     title: "Postgres connection pooling",
     body: "pgbouncer in transaction mode. shared_buffers at 25% of RAM.",
     tags: ["db"],
-    createdAt: iso("2024-01-01"),
+    // Local noon, so the year heading holds in any timezone.
+    createdAt: iso("2024-01-01T12:00:00"),
     updatedAt: iso("2024-03-02"),
   },
   {
@@ -17,7 +18,8 @@ const NOTES = [
     title: "Sourdough starter notes",
     body: "It was underfed. 1:5:5 at 26C fixed the rise.",
     tags: ["baking"],
-    createdAt: iso("2024-01-02"),
+    // Local noon, so the year heading holds in any timezone.
+    createdAt: iso("2024-01-02T12:00:00"),
     updatedAt: iso("2024-03-01"),
   },
   {
@@ -25,7 +27,8 @@ const NOTES = [
     title: "Reading list, spring",
     body: "Seeing Like a State. The Mushroom at the End of the World.",
     tags: [],
-    createdAt: iso("2024-01-03"),
+    // Local noon, so the year heading holds in any timezone.
+    createdAt: iso("2024-01-03T12:00:00"),
     updatedAt: iso("2024-02-20"),
   },
 ];
@@ -101,23 +104,19 @@ const seed = async (
 };
 
 const rail = (page: Page) => page.locator(".notes-rail");
-const noteList = (page: Page) =>
-  page.getByRole("navigation", { name: "Note list" });
-const notesButton = (page: Page) =>
-  rail(page).getByRole("button", { name: "Notes", exact: true });
+/** The one tabpanel: Posts or Collections, whichever tab is open. */
+const noteList = (page: Page) => rail(page).getByRole("tabpanel");
+const tab = (page: Page, name: "Posts" | "Collections") =>
+  rail(page).getByRole("tab", { name });
+const yearButton = (page: Page) =>
+  rail(page).getByRole("heading", { level: 3 }).first().getByRole("button");
 
-const NOTE_TITLES = [
-  "Postgres connection pooling",
-  "Sourdough starter notes",
-  // A shelved note is named with its book, which is how the row reads aloud.
-  "Reading list, spring, in Spring shelf",
-];
+/* The third seeded note is shelved in a collection, so Posts does not list it. */
+const NOTE_TITLES = ["Postgres connection pooling", "Sourdough starter notes"];
 
-/** The rail is the notes and books list. Questions live in the Ask pane. */
+/** The rail is the Posts / Collections tabs. Questions live in the Ask pane. */
 const expectExpandedRail = async (page: Page) => {
-  await expect(
-    rail(page).getByRole("heading", { name: "Notes" }),
-  ).toBeVisible();
+  await expect(tab(page, "Posts")).toHaveAttribute("aria-selected", "true");
   await expect(noteList(page).getByRole("listitem")).toHaveCount(
     NOTE_TITLES.length,
   );
@@ -135,10 +134,10 @@ for (const theme of ["dark", "light"] as const) {
       await expect(rail(page)).toHaveScreenshot(`rail-expanded-${theme}.png`);
     });
 
-    test("notes section collapsed", async ({ page }) => {
-      await notesButton(page).click();
-      await expect(notesButton(page)).toHaveAttribute("aria-expanded", "false");
-      await expect(noteList(page)).toBeHidden();
+    test("year collapsed", async ({ page }) => {
+      await yearButton(page).click();
+      await expect(yearButton(page)).toHaveAttribute("aria-expanded", "false");
+      await expect(noteList(page).getByRole("listitem")).toHaveCount(0);
       await expect(rail(page)).toHaveScreenshot(
         `rail-notes-collapsed-${theme}.png`,
       );
@@ -167,7 +166,7 @@ test.describe("rail behaviour", () => {
     await seed(page, "light");
   });
 
-  test("lists the notes and the Books entry, and leaves past questions to the Ask pane", async ({
+  test("lists the posts under a year heading with the Collections tab beside them, and leaves past questions to the Ask pane", async ({
     page,
   }) => {
     await page.goto("/");
@@ -178,9 +177,10 @@ test.describe("rail behaviour", () => {
         noteList(page).getByRole("button", { name: title, exact: true }),
       ).toBeVisible();
     }
+    await expect(tab(page, "Collections")).toBeVisible();
     await expect(
       rail(page).getByRole("button", { name: "Collections" }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       rail(page).getByRole("button", { name: "Settings" }),
     ).toBeVisible();
@@ -226,52 +226,47 @@ test.describe("rail behaviour", () => {
     );
   });
 
-  test("the Notes heading collapses the list and the choice survives a reload", async ({
+  test("a year heading folds its posts and the open tab survives a reload", async ({
     page,
   }) => {
     await page.goto("/");
     await expectExpandedRail(page);
-    await expect(notesButton(page)).toHaveAttribute("aria-expanded", "true");
+    await expect(yearButton(page)).toHaveAttribute("aria-expanded", "true");
 
-    await notesButton(page).click();
-    await expect(notesButton(page)).toHaveAttribute("aria-expanded", "false");
-    await expect(noteList(page)).toBeHidden();
+    await yearButton(page).click();
+    await expect(yearButton(page)).toHaveAttribute("aria-expanded", "false");
+    await expect(noteList(page).getByRole("listitem")).toHaveCount(0);
 
-    await page.reload();
-    await expect(notesButton(page)).toHaveAttribute("aria-expanded", "false");
-    await expect(noteList(page)).toBeHidden();
-
-    await notesButton(page).click();
-    await expect(notesButton(page)).toHaveAttribute("aria-expanded", "true");
+    await yearButton(page).click();
     await expect(noteList(page).getByRole("listitem")).toHaveCount(
       NOTE_TITLES.length,
     );
+
+    await tab(page, "Collections").click();
+    await page.reload();
+    await expect(tab(page, "Collections")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
   });
 
-  test("organizing by book gives books their own collapsible section and takes shelved notes out of the Notes list", async ({
+  test("Collections lists the collection and Posts leaves shelved notes out", async ({
     page,
   }) => {
-    await seed(page, "light", { "glassbox.notesOrganize.v1": "book" });
     await page.goto("/");
-
-    const booksToggle = rail(page).getByRole("button", {
-      name: "Collections",
-      exact: true,
-    });
-    const bookList = page.getByRole("navigation", { name: "Collections" });
-    await expect(booksToggle).toHaveAttribute("aria-expanded", "true");
-    await expect(
-      bookList.getByRole("button", { name: /^Spring shelf/ }),
-    ).toBeVisible();
-    // n3 is shelved, so only the two loose notes remain in the Notes list.
-    await expect(noteList(page).getByRole("listitem")).toHaveCount(2);
     await expect(
       noteList(page).getByRole("button", { name: /Reading list/ }),
     ).toHaveCount(0);
 
-    await booksToggle.click();
-    await expect(booksToggle).toHaveAttribute("aria-expanded", "false");
-    await expect(bookList).toBeHidden();
+    await tab(page, "Collections").click();
+    await expect(
+      noteList(page).getByRole("button", { name: /^Spring shelf/ }),
+    ).toBeVisible();
+    await expect(noteList(page).getByRole("heading")).toHaveCount(0);
+
+    await page.keyboard.press("ArrowLeft");
+    await expect(tab(page, "Posts")).toBeFocused();
+    await expect(tab(page, "Posts")).toHaveAttribute("aria-selected", "true");
   });
 
   test("collapsing the sidebar removes the rail and leaves a menu button, and the choice survives a reload", async ({
@@ -286,12 +281,8 @@ test.describe("rail behaviour", () => {
     ).toBeVisible();
     await expect(noteList(page)).toHaveCount(0);
     await expect(rail(page).getByText("Glassbox")).toHaveCount(0);
-    for (const name of [
-      "New note",
-      "Search notes",
-      "Collections",
-      "Settings",
-    ]) {
+    await expect(rail(page).getByRole("tab")).toHaveCount(0);
+    for (const name of ["New note", "Search notes", "Settings"]) {
       await expect(
         rail(page).getByRole("button", { name, exact: true }),
       ).toHaveCount(0);

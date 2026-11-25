@@ -85,11 +85,11 @@
   align-items: center;
   gap: 16px;
   height: 28px;
-  margin-bottom: 24px;
+  margin-bottom: 30px;
 }
 
 /* An action link rather than a button: Inter 13px, underlined in the border
-   colour, ink on hover. New and the Collections entry share it. */
+   colour, ink on hover. New and Search share it. */
 .notes-rail__entry {
   display: inline-flex;
   align-items: center;
@@ -109,6 +109,30 @@
 .notes-rail__entry:hover {
   color: var(--color-text);
   text-decoration-color: var(--color-text);
+}
+
+/* Posts and Collections: type only, no rule or underline. The open tab is ink,
+   the other faint. */
+.notes-rail__tabs {
+  display: flex;
+  gap: 18px;
+  margin: 0 0 14px;
+}
+
+.notes-rail__tab {
+  padding: 4px 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--color-text-faint);
+  font: 400 16px/1 var(--font-serif);
+  cursor: pointer;
+  transition: color 150ms;
+}
+
+.notes-rail__tab:hover,
+.notes-rail__tab[aria-selected="true"] {
+  color: var(--color-text);
 }
 
 .notes-rail__section {
@@ -164,6 +188,20 @@
 
 .notes-rail__title-toggle:hover {
   color: var(--color-text);
+}
+
+/* Room for the focus ring to the left of the first letter. */
+.notes-rail__title-label {
+  margin-left: -14px;
+  padding-left: 14px;
+}
+
+.notes-rail__title-count {
+  flex: none;
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .notes-rail__title-mark {
@@ -238,6 +276,10 @@
   overflow-y: auto;
   margin-right: -14px;
   padding-right: 14px;
+}
+
+.notes-rail__list ul[hidden] {
+  display: none;
 }
 
 .notes-rail__list ul {
@@ -427,6 +469,7 @@
   .notes-rail__toggle,
   .notes-rail__open,
   .notes-rail__entry,
+  .notes-rail__tab,
   .notes-rail__title-toggle,
   .notes-rail__chevron,
   .notes-rail__settings,

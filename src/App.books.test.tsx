@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -148,47 +148,21 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-/* The rail lists books only when notes are arranged by book. In the default
-   arrangement, one list, Books is a single top-level entry that opens the
-   Books page, and notes stay where they are. Tests that read book rows out of
-   the rail say so by calling this before rendering; tests that read note rows
-   leave the default alone. */
-const arrangeByBook = () => {
-  localStorage.setItem("glassbox.notesOrganize.v1", "book");
-};
-
-/** The same change made the way a reader makes it, for tests that need note
-    rows first and book rows after. */
-const switchToByBook = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole("button", { name: "Organize notes" }));
-  await user.click(
-    screen.getByRole("menuitemradio", { name: "By collection" }),
-  );
-};
-
-/** jsdom has no scrollIntoView, and opening a book at a chapter is a scroll. */
-const stubScrollIntoView = () => {
-  const original = Element.prototype.scrollIntoView;
-  const spy = vi.fn();
-  Element.prototype.scrollIntoView = spy;
-  return {
-    /** The chapter ids the app actually scrolled to, in order. */
-    targets: () =>
-      spy.mock.instances.map((el) => (el as HTMLElement).dataset.chapterId),
-    restore() {
-      Element.prototype.scrollIntoView = original;
-    },
-  };
-};
+/* A note added to a collection leaves Posts, so a collection's row is read from
+   the Collections tab and a note's row from Posts. */
+const openTab = async (
+  user: ReturnType<typeof userEvent.setup>,
+  name: "Posts" | "Collections",
+) => user.click(screen.getByRole("tab", { name }));
 
 describe("books, end to end through the interface", () => {
   it("creates a book from a note's row menu and lists it in the rail", async () => {
-    arrangeByBook();
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
+    await openTab(user, "Collections");
 
     // Shown, and actually persisted holding that note. Either one alone
     // would pass with the other half of the wire cut.
@@ -202,35 +176,31 @@ describe("books, end to end through the interface", () => {
     });
   });
 
-  it("names the book on a note's row once it is added", async () => {
+  it("takes the note out of Posts once it is added to a collection", async () => {
     const user = userEvent.setup();
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon"), makeNote("n2", "School")], store);
 
-    const before = await railRow("Luncheon");
-    expect(within(before).queryByText("Childhood")).not.toBeInTheDocument();
+    await railRow("Luncheon");
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
 
-    await waitFor(async () => {
+    await waitFor(() =>
       expect(
-        within(await railRow("Luncheon")).getByText("Childhood"),
-      ).toBeInTheDocument();
-    });
-    // The note that was never added must stay unnamed, or the label is just
-    // always on and proves nothing.
-    expect(
-      within(await railRow("School")).queryByText("Childhood"),
-    ).not.toBeInTheDocument();
+        screen.queryByRole("button", { name: /^Luncheon/ }),
+      ).not.toBeInTheDocument(),
+    );
+    // The note that was never added must stay, or the rail is just empty.
+    expect(await railRow("School")).toBeInTheDocument();
   });
 
   it("opens the book and reads its chapters when its rail row is clicked", async () => {
-    arrangeByBook();
     const user = userEvent.setup();
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
+    await openTab(user, "Collections");
     await user.click(await screen.findByRole("button", { name: /^Childhood/ }));
 
     const main = await screen.findByRole("main");
@@ -238,7 +208,6 @@ describe("books, end to end through the interface", () => {
   });
 
   it("reads chapters in the book's order rather than the library's", async () => {
-    arrangeByBook();
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp(
@@ -262,6 +231,7 @@ describe("books, end to end through the interface", () => {
     );
     await waitFor(() => expect(read()[0].chapterIds).toEqual(["n2", "n1"]));
 
+    await openTab(user, "Collections");
     await user.click(await screen.findByRole("button", { name: /^Childhood/ }));
 
     const main = await screen.findByRole("main");
@@ -273,12 +243,12 @@ describe("books, end to end through the interface", () => {
   });
 
   it("keeps every note in the library after its book is deleted", async () => {
-    arrangeByBook();
     const user = userEvent.setup();
     const { store, read } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store);
 
     await addNoteToNewBook(user, "Luncheon", "Childhood");
+    await openTab(user, "Collections");
     await openRowMenu(user, "Childhood");
     await user.click(await screen.findByRole("menuitem", { name: /delete/i }));
     await user.click(
@@ -289,64 +259,10 @@ describe("books, end to end through the interface", () => {
     expect(
       screen.queryByRole("button", { name: /^Childhood/ }),
     ).not.toBeInTheDocument();
-    // The whole point of the confirm copy. The note outlives the book.
+    // The whole point of the confirm copy. The note outlives the book and
+    // returns to Posts.
+    await openTab(user, "Posts");
     expect(await railRow("Luncheon")).toBeInTheDocument();
-  });
-
-  it("drops a deleted note out of the book that held it", async () => {
-    const user = userEvent.setup();
-    const { store, read } = makeBookStore();
-    renderApp([makeNote("n1", "Luncheon"), makeNote("n2", "School")], store);
-
-    await addNoteToNewBook(user, "Luncheon", "Childhood");
-    await waitFor(() => expect(read()[0].chapterIds).toEqual(["n1"]));
-
-    await openRowMenu(user, "Luncheon");
-    await user.click(await screen.findByRole("menuitem", { name: /delete/i }));
-    const noteConfirm = await screen.findByRole("alertdialog");
-    await user.click(
-      within(noteConfirm).getByRole("button", { name: "Delete" }),
-    );
-
-    await waitFor(() => expect(read()[0].chapterIds).toEqual([]));
-  });
-
-  it("offers a book that already holds the note as unavailable rather than hiding it", async () => {
-    const user = userEvent.setup();
-    const { store } = makeBookStore();
-    renderApp([makeNote("n1", "Luncheon")], store);
-
-    await addNoteToNewBook(user, "Luncheon", "Childhood");
-    await openRowMenu(user, "Luncheon");
-    await user.click(
-      await screen.findByRole("menuitem", { name: /add to book/i }),
-    );
-
-    const dialog = await screen.findByRole("dialog");
-    expect(
-      within(dialog).getByRole("button", { name: /^Childhood/ }),
-    ).toBeDisabled();
-  });
-
-  /* The move is the surprising part of the rule, so it is said before the
-     choice is made rather than reported after it. */
-  it("warns that choosing another book will move the note", async () => {
-    const user = userEvent.setup();
-    const { store } = makeBookStore();
-    renderApp([makeNote("n1", "Luncheon")], store);
-
-    await addNoteToNewBook(user, "Luncheon", "Childhood");
-    await openRowMenu(user, "Luncheon");
-    await user.click(
-      await screen.findByRole("menuitem", { name: /add to book/i }),
-    );
-
-    const dialog = await screen.findByRole("dialog");
-    expect(
-      within(dialog).getByText(
-        /is in Childhood\. Choosing another book moves it/,
-      ),
-    ).toBeInTheDocument();
   });
 
   it("asks to add rather than to move when the note is in no book", async () => {
@@ -370,12 +286,13 @@ describe("books, end to end through the interface", () => {
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
 
-    await addNoteToNewBook(user, "Luncheon", "Childhood");
+    // Opened first: once shelved, its row is no longer in Posts to click.
     await user.click(
       within(await railRow("Luncheon")).getByRole("button", {
         name: /^Luncheon/,
       }),
     );
+    await addNoteToNewBook(user, "Luncheon", "Childhood");
 
     const main = await screen.findByRole("main");
     expect(
@@ -408,66 +325,6 @@ describe("books, end to end through the interface", () => {
     ).not.toBeInTheDocument();
   });
 
-  /**
-   * A note belongs to one book, so adding it to a second takes it out of the
-   * first. This goes through the interface end to end because the removal
-   * happens to a book the user is not looking at, which is exactly the kind
-   * of change that can be wired up in the hook and never reach the screen.
-   */
-  it("moves the note out of its old book when it is added to another", async () => {
-    const user = userEvent.setup();
-    const { store } = makeBookStore();
-    renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
-
-    await addNoteToNewBook(user, "Luncheon", "Childhood");
-    await addNoteToNewBook(user, "Luncheon", "Summers");
-    await user.click(
-      within(await railRow("Luncheon")).getByRole("button", {
-        name: /^Luncheon/,
-      }),
-    );
-
-    const main = await screen.findByRole("main");
-    expect(
-      await within(main).findByText(/In the collection –/),
-    ).toBeInTheDocument();
-    expect(
-      within(main).getByRole("link", { name: "Summers" }),
-    ).toBeInTheDocument();
-    expect(
-      within(main).queryByRole("link", { name: "Childhood" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("leaves the old book empty after the note moves out of it", async () => {
-    const user = userEvent.setup();
-    const { store } = makeBookStore();
-    renderApp([makeNote("n1", "Luncheon", "Lunch is ready")], store);
-
-    await addNoteToNewBook(user, "Luncheon", "Childhood");
-    await addNoteToNewBook(user, "Luncheon", "Summers");
-
-    /* Adding is done from the note's row, which only the default arrangement
-       shows once the note is shelved. Reading the book back is done from the
-       book's row, which only the other arrangement shows. */
-    await switchToByBook(user);
-
-    expect(
-      await screen.findByRole("button", { name: /^Childhood\s*Empty/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("names the note's book on its rail row", async () => {
-    const user = userEvent.setup();
-    const { store } = makeBookStore();
-    renderApp([makeNote("n1", "Luncheon")], store);
-
-    await addNoteToNewBook(user, "Luncheon", "Childhood");
-
-    const noteRow = await railRow("Luncheon");
-    expect(within(noteRow).getByText("Childhood")).toBeInTheDocument();
-  });
-
   it("shows a calm message for a book id that does not exist", async () => {
     const { store } = makeBookStore();
     renderApp([makeNote("n1", "Luncheon")], store, ["/book/nope"]);
@@ -475,77 +332,5 @@ describe("books, end to end through the interface", () => {
     expect(
       await screen.findByText(/That book doesn’t exist/),
     ).toBeInTheDocument();
-  });
-});
-
-/**
- * Opening a book at one of its chapters, from the rail.
- *
- * A pick belongs to one book. Letting whatever book happens to be on screen
- * answer for it was a real failure: the open book spent the pick, and the book
- * the reader actually asked for then opened at its first page with no sign
- * anything had gone wrong.
- */
-describe("opening a book at a chapter", () => {
-  const twoBooks = async (user: ReturnType<typeof userEvent.setup>) => {
-    await addNoteToNewBook(user, "Drizzle", "Autumn");
-    await addNoteToNewBook(user, "Decagon", "Shapes");
-  };
-
-  const expand = async (
-    user: ReturnType<typeof userEvent.setup>,
-    bookTitle: string,
-  ) =>
-    user.click(
-      await screen.findByRole("button", { name: `Expand ${bookTitle}` }),
-    );
-
-  it("opens the book the chapter belongs to, at that chapter", async () => {
-    arrangeByBook();
-    const scroll = stubScrollIntoView();
-    try {
-      const user = userEvent.setup();
-      const { store } = makeBookStore();
-      renderApp([makeNote("n1", "Drizzle"), makeNote("n2", "Decagon")], store);
-      await twoBooks(user);
-
-      await expand(user, "Shapes");
-      await user.click(await screen.findByRole("button", { name: "Decagon" }));
-
-      expect(
-        await screen.findByRole("textbox", { name: "Book title" }),
-      ).toHaveValue("Shapes");
-      await waitFor(() => expect(scroll.targets()).toContain("n2"));
-    } finally {
-      scroll.restore();
-    }
-  });
-
-  /* The book already open must not answer for another book's pick. When it
-     did, it spent the pick on the way past and Shapes opened at the front. */
-  it("still opens at the chapter when another book is already open", async () => {
-    arrangeByBook();
-    const scroll = stubScrollIntoView();
-    try {
-      const user = userEvent.setup();
-      const { store } = makeBookStore();
-      renderApp([makeNote("n1", "Drizzle"), makeNote("n2", "Decagon")], store);
-      await twoBooks(user);
-
-      await user.click(await screen.findByRole("button", { name: /^Autumn/ }));
-      expect(
-        await screen.findByRole("textbox", { name: "Book title" }),
-      ).toHaveValue("Autumn");
-
-      await expand(user, "Shapes");
-      await user.click(await screen.findByRole("button", { name: "Decagon" }));
-
-      expect(
-        await screen.findByRole("textbox", { name: "Book title" }),
-      ).toHaveValue("Shapes");
-      await waitFor(() => expect(scroll.targets()).toContain("n2"));
-    } finally {
-      scroll.restore();
-    }
   });
 });

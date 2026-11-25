@@ -78,16 +78,10 @@ export const COPY = {
   emptyBooksSidebar: "Add a note to a collection to start one.",
 
   emptyNotesSidebar: "Use New note to start one.",
-  /* The rail in collection mode lists only notes that are in no collection. Saying "Use
+  /* Posts lists only notes that are in no collection. Saying "Use
      New note to start one." to someone whose 566 notes are all shelved would
      be a lie, so this states the fact instead. */
   emptyNotesAllBooked: "Every note is in a collection.",
-
-  /* One string for the button's accessible name and the menu's own heading,
-     so what is heard and what is seen can never drift apart. */
-  organizeMenu: "Organize notes",
-  organizeOptionList: "In one list",
-  organizeOptionBook: "By collection",
 
   /* One phrasing for the rail row and the landing page, so the same collection is
      never "Empty" in one place and "0 chapters" in another. An empty collection says
@@ -95,7 +89,10 @@ export const COPY = {
   chapterCount: (n: number) =>
     n === 0 ? "Empty" : n === 1 ? "1 chapter" : `${n} chapters`,
 
-  booksRow: "Collections",
+  /* The two tabs under the action links. */
+  railTabsLabel: "Library",
+  railTabPosts: "Posts",
+  railTabCollections: "Collections",
   /* Under the masthead. The spec makes it optional and user-editable; until
      there is somewhere to edit it, it is this line. */
   railTagline: "Notes, mostly unfinished.",

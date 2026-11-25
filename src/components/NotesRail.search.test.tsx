@@ -35,7 +35,6 @@ const renderRail = (
     notes?: Note[];
     conversations?: Conversation[];
     books?: Book[];
-    organizeMode?: "list" | "book";
   } = {},
 ) => {
   const onCreate = vi.fn();
@@ -61,13 +60,9 @@ const renderRail = (
       selectedBookId={null}
       bookNameByNoteId={new Map<string, string>()}
       onSelectBook={vi.fn()}
-      onOpenBooks={vi.fn()}
-      onOpenChapter={vi.fn()}
       onDeleteBook={vi.fn()}
       onAddNoteToBook={vi.fn()}
       onToggleTheme={vi.fn()}
-      organizeMode={overrides.organizeMode ?? "list"}
-      onOrganizeChange={vi.fn()}
     />,
   );
   return { onCreate, onSelect };
@@ -94,27 +89,14 @@ describe("NotesRail search wiring", () => {
     expect(glyph()).toHaveTextContent("Search");
   });
 
-  /* There are two section headers now, Chats and Notes. Targeting the
-     heading and walking up means this keeps testing the Notes header rather
-     than whichever one happens to come first in the DOM. */
-  it("no longer keeps a search control beside the Notes heading", () => {
+  it("keeps the search control out of the year headings", () => {
     renderRail();
-    const section = screen
-      .getByRole("heading", { name: "Notes" })
-      .closest(".notes-rail__section");
+    const headings = screen.getAllByRole("heading", { level: 3 });
 
-    expect(section).not.toBeNull();
-    expect(section!.textContent).toContain("Notes");
-    // The heading owns two buttons now: the accordion toggle and the organize
-    // menu. Naming both, rather than counting them, keeps the claim about
-    // search while leaving room for controls that are not search.
-    const toggle = section!.querySelector("button[aria-expanded]");
-    expect(toggle).not.toBeNull();
-    expect(toggle!.textContent).toContain("Notes");
-    expect(
-      section!.querySelector('[aria-label="Organize notes"]'),
-    ).not.toBeNull();
-    expect(section!.querySelector('[aria-label="Search notes"]')).toBeNull();
+    expect(headings.length).toBeGreaterThan(0);
+    for (const heading of headings) {
+      expect(heading.querySelector('[aria-label="Search notes"]')).toBeNull();
+    }
   });
 
   it("keeps the modal closed until the glyph is used", () => {
@@ -186,7 +168,7 @@ describe("NotesRail search wiring", () => {
       "sourdough",
     );
 
-    const rail = screen.getByRole("navigation", { name: "Note list" });
+    const rail = screen.getByRole("tabpanel");
     expect(within(rail).getByText("Postgres tuning")).toBeInTheDocument();
     expect(within(rail).getByText("Sourdough")).toBeInTheDocument();
   });
@@ -231,36 +213,26 @@ describe("NotesRail search wiring", () => {
   });
 
   /**
-   * Three sections share one rail, so an empty list has to say which list it
-   * is by its copy alone. The headings that used to do that were removed
-   * because an empty section was taller than a full one; the wording now
-   * carries the whole job, and identical wording in two sections would leave
-   * the reader unable to tell chats from books from notes.
+   * Posts and Collections share one rail, so an empty list has to say which
+   * list it is by its copy alone.
    */
-  it("gives each empty section wording that no other section repeats", () => {
-    /* Arranged by book, because that is the only arrangement in which both
-       sections can be empty at once. In one list the Books section is a
-       single row into the Books page and has no empty state to read. */
-    renderRail({
-      notes: [],
-      books: [],
-      organizeMode: "book",
-    });
+  it("gives each empty tab wording that the other does not repeat", async () => {
+    const user = userEvent.setup();
+    localStorage.clear();
+    renderRail({ notes: [], books: [] });
 
-    const bodyOf = (listId: string): string => {
-      const list = document.getElementById(listId);
-      if (!list) throw new Error(`no list ${listId}`);
-      const body = list.querySelector(".notes-rail__empty-body");
-      if (!body) throw new Error(`no empty state in ${listId}`);
-      return body.textContent?.trim() ?? "";
-    };
+    const bodyOf = (): string =>
+      screen.getByRole("tabpanel").querySelector(".notes-rail__empty-body")
+        ?.textContent ?? "";
 
-    const books = bodyOf("rail-books-list");
-    const notes = bodyOf("rail-notes-list");
+    const posts = bodyOf();
+    await user.click(screen.getByRole("tab", { name: "Collections" }));
+    const collections = bodyOf();
 
-    expect(books).toBeTruthy();
-    expect(notes).toBeTruthy();
-    expect(new Set([books, notes]).size).toBe(2);
+    expect(posts).toBeTruthy();
+    expect(collections).toBeTruthy();
+    expect(posts).not.toBe(collections);
+    localStorage.clear();
   });
 
   /* The heading was a second, larger copy of the same message stacked above

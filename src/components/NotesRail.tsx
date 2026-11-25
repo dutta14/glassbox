@@ -1,70 +1,46 @@
 import { Fragment, useCallback, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import type { Book, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
 import { BookListItem } from "./BookListItem";
-import { BookChapterList } from "./BookChapterList";
 import { NewNoteMenu } from "./NewNoteMenu";
-import { OrganizeMenu } from "./OrganizeMenu";
 import { NoteSearchModal } from "./NoteSearchModal";
 import { useScrollFades } from "../hooks/useScrollFades";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SettingsModal } from "./SettingsModal";
 import type { Theme } from "../hooks/useTheme";
-import type { OrganizeMode } from "../hooks/useNoteOrganize";
 import type { FolderState } from "../hooks/useStorageBackend";
 import { COPY } from "../engine/copy";
+import { groupByYear, monthDayOf } from "../utils/groupByYear";
 import "../styles/NotesRail.css";
 
 const COLLAPSE_KEY = "glassbox.rail.v1";
-const SECTIONS_KEY = "glassbox.railSections.v1";
+const TAB_KEY = "glassbox.railTab.v1";
 
-/* Shares openMenuId with the row menus so that opening this one closes any row
-   menu and the other way round. No note or book can collide with it: ids are
-   generated and this is not. */
-const ORGANIZE_MENU_ID = "organize-notes";
+type RailTab = "posts" | "collections";
 
-type SectionName = "books" | "notes";
-type SectionState = Record<SectionName, boolean>;
+const TABS: readonly { id: RailTab; label: string }[] = [
+  { id: "posts", label: COPY.railTabPosts },
+  { id: "collections", label: COPY.railTabCollections },
+];
 
-/** All open is the state the rail has always had, so a first-time reader
-    sees no change. */
-const DEFAULT_SECTIONS: SectionState = {
-  books: true,
-  notes: true,
-};
-
-const readSections = (): SectionState => {
+/** Wrapped because localStorage throws in some privacy modes. Anything but a
+    known tab falls back to Posts, the tab the rail has always opened on. */
+const readTab = (): RailTab => {
   try {
-    const raw = localStorage.getItem(SECTIONS_KEY);
-    if (!raw) return DEFAULT_SECTIONS;
-    const parsed: unknown = JSON.parse(raw);
-    if (typeof parsed !== "object" || parsed === null) return DEFAULT_SECTIONS;
-    const record = parsed as Partial<Record<SectionName, unknown>>;
-    // Read field by field rather than trusting the blob, so a hand-edited or
-    // half-written value cannot collapse a section with no way back.
-    return {
-      // A reader who saved their sections before books existed has no `books`
-      // key. Falling back to the default opens it, which is what someone
-      // meeting a new section should get.
-      books:
-        typeof record.books === "boolean"
-          ? record.books
-          : DEFAULT_SECTIONS.books,
-      notes:
-        typeof record.notes === "boolean"
-          ? record.notes
-          : DEFAULT_SECTIONS.notes,
-    };
+    return localStorage.getItem(TAB_KEY) === "collections"
+      ? "collections"
+      : "posts";
   } catch {
-    return DEFAULT_SECTIONS;
+    return "posts";
   }
 };
 
-const writeSections = (sections: SectionState): void => {
+const writeTab = (tab: RailTab): void => {
   try {
-    localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
+    localStorage.setItem(TAB_KEY, tab);
   } catch {
-    // Non-fatal. The sections still toggle for this session.
+    // Non-fatal. The tab still holds for this session.
   }
 };
 
@@ -141,11 +117,6 @@ interface NotesRailProps {
   onSelect: (id: string) => void;
   onCreate: (format: NoteFormat) => void;
   onSelectBook: (id: string) => void;
-  /** Opens the Books page, the only way into a book while the rail keeps
-      notes in one list. */
-  onOpenBooks: () => void;
-  /** Opens a book at one of its chapters, from a chapter row. */
-  onOpenChapter: (bookId: string, noteId: string) => void;
   onDeleteBook: (id: string) => void;
   onAddNoteToBook: (id: string) => void;
   onDeleteNote: (id: string) => void;
@@ -156,8 +127,6 @@ interface NotesRailProps {
   onDisconnectFolder: () => void;
   theme: Theme;
   onToggleTheme: () => void;
-  organizeMode: OrganizeMode;
-  onOrganizeChange: (mode: OrganizeMode) => void;
 }
 
 export const NotesRail = ({
@@ -173,8 +142,6 @@ export const NotesRail = ({
   onSelect,
   onCreate,
   onSelectBook,
-  onOpenBooks,
-  onOpenChapter,
   onDeleteBook,
   onAddNoteToBook,
   onDeleteNote,
@@ -185,71 +152,58 @@ export const NotesRail = ({
   onDisconnectFolder,
   theme,
   onToggleTheme,
-  organizeMode,
-  onOrganizeChange,
 }: NotesRailProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sections, setSections] = useState<SectionState>(readSections);
-  const booksOpen = sections.books;
-  const notesOpen = sections.notes;
+  const [tab, setTab] = useState<RailTab>(readTab);
+  /* Years the reader has folded. Per session: which years were shut last week
+     is not worth remembering. */
+  const [foldedYears, setFoldedYears] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
 
-  const toggleSection = useCallback((name: SectionName) => {
-    setSections((current) => {
-      const next = { ...current, [name]: !current[name] };
-      writeSections(next);
+  const chooseTab = useCallback((next: RailTab) => {
+    setTab(next);
+    writeTab(next);
+  }, []);
+
+  const toggleYear = useCallback((key: string) => {
+    setFoldedYears((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
       return next;
     });
   }, []);
+
+  /* Left and Right move between the two tabs, wrapping, and the tab that takes
+     focus opens, so what is focused and what is shown never disagree. */
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step =
+      event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const index = TABS.findIndex((t) => t.id === tab);
+    const next = TABS[(index + step + TABS.length) % TABS.length];
+    chooseTab(next.id);
+    document.getElementById(`rail-tab-${next.id}`)?.focus();
+  };
   /** Held here rather than per row, so opening one menu closes any other. */
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
   const [pendingBookDelete, setPendingBookDelete] = useState<Book | null>(null);
-  /* A set rather than a single id: every book costs a fixed five rows when
-     open, so there is no reason to shut one to look at another. Per session,
-     because which books you had open is not worth remembering. */
-  const [expandedBooks, setExpandedBooks] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-
-  const toggleBook = useCallback((id: string) => {
-    setExpandedBooks((current) => {
-      const next = new Set(current);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-  }, []);
   /* Ask is a pane beside the note now rather than a place the rail can send
      you, so nothing competes with the open note for aria-current and this is
      simply whichever note is open. */
   const currentNoteId = selectedNoteId;
 
-  const byBook = organizeMode === "book";
-
-  /* Derived from the same map the rows use to name a note's book, so the list
-     and the badge can never disagree about what is shelved. */
-  const listedNotes = byBook
-    ? notes.filter((note) => !bookNameByNoteId.has(note.id))
-    : notes;
-
-  /* Resolved from the full set, not the filtered one: in book mode every
-     chapter has been taken out of listedNotes by definition.
-
-     The rows are the notes themselves rather than labels made from them. A
-     chapter row is the same note the Notes list shows, cosmetically moved
-     under its book, so it is rendered by the same component and answers to
-     the same name. Chapters whose note has been deleted are dropped rather
-     than shown as a dead row. */
-  const noteById = new Map(notes.map((note) => [note.id, note]));
-
-  const chaptersOf = (book: Book): Note[] =>
-    book.chapterIds
-      .map((id) => noteById.get(id))
-      .filter((note): note is Note => note !== undefined);
+  /* Derived from the same map the rows use to name a note's collection, so
+     Posts can never show a note that a collection holds. */
+  const postNotes = notes.filter((note) => !bookNameByNoteId.has(note.id));
+  const yearGroups = groupByYear(postNotes);
   const searchToggleRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  useScrollFades(listRef, [notes.length, collapsed]);
+  useScrollFades(listRef, [notes.length, collapsed, tab]);
 
   /** Focus goes back to the glyph that opened the modal, never to the body. */
   const closeSearch = useCallback(() => {
@@ -361,188 +315,156 @@ export const NotesRail = ({
             >
               Search
             </button>
-
-            {/* In one list the shelf is a place to go, not a section of the
-                sidebar, so it sits with New and Search rather than heading a
-                list of its own. No count: the number of books is what the
-                page is for. */}
-            {!byBook && (
-              <button
-                type="button"
-                className="notes-rail__entry"
-                onClick={onOpenBooks}
-              >
-                {COPY.booksRow}
-              </button>
-            )}
           </div>
-          {/* One scroll area for the lists, so the rail scrolls as a single
-              column instead of boxes that run out of room independently. */}
-          <div ref={listRef} className="notes-rail__list scroll-fades">
-            {byBook && (
-              <div className="notes-rail__section notes-rail__section--sticky">
-                <h2 className="notes-rail__title" id="rail-books-heading">
-                  <button
-                    type="button"
-                    className="notes-rail__title-toggle"
-                    onClick={() => toggleSection("books")}
-                    aria-expanded={booksOpen}
-                    aria-controls="rail-books-list"
-                  >
-                    {COPY.booksRow}
-                    <span
-                      className="notes-rail__title-mark"
-                      aria-hidden="true"
-                    />
-                    <span
-                      className="notes-rail__title-rule"
-                      aria-hidden="true"
-                    />
-                    <Chevron open={booksOpen} />
-                  </button>
-                </h2>
-              </div>
-            )}
 
-            <nav
-              id="rail-books-list"
-              aria-labelledby="rail-books-heading"
-              hidden={!byBook || !booksOpen}
-            >
-              {books.length === 0 ? (
-                <div className="notes-rail__empty">
-                  <p className="notes-rail__empty-body">
-                    {COPY.emptyBooksSidebar}
-                  </p>
-                </div>
-              ) : (
-                <ul>
-                  {books.map((book) => (
-                    /* The chapters are a sibling row, not a child of the book
-                       row. Nesting one .note-row inside another made the two
-                       hover as one: the rail's rules reach descendants, so
-                       pointing at a chapter lit its book up and held every
-                       chapter's menu open at once. */
-                    <Fragment key={book.id}>
-                      <BookListItem
-                        book={book}
-                        expansion={
-                          byBook
-                            ? {
-                                open: expandedBooks.has(book.id),
-                                onToggle: () => toggleBook(book.id),
+          <div
+            className="notes-rail__tabs"
+            role="tablist"
+            aria-label={COPY.railTabsLabel}
+          >
+            {TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                id={`rail-tab-${id}`}
+                className="notes-rail__tab"
+                aria-selected={tab === id}
+                aria-controls="rail-panel"
+                tabIndex={tab === id ? 0 : -1}
+                onClick={() => chooseTab(id)}
+                onKeyDown={onTabKeyDown}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* One scroll area for the list, so the rail scrolls as a single
+              column. It is the tab panel, so the headings inside are its
+              direct children and stick to its top. */}
+          <div
+            ref={listRef}
+            id="rail-panel"
+            role="tabpanel"
+            aria-labelledby={`rail-tab-${tab}`}
+            className="notes-rail__list scroll-fades"
+          >
+            {tab === "posts" ? (
+              <>
+                {hasSampleNotes && yearGroups.length > 0 && (
+                  <div className="notes-rail__banner" role="note">
+                    <p className="notes-rail__banner-text">
+                      {COPY.sampleBanner}
+                    </p>
+                    <button
+                      type="button"
+                      className="notes-rail__banner-action"
+                      onClick={onDeleteSamples}
+                    >
+                      Delete all samples
+                    </button>
+                  </div>
+                )}
+
+                {yearGroups.length === 0 ? (
+                  <div className="notes-rail__empty">
+                    <p className="notes-rail__empty-body">
+                      {/* Telling someone with 566 notes to write their first
+                          one would be a lie. When everything is in a
+                          collection, that is the news. */}
+                      {notes.length > 0
+                        ? COPY.emptyNotesAllBooked
+                        : COPY.emptyNotesSidebar}
+                    </p>
+                  </div>
+                ) : (
+                  yearGroups.map(({ key, notes: items }) => {
+                    const open =
+                      !foldedYears.has(key) ||
+                      items.some((note) => note.id === currentNoteId);
+                    return (
+                      <Fragment key={key}>
+                        <div className="notes-rail__section notes-rail__section--sticky">
+                          <h3
+                            className="notes-rail__title"
+                            id={`rail-year-${key}`}
+                          >
+                            <button
+                              type="button"
+                              className="notes-rail__title-toggle"
+                              onClick={() => toggleYear(key)}
+                              aria-expanded={open}
+                              aria-controls={`rail-year-list-${key}`}
+                            >
+                              <span className="notes-rail__title-label">
+                                {key}
+                              </span>
+                              <span
+                                className="notes-rail__title-mark"
+                                aria-hidden="true"
+                              />
+                              <span
+                                className="notes-rail__title-rule"
+                                aria-hidden="true"
+                              />
+                              <span className="notes-rail__title-count">
+                                {items.length}
+                              </span>
+                              <Chevron open={open} />
+                            </button>
+                          </h3>
+                        </div>
+                        <ul
+                          id={`rail-year-list-${key}`}
+                          aria-labelledby={`rail-year-${key}`}
+                          hidden={!open}
+                        >
+                          {items.map((note) => (
+                            <NoteListItem
+                              key={note.id}
+                              note={note}
+                              isSelected={note.id === currentNoteId}
+                              menuOpen={openMenuId === note.id}
+                              dateLabel={monthDayOf(note)}
+                              onSelect={() => onSelect(note.id)}
+                              onMenuOpenChange={(menuOpen) =>
+                                setOpenMenuId(menuOpen ? note.id : null)
                               }
-                            : undefined
-                        }
-                        isSelected={book.id === selectedBookId}
-                        menuOpen={openMenuId === book.id}
-                        onSelect={() => onSelectBook(book.id)}
-                        onMenuOpenChange={(open) =>
-                          setOpenMenuId(open ? book.id : null)
-                        }
-                        onRequestDelete={() => setPendingBookDelete(book)}
-                      />
-                      {byBook && expandedBooks.has(book.id) && (
-                        <li className="book-chapters-row">
-                          <BookChapterList
-                            listId={`book-chapters-${book.id}`}
-                            bookTitle={book.title.trim() || COPY.untitledBook}
-                            chapters={chaptersOf(book)}
-                            currentNoteId={currentNoteId}
-                            openMenuId={openMenuId}
-                            onOpenChapter={(noteId) =>
-                              onOpenChapter(book.id, noteId)
-                            }
-                            onMenuOpenChange={(noteId, open) =>
-                              setOpenMenuId(open ? noteId : null)
-                            }
-                            onRequestDelete={setPendingDelete}
-                            onToggleFormat={onToggleNoteFormat}
-                            onAddToBook={onAddNoteToBook}
-                          />
-                        </li>
-                      )}
-                    </Fragment>
-                  ))}
-                </ul>
-              )}
-            </nav>
-
-            <div className="notes-rail__section notes-rail__section--sticky">
-              <h2 className="notes-rail__title" id="rail-notes-heading">
-                <button
-                  type="button"
-                  className="notes-rail__title-toggle"
-                  onClick={() => toggleSection("notes")}
-                  aria-expanded={notesOpen}
-                  aria-controls="rail-notes-list"
-                >
-                  Notes
-                  <span className="notes-rail__title-mark" aria-hidden="true" />
-                  <span className="notes-rail__title-rule" aria-hidden="true" />
-                  <Chevron open={notesOpen} />
-                </button>
-              </h2>
-              <OrganizeMenu
-                mode={organizeMode}
-                open={openMenuId === ORGANIZE_MENU_ID}
-                onOpenChange={(open) =>
-                  setOpenMenuId(open ? ORGANIZE_MENU_ID : null)
-                }
-                onChoose={onOrganizeChange}
-              />
-            </div>
-
-            {hasSampleNotes && notesOpen && (
-              <div className="notes-rail__banner" role="note">
-                <p className="notes-rail__banner-text">{COPY.sampleBanner}</p>
-                <button
-                  type="button"
-                  className="notes-rail__banner-action"
-                  onClick={onDeleteSamples}
-                >
-                  Delete all samples
-                </button>
+                              onRequestDelete={() => setPendingDelete(note)}
+                              onToggleFormat={() => onToggleNoteFormat(note.id)}
+                              onAddToBook={() => onAddNoteToBook(note.id)}
+                            />
+                          ))}
+                        </ul>
+                      </Fragment>
+                    );
+                  })
+                )}
+              </>
+            ) : books.length === 0 ? (
+              <div className="notes-rail__empty">
+                <p className="notes-rail__empty-body">
+                  {COPY.emptyBooksSidebar}
+                </p>
               </div>
+            ) : (
+              <ul>
+                {books.map((book) => (
+                  <BookListItem
+                    key={book.id}
+                    book={book}
+                    isSelected={book.id === selectedBookId}
+                    menuOpen={openMenuId === book.id}
+                    onSelect={() => onSelectBook(book.id)}
+                    onMenuOpenChange={(open) =>
+                      setOpenMenuId(open ? book.id : null)
+                    }
+                    onRequestDelete={() => setPendingBookDelete(book)}
+                  />
+                ))}
+              </ul>
             )}
-
-            <nav
-              id="rail-notes-list"
-              aria-label="Note list"
-              hidden={!notesOpen}
-            >
-              {listedNotes.length === 0 ? (
-                <div className="notes-rail__empty">
-                  <p className="notes-rail__empty-body">
-                    {/* Telling someone with 566 notes to write their first
-                        one would be a lie. In book mode an empty list means
-                        everything is shelved, which is its own good news. */}
-                    {byBook && notes.length > 0
-                      ? COPY.emptyNotesAllBooked
-                      : COPY.emptyNotesSidebar}
-                  </p>
-                </div>
-              ) : (
-                <ul>
-                  {listedNotes.map((note) => (
-                    <NoteListItem
-                      key={note.id}
-                      note={note}
-                      isSelected={note.id === currentNoteId}
-                      menuOpen={openMenuId === note.id}
-                      onSelect={() => onSelect(note.id)}
-                      onMenuOpenChange={(open) =>
-                        setOpenMenuId(open ? note.id : null)
-                      }
-                      onRequestDelete={() => setPendingDelete(note)}
-                      onToggleFormat={() => onToggleNoteFormat(note.id)}
-                      bookName={bookNameByNoteId.get(note.id)}
-                      onAddToBook={() => onAddNoteToBook(note.id)}
-                    />
-                  ))}
-                </ul>
-              )}
-            </nav>
           </div>
 
           <footer className="notes-rail__footer">

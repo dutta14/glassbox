@@ -56,13 +56,9 @@ describe("scroll fade wiring", () => {
         selectedBookId={null}
         bookNameByNoteId={new Map<string, string>()}
         onSelectBook={vi.fn()}
-        onOpenBooks={vi.fn()}
-        onOpenChapter={vi.fn()}
         onDeleteBook={vi.fn()}
         onAddNoteToBook={vi.fn()}
         onToggleTheme={vi.fn()}
-        organizeMode="list"
-        onOrganizeChange={vi.fn()}
       />,
     );
 

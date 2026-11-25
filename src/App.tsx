@@ -14,7 +14,6 @@ import { useBooks } from "./hooks/useBooks";
 import { useReadingPosition } from "./hooks/useReadingPosition";
 import { useStorageBackend } from "./hooks/useStorageBackend";
 import { useTheme } from "./hooks/useTheme";
-import { useNoteOrganize } from "./hooks/useNoteOrganize";
 import { createIndex, route } from "./engine/router";
 import type { TfIdfIndex } from "./engine/tfidf";
 import { notePath, bookPath } from "./engine/routes";
@@ -305,7 +304,6 @@ export const AppReady = ({
   onDisconnect,
 }: AppReadyProps) => {
   const { theme, toggleTheme } = useTheme();
-  const [organizeMode, setOrganizeMode] = useNoteOrganize();
   const navigate = useNavigate();
 
   // useMatch is react-router's own way to ask, from above <Routes>, "is this the
@@ -565,19 +563,7 @@ export const AppReady = ({
     chapterId: string;
   } | null>(null);
 
-  const handleOpenChapter = useCallback(
-    (bookId: string, chapterId: string) => {
-      setOpenAt({ bookId, chapterId });
-      navigate(bookPath(bookId));
-    },
-    [navigate],
-  );
-
   const handleOpenedAtChapter = useCallback(() => setOpenAt(null), []);
-
-  const handleOpenBooks = useCallback(() => {
-    navigate("/books");
-  }, [navigate]);
 
   /* Lands the reader in the book it just made, which is where naming it and
      adding chapters happens. An untitled book is valid: BookStage can rename
@@ -725,8 +711,6 @@ export const AppReady = ({
       {status === "ready" && (
         <>
           <NotesRail
-            organizeMode={organizeMode}
-            onOrganizeChange={setOrganizeMode}
             notes={notes}
             selectedNoteId={selectedNoteId}
             hasSampleNotes={hasSampleNotes}
@@ -739,8 +723,6 @@ export const AppReady = ({
             selectedBookId={selectedBookId}
             bookNameByNoteId={bookNameByNoteId}
             onSelectBook={handleSelectBook}
-            onOpenBooks={handleOpenBooks}
-            onOpenChapter={handleOpenChapter}
             onDeleteBook={handleDeleteBook}
             onAddNoteToBook={handleRequestAddToBook}
             onDeleteNote={handleDeleteNote}
