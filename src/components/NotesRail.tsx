@@ -1,4 +1,11 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { KeyboardEvent } from "react";
 import type { Book, Note, NoteFormat } from "../types";
 import { NoteListItem } from "./NoteListItem";
@@ -12,6 +19,7 @@ import type { Theme } from "../hooks/useTheme";
 import type { FolderState } from "../hooks/useStorageBackend";
 import { COPY } from "../engine/copy";
 import { groupByYear, monthDayOf } from "../utils/groupByYear";
+import { orderCollections } from "../utils/collectionOrder";
 import {
   bodySnippet,
   fullDateOf,
@@ -249,6 +257,10 @@ export const NotesRail = ({
 
   /* For a collection row's year range. */
   const noteById = new Map(notes.map((note) => [note.id, note]));
+  const orderedBooks = useMemo(
+    () => orderCollections(books, notes),
+    [books, notes],
+  );
   /* Derived from the same map the rows use to name a note's collection, so
      Posts can never show a note that a collection holds. */
   const postNotes = notes.filter((note) => !bookNameByNoteId.has(note.id));
@@ -815,7 +827,7 @@ export const NotesRail = ({
                     </div>
                   ) : (
                     <ul>
-                      {books.map((book) => (
+                      {orderedBooks.map((book) => (
                         <BookListItem
                           key={book.id}
                           book={book}

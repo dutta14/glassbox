@@ -113,7 +113,7 @@ describe("NotesRail Collections list", () => {
     expect(within(panel).getAllByRole("list")).toHaveLength(1);
   });
 
-  it("adds the years the chapters were written to each row", async () => {
+  it("adds the years the chapters were written to each row, ordered by end year", async () => {
     const user = userEvent.setup();
     renderRail({
       notes: [
@@ -128,7 +128,7 @@ describe("NotesRail Collections list", () => {
     const rows = within(screen.getByRole("tabpanel")).getAllByRole("listitem");
     expect(
       rows.map((r) => r.querySelector(".note-item__meta")?.textContent),
-    ).toEqual(["Empty", "1 chapter · 2011", "3 chapters · 2012–2014"]);
+    ).toEqual(["Empty", "3 chapters · 2012–2014", "1 chapter · 2011"]);
   });
 
   it("marks only the open collection and opens one on click", async () => {
