@@ -52,27 +52,44 @@ interface NoteEditorProps {
  * off block needs no correction.
  */
 const verseOpticalShift = (read: HTMLElement, columnWidth: number): number => {
-  const node = read.firstChild;
-  if (node === null || node.nodeType !== Node.TEXT_NODE) return 0;
   // Range measurement is not universal; jsdom has no getClientRects at all.
   // The shift is a refinement on top of an already correct layout, so when it
   // cannot be measured the honest answer is to leave the poem where it is
   // rather than to guess or to throw and take the editor down with it.
   if (typeof document.createRange().getClientRects !== "function") return 0;
-  const text = node.textContent ?? "";
+
+  /* The text is one node, or, when the poem has numbered sections, one node
+     per stretch between them, each wrapped in a span. The drawn breaks are
+     not lines of the poem and are left out. */
+  const nodes: Text[] = [];
+  for (const child of read.childNodes) {
+    const node =
+      child.nodeType === Node.TEXT_NODE
+        ? child
+        : child instanceof HTMLElement &&
+            child.dataset.offset !== undefined &&
+            !child.dataset.break &&
+            child.childNodes.length === 1
+          ? child.firstChild
+          : null;
+    if (node?.nodeType === Node.TEXT_NODE) nodes.push(node as Text);
+  }
 
   const widths: number[] = [];
-  let at = 0;
-  for (const line of text.split("\n")) {
-    if (line.trim() !== "") {
-      const range = document.createRange();
-      range.setStart(node, at);
-      range.setEnd(node, at + line.length);
-      // Per rect rather than the union, so a line long enough to wrap counts as
-      // the two lines it is drawn as and does not report the whole column.
-      for (const rect of range.getClientRects()) widths.push(rect.width);
+  for (const node of nodes) {
+    const text = node.textContent ?? "";
+    let at = 0;
+    for (const line of text.split("\n")) {
+      if (line.trim() !== "") {
+        const range = document.createRange();
+        range.setStart(node, at);
+        range.setEnd(node, at + line.length);
+        // Per rect rather than the union, so a line long enough to wrap counts
+        // as the two lines it is drawn as and does not report the whole column.
+        for (const rect of range.getClientRects()) widths.push(rect.width);
+      }
+      at += line.length + 1;
     }
-    at += line.length + 1;
   }
   if (widths.length === 0) return 0;
 
