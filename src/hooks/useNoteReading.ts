@@ -10,7 +10,8 @@ import { splitSectionBreaks } from "../utils/sectionBreaks";
  * nothing else, so the two cannot drift apart in how a note is read.
  */
 export interface NoteReading {
-  /** A poem is set as it was written: no drop cap, no drawn section breaks. */
+  /** A poem is set as it was written, line for line, and never takes a drop
+      cap. It does draw section breaks, as prose does. */
   verse: boolean;
   isEmpty: boolean;
   /** A picture that opens the note, shown as a picture and held out of the text. */
@@ -39,7 +40,7 @@ export const useNoteReading = (
     // prose, not the image line that no longer appears above them.
     const cap = verse ? 0 : dropCapDepth(readBody);
     // With no breaks in the note the reading view stays a single text node.
-    const segments = verse || isEmpty ? [] : splitSectionBreaks(readBody);
+    const segments = isEmpty ? [] : splitSectionBreaks(readBody);
     return {
       verse,
       isEmpty,

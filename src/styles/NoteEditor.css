@@ -390,6 +390,17 @@ textarea.editor__body:not([data-editing]) {
   line-height: 2.1;
 }
 
+/* A drawn section break stands in for one or two lines of source, so it takes
+   the verse line height too (2.1 per line rather than prose's 1.75), or the
+   text below would shift when the reading view gives way to the field. */
+.editor__bodywrap--verse .editor__break {
+  height: 4.2em;
+}
+
+.editor__bodywrap--verse .editor__break--opening {
+  height: 2.1em;
+}
+
 /* Sits between the title and the chapter rule. Muted and small: it is a label
    on the note, and it must not compete with the title above it or the first
    line below. The top margin is positive so the line clears the title's last
